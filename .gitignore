@@ -1,0 +1,47 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# testing
+/coverage
+/playwright-report
+/test-results
+/blob-report
+
+# next.js
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
+# production
+/build
+/dist
+
+# env files (only the documented example is committed)
+.env*
+!.env.example
+
+# local docker overrides
+docker-compose.override.yml
+
+# sentry
+.sentryclirc
+.env.sentry-build-plugin
+
+# Design reference screenshots: they show a real couple's photos and names and third-party artwork,
+# so they stay local. Remove this line to version them (only in a private repository).
+/docs/reference/*.jpeg
+
+# personal Claude Code settings (shared settings go in .claude/settings.json)
+.claude/settings.local.json
+
+# misc
+.DS_Store
+Thumbs.db
+*.pem
+.idea/
+
+# debug
+npm-debug.log*

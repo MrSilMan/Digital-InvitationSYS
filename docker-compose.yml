@@ -1,0 +1,121 @@
+# Local development stack.
+#
+#   docker compose up -d                  Postgres, Redis, MinIO (+ bucket), Mailpit
+#   docker compose --profile app up -d    …plus the Next.js dev server in a container (hot reload)
+#
+# On Windows, running `npm run dev` on the host is much faster than the containerized dev server.
+# Credentials below are for local development only.
+name: convites
+
+x-healthcheck: &healthcheck
+  interval: 5s
+  timeout: 3s
+  retries: 20
+  start_period: 5s
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: convites
+      POSTGRES_PASSWORD: convites
+      POSTGRES_DB: convites
+    ports:
+      # Host port 5433 so a locally installed PostgreSQL (usually on 5432) never intercepts the app.
+      - '${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      # Postgres 18+ images keep their data in a versioned directory under /var/lib/postgresql.
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      <<: *healthcheck
+      test: ['CMD-SHELL', 'pg_isready -U convites -d convites']
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    # Append-only persistence keeps queued jobs across restarts. BullMQ requires `noeviction`;
+    # cache entries always carry a TTL instead of relying on eviction.
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      <<: *healthcheck
+      test: ['CMD', 'redis-cli', 'ping']
+
+  minio:
+    # MinIO's official images were removed from Docker Hub in September 2026; Chainguard publishes
+    # a free, daily-rebuilt build. The app only speaks plain S3, so this is easy to swap.
+    image: cgr.dev/chainguard/minio:latest
+    restart: unless-stopped
+    command: ['server', '/data', '--console-address', ':9001']
+    environment:
+      MINIO_ROOT_USER: convites
+      MINIO_ROOT_PASSWORD: convites-dev-secret
+    ports:
+      - '${MINIO_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      <<: *healthcheck
+      # The image ships bash but no curl/wget: a plain HTTP request over bash's /dev/tcp.
+      test:
+        - CMD
+        - bash
+        - -c
+        - 'exec 3<>/dev/tcp/127.0.0.1/9000 && printf "GET /minio/health/live HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && read -r status <&3 && [[ "$$status" == *" 200 "* ]]'
+
+  # One-off: creates the media bucket once MinIO is healthy (idempotent).
+  minio-init:
+    image: cgr.dev/chainguard/minio-client:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MC_HOST_local: http://convites:convites-dev-secret@minio:9000
+    command: ['mb', '--ignore-existing', 'local/convites-media']
+    restart: on-failure
+
+  # Catches every e-mail sent in development (web UI on http://localhost:8025).
+  mailpit:
+    image: axllent/mailpit:v1
+    restart: unless-stopped
+    ports:
+      - '${MAILPIT_SMTP_PORT:-1025}:1025'
+      - '${MAILPIT_UI_PORT:-8025}:8025'
+
+  web:
+    profiles: [app]
+    build:
+      context: .
+      target: dev
+    # Webpack with a polling watcher: Turbopack's watcher misses edits made on a Windows/macOS host
+    # through the bind mount (tested with Next.js 16.3). The host dev server keeps using Turbopack.
+    command: ['npm', 'run', 'dev', '--', '--webpack', '--hostname', '0.0.0.0']
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      DATABASE_URL: postgresql://convites:convites@postgres:5432/convites
+      REDIS_URL: redis://redis:6379
+      WATCHPACK_POLLING: 'true'
+    ports:
+      - '${WEB_PORT:-3000}:3000'
+    volumes:
+      - .:/app
+      # Keep the container's Linux node_modules and build cache out of the bind mount.
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

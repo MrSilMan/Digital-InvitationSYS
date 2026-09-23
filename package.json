@@ -1,0 +1,55 @@
+{
+  "name": "digital-invitation-sys",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plataforma de convites de casamento digitais e interativos (Angola).",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && npm run build:preload",
+    "build:preload": "esbuild scripts/preload.ts --bundle --platform=node --target=node24 --format=cjs --outfile=dist/preload.cjs --alias:server-only=./scripts/stubs/server-only.ts --log-level=warning",
+    "start": "node scripts/start-standalone.mjs",
+    "lint": "eslint --max-warnings=0",
+    "lint:fix": "eslint --fix",
+    "typecheck": "next typegen && tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test"
+  },
+  "dependencies": {
+    "@sentry/core": "^11.0.0",
+    "@sentry/nextjs": "^11.0.0",
+    "ioredis": "^6.0.0",
+    "next": "^16.3.6",
+    "pg": "^8.23.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "server-only": "^0.0.1",
+    "winston": "^3.19.0",
+    "winston-transport": "^4.9.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@next/env": "^16.3.6",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^24.13.6",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.6",
+    "eslint-config-prettier": "^10.1.8",
+    "postcss": "^8.5.28",
+    "prettier": "^3.9.9",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  }
+}

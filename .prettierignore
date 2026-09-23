@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+build
+dist
+coverage
+playwright-report
+test-results
+package-lock.json
+next-env.d.ts
+public
+# Kept verbatim (the original project brief and reference screenshots)
+docs/SPEC.md
+docs/reference
+# Generated and rewritten by `next dev`
+AGENTS.md

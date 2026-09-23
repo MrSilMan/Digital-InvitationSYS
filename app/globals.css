@@ -1,0 +1,32 @@
+@import 'tailwindcss';
+
+/*
+ * Base design tokens, exposed as CSS variables by Tailwind's @theme.
+ * Phase 3 replaces these placeholders with the real design system and per-theme overrides.
+ */
+@theme {
+  --color-paper: #f7fafc;
+  --color-ink: #1f2a37;
+  --color-muted: #5b6573;
+  --color-accent: #857d45;
+  --color-accent-contrast: #ffffff;
+
+  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-serif: ui-serif, Georgia, 'Times New Roman', serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+}
