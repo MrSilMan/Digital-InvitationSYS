@@ -1,5 +1,5 @@
 import { getServerEnv } from '@/env';
-import { pingDatabase } from '@/server/db/pg';
+import { pingDatabase } from '@/server/db/prisma';
 import { buildHealthReport, healthHttpStatus } from '@/server/health';
 import { pingRedis } from '@/server/redis';
 

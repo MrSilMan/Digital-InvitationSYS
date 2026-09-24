@@ -1,5 +1,5 @@
 # Quality gate for every push and pull request.
-# Phase 10 extends it with Prisma validation, Postgres/Redis service containers and Playwright E2E.
+# Phase 10 extends it with Redis, Playwright E2E and the deploy workflow.
 name: CI
 
 on:
@@ -18,9 +18,29 @@ jobs:
   verify:
     name: Format, lint, type-check, test, build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: convites
+          POSTGRES_PASSWORD: convites
+          POSTGRES_DB: convites_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U convites -d convites_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
     env:
       NEXT_TELEMETRY_DISABLED: 1
+      # Only the integration tests and the migration checks use this throwaway database.
+      DATABASE_URL: postgresql://convites:convites@localhost:5432/convites_test
+      TEST_DATABASE_URL: postgresql://convites:convites@localhost:5432/convites_test
+
     steps:
       # Actions are pinned to commit SHAs (supply-chain safety); Dependabot keeps them current.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -30,7 +50,10 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      # `postinstall` also generates the Prisma client.
       - run: npm ci
+
+      - run: npx prisma validate
 
       - run: npm run format:check
 
@@ -39,6 +62,14 @@ jobs:
       - run: npm run typecheck
 
       - run: npm test
+
+      - name: Apply every migration to an empty database
+        run: npx prisma migrate deploy
+
+      - name: Fail if the schema changed without a migration
+        run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+
+      - run: npm run test:integration
 
       - name: Restore Next.js build cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

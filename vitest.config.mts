@@ -2,6 +2,10 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vitest/config';
 
+/** Integration tests use their own database; the setup refuses any name not ending in `_test`. */
+const testDatabaseUrl =
+  process.env.TEST_DATABASE_URL ?? 'postgresql://convites:convites@localhost:5433/convites_test';
+
 export default defineConfig({
   resolve: {
     tsconfigPaths: true,
@@ -11,10 +15,33 @@ export default defineConfig({
     },
   },
   test: {
-    environment: 'node',
-    include: ['**/*.test.{ts,tsx}'],
-    exclude: ['**/node_modules/**', '.next/**', 'tests/e2e/**'],
     restoreMocks: true,
     unstubEnvs: true,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          environment: 'node',
+          include: ['**/*.test.{ts,tsx}'],
+          exclude: ['**/node_modules/**', '.next/**', 'tests/e2e/**', '**/*.int.test.ts'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'integration',
+          environment: 'node',
+          include: ['**/*.int.test.ts'],
+          exclude: ['**/node_modules/**', '.next/**'],
+          globalSetup: ['tests/integration/global-setup.ts'],
+          // One database: run files one after another.
+          fileParallelism: false,
+          testTimeout: 30_000,
+          hookTimeout: 120_000,
+          env: { DATABASE_URL: testDatabaseUrl, APP_ENV: 'test', LOG_LEVEL: 'warn' },
+        },
+      },
+    ],
   },
 });

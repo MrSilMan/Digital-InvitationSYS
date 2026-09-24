@@ -11,15 +11,18 @@ relevant sections before planning a phase. README.md documents setup and archite
   approval. After it: `npm run check` and `npm run build` must pass, then summarize and commit.
 - Before installing anything, check current versions with `npm view` and read the current docs
   (Next.js ships version-matched docs in `node_modules/next/dist/docs/`).
-- Phase status: 1 done. Next: Phase 2 (Prisma schema, migrations, seed).
+- Phase status: 1 and 2 done. Next: Phase 3 (design system: fonts, i18n, themes, shared UI).
 
 ## Commands
 
 ```bash
 docker compose up -d        # Postgres (host port 5433), Redis, MinIO + bucket, Mailpit
 npm run dev                 # dev server
-npm run check               # format check + lint + typecheck + tests
+npm run check               # format check + lint + typecheck + unit tests
+npm run test:integration    # tests against Postgres (convites_test)
 npm run build && npm start  # production build, run like the Docker image
+npm run db:migrate -- --name what-changed   # after editing prisma/schema.prisma
+npm run db:seed             # demo data (idempotent)
 npx vitest run path/to/file.test.ts
 ```
 
@@ -28,7 +31,8 @@ npx vitest run path/to/file.test.ts
 - `typescript ~6.0.x`: TS 7 is blocked, `typescript-eslint` (via `eslint-config-next`) supports <6.1.
 - `eslint ^9`: ESLint 10 is blocked by the react/import/jsx-a11y plugins in `eslint-config-next`.
 - `@types/node ^24`: the runtime is Node 24 LTS.
-- Prisma (Phase 2): use 7.x. The `latest` npm tag points at an 8.0 RC, and Better Auth supports <=7.
+- `prisma`, `@prisma/client`, `@prisma/adapter-pg` pinned to the same exact 7.x version: the
+  `latest` npm tag points at an 8.0 RC, and Better Auth supports Prisma <=7. Bump all three together.
 
 ## Next.js 16 specifics that matter here
 
@@ -40,6 +44,26 @@ npx vitest run path/to/file.test.ts
 - AsyncLocalStorage context cannot be opened in `proxy.ts` (it runs apart from rendering); it is
   opened at the HTTP layer by `src/lib/observability/http-hooks.ts`.
 - `next dev` rewrites the managed block in AGENTS.md; commit it, don't fight it.
+
+## Database (Prisma 7)
+
+- Server code: `getPrisma()` from `src/server/db/prisma.ts` (lazy: `next build` needs no database).
+  Scripts and integration tests: `createPrismaClient()` from `src/server/db/client.ts`.
+- Imports: `@/generated/prisma/client` on the server only; Client Components use
+  `@/generated/prisma/enums` or `/models`. The generated folder is gitignored (postinstall).
+- `prisma.config.ts` loads `.env.local` itself (Prisma 7 does not read .env files). Prisma 7 does
+  not generate or seed after `migrate dev`: run `db:generate` / `db:seed` explicitly.
+- Schema changes: `npm run db:migrate -- --name x`, review the SQL, commit schema + migration.
+  Never edit an applied migration. CHECK constraints are hand-written in migration SQL.
+- Prisma blocks `migrate reset` when an AI agent runs it without the user's explicit consent.
+  Never work around that: fix forward with a new migration, or ask the user.
+- Better Auth tables must match what its CLI generates for our auth config (email + password,
+  admin plugin with roles `couple`/`admin`). Re-run it when auth plugins change:
+  `npx auth@1.7.5 generate --config <file> --adapter prisma --dialect postgresql --output <file>`
+- Guest tokens: `createGuestToken()` (22 chars, 128 bits); check with `isGuestToken()` before any
+  lookup. Phones: `angolanPhoneSchema` (stored as +2449XXXXXXXX). Section order/visibility:
+  `parseSectionConfig()`. Default texts and rules: `src/i18n/pt-AO.ts` / `src/lib/event-defaults.ts`.
+- The integration test database name must end in `_test`; the suite empties it on every run.
 
 ## Conventions
 
@@ -65,13 +89,16 @@ npx vitest run path/to/file.test.ts
   Session Replay, never send guest names, phones, IBANs or tokens.
 - Guest pages must stay light (low-end Android): Server Components by default, small Client
   Components, no heavy client libraries.
-- Tests: Vitest, `*.test.ts` next to the code; root-level files are tested in `tests/unit/`.
+- Tests: Vitest, `*.test.ts` next to the code; root-level files are tested in `tests/unit/`;
+  database tests are `tests/integration/*.int.test.ts`.
 
 ## Local environment notes
 
 - Postgres is on host port 5433 (a native PostgreSQL service may own 5432).
 - The containerized dev server (`--profile app`) runs `next dev --webpack` with `WATCHPACK_POLLING`:
   Turbopack's watcher misses host edits through the bind mount. Host `npm run dev` uses Turbopack.
+  After dependency changes start it with `--build --renew-anon-volumes`: its `node_modules` lives in
+  an anonymous volume that Compose otherwise reuses (stale packages, "Module not found").
 - Never rewrite files with PowerShell 5.1 `Get-Content`/`Set-Content`: it reads UTF-8 as ANSI and
   corrupts accents (pt-AO text). Use the editor tools.
 - Git Bash rewrites `/paths` passed to docker: prefix commands with `MSYS_NO_PATHCONV=1`.

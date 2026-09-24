@@ -14,7 +14,7 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 | Phase | Scope                                                                             | Status  |
 | ----- | --------------------------------------------------------------------------------- | ------- |
 | 1     | Foundation: Next.js, tooling, env validation, logging, Sentry, Docker dev, health | Done    |
-| 2     | Database: Prisma schema, migrations, seed                                         | Planned |
+| 2     | Database: Prisma schema, migrations, seed                                         | Done    |
 | 3     | Design system, fonts, i18n, themes                                                | Planned |
 | 4     | Invitation pages ("Praia Rosa")                                                   | Planned |
 | 5     | RSVP, Redis cache, rate limiting, view tracking                                   | Planned |
@@ -28,8 +28,9 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 ## Stack
 
 Next.js 16.3 (App Router, Turbopack, React 19.3) · TypeScript 6.0 (strict) · Tailwind CSS 4.3 ·
-Zod 4 · Winston 3 · Sentry 11 · PostgreSQL 18 · Redis 8 (ioredis 6) · Vitest 5 · Node.js 24 LTS.
-Coming in later phases: Prisma, Better Auth, BullMQ, sharp, Motion, Playwright.
+Zod 4 · Winston 3 · Sentry 11 · PostgreSQL 18 with Prisma 7.10 · Better Auth 1.7 (tables and
+password hashing so far) · Redis 8 (ioredis 6) · Vitest 5 · Node.js 24 LTS.
+Coming in later phases: BullMQ, sharp, Motion, Playwright.
 
 Every package is on its latest stable release except where a newer major is blocked:
 
@@ -38,15 +39,18 @@ Every package is on its latest stable release except where a newer major is bloc
 | TypeScript  | `~6.0.3`  | TypeScript 7 is out, but `typescript-eslint` (used by `eslint-config-next`) supports `<6.1` |
 | ESLint      | `^9.39`   | ESLint 10 is out, but the React/import/jsx-a11y plugins in `eslint-config-next` stop at 9   |
 | @types/node | `^24`     | Matches the Node.js 24 LTS runtime                                                          |
+| Prisma      | `7.10.0`  | npm's `latest` tag is an 8.0 release candidate, and Better Auth supports Prisma up to 7     |
 
 ## Getting started
 
 Prerequisites: **Node.js 24** (see `.nvmrc`), **npm**, and **Docker** (Docker Desktop on Windows/macOS).
 
 ```bash
-npm install
+npm install                       # also generates the Prisma client
 cp .env.example .env.local        # PowerShell: Copy-Item .env.example .env.local
 docker compose up -d              # Postgres, Redis, MinIO (+ bucket), Mailpit
+npm run db:deploy                 # apply the database migrations
+npm run db:seed                   # demo event, guests and logins (see "Database")
 npm run dev                       # http://localhost:3000
 ```
 
@@ -55,8 +59,11 @@ Check the stack with `curl http://localhost:3000/api/health`.
 To run the dev server in a container as well (hot reload through a bind mount):
 
 ```bash
-docker compose --profile app up -d --build
+docker compose --profile app up -d --build --renew-anon-volumes
 ```
+
+`--renew-anon-volumes` matters after dependency changes: the container keeps `node_modules` in an
+anonymous volume, and Docker Compose would otherwise reuse the old one with the new image.
 
 The containerized dev server uses webpack with a polling file watcher, because Turbopack's watcher
 misses edits made on a Windows/macOS host through the bind mount. On Windows, `npm run dev` on the
@@ -108,19 +115,29 @@ one image can be promoted from staging to production. `.env.example` documents e
 | `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` | no       | `0.1`                   | Browser trace sample rate                             |
 | `SENTRY_ORG`, `SENTRY_PROJECT`          | CI only  |                         | Source map upload target                              |
 | `SENTRY_AUTH_TOKEN`                     | CI only  |                         | Enables source map upload; never needed at runtime    |
+| `SEED_COUPLE_PASSWORD`                  | seed     | `noivos-demo-2027`      | Password of the demo couple login                     |
+| `SEED_ADMIN_PASSWORD`                   | seed     | `admin-demo-2027`       | Password of the demo admin login                      |
+| `TEST_DATABASE_URL`                     | tests    | `…:5433/convites_test`  | Integration test database (name must end in `_test`)  |
 
 ## Scripts
 
-| Command             | What it does                                                     |
-| ------------------- | ---------------------------------------------------------------- |
-| `npm run dev`       | Development server (Turbopack)                                   |
-| `npm run build`     | Production build (standalone output) + observability preload     |
-| `npm start`         | Runs the production build locally, the way the Docker image does |
-| `npm run lint`      | ESLint (zero warnings allowed)                                   |
-| `npm run typecheck` | Generates route types, then `tsc --noEmit`                       |
-| `npm run format`    | Prettier (also sorts Tailwind classes)                           |
-| `npm test`          | Vitest unit and integration tests                                |
-| `npm run check`     | Format check, lint, type-check and tests                         |
+| Command                    | What it does                                                       |
+| -------------------------- | ------------------------------------------------------------------ |
+| `npm run dev`              | Development server (Turbopack)                                     |
+| `npm run build`            | Production build (standalone output) + observability preload       |
+| `npm start`                | Runs the production build locally, the way the Docker image does   |
+| `npm run lint`             | ESLint (zero warnings allowed)                                     |
+| `npm run typecheck`        | Generates route types, then `tsc --noEmit`                         |
+| `npm run format`           | Prettier (also sorts Tailwind classes)                             |
+| `npm test`                 | Vitest unit tests (fast, no services needed)                       |
+| `npm run test:integration` | Integration tests against Postgres (needs `docker compose up`)     |
+| `npm run check`            | Format check, lint, type-check and unit tests                      |
+| `npm run db:migrate`       | Create and apply a migration after editing the schema (dev)        |
+| `npm run db:deploy`        | Apply pending migrations (CI, staging, production)                 |
+| `npm run db:seed`          | Load or refresh the demo data (never in production)                |
+| `npm run db:reset`         | Wipe the dev database, re-apply migrations, seed (asks to confirm) |
+| `npm run db:generate`      | Regenerate the Prisma client (`npm install` does it too)           |
+| `npm run db:studio`        | Prisma Studio, a browser UI for the data                           |
 
 ## Architecture
 
@@ -131,12 +148,63 @@ instrumentation.ts      Server startup: environment check, request hooks, Sentry
 instrumentation-client.ts  Sentry browser SDK
 sentry.*.config.ts      Sentry server/edge initialization
 scripts/preload.ts      Runs before the production server (see "Request IDs")
+prisma/                 Schema, migrations, demo seed (prisma/seed/)
+prisma.config.ts        Prisma 7 configuration (database URL, seed command)
 src/env.ts              Zod-validated server environment; src/env.public.ts for browser values
-src/i18n/pt-AO.ts       Every user-facing string (Portuguese, Angola)
-src/lib/                Logger, redaction, request context, Sentry privacy options, CSP builder
-src/server/             Server-only code: Redis client, database access, health checks
+src/i18n/pt-AO.ts       Every user-facing string (Portuguese, Angola), including default invitation texts
+src/lib/                Logger, redaction, request context, Sentry privacy, CSP, guest tokens, validation
+src/server/             Server-only code: Prisma client, Redis client, health checks
+src/generated/prisma    Generated Prisma client (not committed)
 tests/unit/             Tests for root-level files (the rest live next to the code as *.test.ts)
+tests/integration/      Tests against a real Postgres (*.int.test.ts)
 ```
+
+### Database
+
+PostgreSQL 18 through Prisma 7.10 ([prisma/schema.prisma](prisma/schema.prisma)). Prisma 7 changed
+its setup; the parts that matter here:
+
+- [prisma.config.ts](prisma.config.ts) holds the database URL and the seed command. Prisma no
+  longer reads `.env` files, so the config loads them with Next.js's own loader (`.env.local`
+  included); variables already set in the environment win.
+- The client is generated into `src/generated/prisma` (gitignored; `npm install` regenerates it)
+  and talks to Postgres through the `pg` driver adapter. Server code uses the shared client from
+  [src/server/db/prisma.ts](src/server/db/prisma.ts) (`getPrisma()`); Client Components may import
+  types and enums from `@/generated/prisma/enums` or `/models`, never `/client`.
+- Prisma no longer generates or seeds automatically after migrations: use the `db:*` scripts.
+
+Model overview:
+
+| Area     | Models                                                         | Notes                                                                                                                                        |
+| -------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Auth     | `User`, `Session`, `Account`, `Verification`                   | Exactly what Better Auth expects (email + password, admin plugin). Roles: `couple` (default), `admin`                                        |
+| Events   | `Event`, `EventLocation`, `TimelineItem`, `GuestRule`, `Media` | Editable texts are `null` until the couple changes them (the pt-AO defaults are shown). Section order and visibility live in `sectionConfig` |
+| Guests   | `Guest`, `Rsvp`, `InvitationView`                              | One RSVP per guest; `attending = null` means the guest only tapped a WhatsApp button so far                                                  |
+| Platform | `AuditLog`                                                     | Entries survive the deletion of the admin who made them                                                                                      |
+
+Conventions: snake_case table names; UUIDv7 keys for our tables (Better Auth generates its own
+IDs); every timestamp is `timestamptz`, stored in UTC and shown in Africa/Luanda. Deleting an event
+deletes everything under it; deleting a user who owns an event is refused. Migration
+[20260923222022_integrity_constraints](prisma/migrations/20260923222022_integrity_constraints/migration.sql)
+adds CHECK constraints the Prisma schema cannot express: at least 1 seat, guest tokens of 16+
+URL-safe characters, at most 2 parents per side, valid slugs and roles.
+
+**Changing the schema:** edit `schema.prisma`, run `npm run db:migrate -- --name what-changed`,
+review the generated SQL and commit it with the schema. Never edit a migration that has already
+been applied anywhere; add a new one. CI fails if the schema changes without a migration.
+
+**Demo data** (`npm run db:seed`): the Braúlio & Nanda wedding in the "Praia Rosa" theme on Friday
+15 January 2027 (ceremony at Praia do Bispo at 16h00, copo-d'água at 20h00), the full timeline,
+the 8 default guest rules and 10 guests covering every RSVP state. The seed prints every guest's
+invitation link. Logins (usable from Phase 7):
+
+| Login                  | Default password   | Role     |
+| ---------------------- | ------------------ | -------- |
+| `noivos@convites.test` | `noivos-demo-2027` | `couple` |
+| `admin@convites.test`  | `admin-demo-2027`  | `admin`  |
+
+Demo phone numbers use the unassigned `+244 900 000 xxx` range, so no demo WhatsApp link reaches a
+real person. The seed refuses to run when `APP_ENV` or `NODE_ENV` is `production`.
 
 ### Logging
 
@@ -203,7 +271,19 @@ Failure details are logged, never returned.
 
 ## Testing and CI
 
-`npm test` runs Vitest (unit tests next to the code, plus an integration test that serves real HTTP
-requests through the request hooks). [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs
-format check, lint, type-check, tests and the production build on every push and pull request.
-Service containers, Playwright E2E and the deploy workflow arrive in Phase 10.
+Vitest runs two projects:
+
+- `npm test` — unit tests next to the code (`*.test.ts`), including one that serves real HTTP
+  requests through the request hooks. No services needed.
+- `npm run test:integration` — `tests/integration/*.int.test.ts` against a real Postgres: the
+  migrations, the demo seed (twice), guest lookup by token, the integrity rules and the delete
+  behaviour. It uses the `convites_test` database on the Docker Postgres (`TEST_DATABASE_URL` to
+  change it), applies migrations with `prisma migrate deploy` and empties it before each run; it
+  refuses any database whose name does not end in `_test`. If a migration was edited after the test
+  database applied it, drop it: `docker compose exec postgres dropdb -U convites convites_test`.
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request, with a
+Postgres service container: Prisma schema validation, format check, lint, type-check, unit tests,
+migrations applied to an empty database, a check that fails if the schema changed without a
+migration, integration tests, and the production build. Redis, Playwright E2E and the deploy
+workflow arrive in Phase 10.

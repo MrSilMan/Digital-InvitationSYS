@@ -32,6 +32,31 @@ export const errors = {
   reference: 'Referência do erro',
 } as const;
 
-export const ptAO = { app, landing, errors } as const;
+export const validation = {
+  phone: {
+    invalid: 'Introduza um número de telemóvel angolano válido (ex.: 923 456 789).',
+  },
+} as const;
+
+/** Default invitation texts; the couple can edit each one (null in the database = default). */
+export const invitationDefaults = {
+  introLine: 'Com a benção de Deus',
+  invitationLine: 'Têm a honra de convidar',
+  celebrationLine: 'para celebrar a cerimónia de casamento dos seus filhos.',
+  /** {seats} is replaced by the guest's number of seats. */
+  infoBoxText: 'Convite válido para {seats} pessoa(s)',
+  guestRules: {
+    presence: 'Contamos com a sua presença!',
+    punctuality: 'Seja pontual!',
+    noPlusOnes: 'Convidado não convida!',
+    celebrate: 'Comemore a nossa união!',
+    whiteIsForTheBride: 'Branco é a cor da noiva!',
+    photos: 'Faça muitas fotos e Stories!',
+    dance: 'É obrigatório dançar muito!',
+    smile: 'Sorria e seja muito feliz!',
+  },
+} as const;
+
+export const ptAO = { app, landing, errors, validation, invitationDefaults } as const;
 
 export type Dictionary = typeof ptAO;

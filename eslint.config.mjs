@@ -21,11 +21,17 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // Command-line scripts talk to the terminal directly.
+    files: ['prisma/**/*.ts', 'scripts/**/*.{ts,mjs}'],
+    rules: { 'no-console': 'off' },
+  },
   globalIgnores([
     '.next/**',
     'out/**',
     'build/**',
     'dist/**',
+    'src/generated/**',
     'coverage/**',
     'playwright-report/**',
     'test-results/**',

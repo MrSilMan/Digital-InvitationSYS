@@ -19,6 +19,9 @@ next-env.d.ts
 /build
 /dist
 
+# generated Prisma client (npm install / npm run db:generate recreates it)
+/src/generated/
+
 # env files (only the documented example is committed)
 .env*
 !.env.example

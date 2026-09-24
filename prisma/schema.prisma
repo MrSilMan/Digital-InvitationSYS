@@ -1,0 +1,372 @@
+// Convites Digitais — database schema (Prisma 7, PostgreSQL 18).
+//
+// Conventions
+// - Table and enum names are snake_case (@@map); columns keep Prisma's camelCase.
+// - Our tables use UUIDv7 primary keys (time-ordered). Better Auth's tables keep the string IDs
+//   Better Auth generates itself.
+// - Every timestamp is `timestamptz`: stored in UTC, displayed in Africa/Luanda by the app.
+// - JSON columns are validated with Zod when written and when read (src/lib/validation/).
+// - The Better Auth models match `npx auth generate` for our configuration (email + password,
+//   admin plugin). Re-run it when auth plugins change and reconcile any difference here.
+// - CHECK constraints (seats, counts, role, token length) live in the migration SQL, since the
+//   Prisma schema cannot express them. The app validates the same rules with Zod first.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum EventPhase {
+  SAVE_THE_DATE
+  INVITATION
+
+  @@map("event_phase")
+}
+
+enum RsvpMode {
+  WHATSAPP
+  FORM
+  BOTH
+
+  @@map("rsvp_mode")
+}
+
+enum RsvpSource {
+  FORM
+  WHATSAPP_CLICK
+
+  @@map("rsvp_source")
+}
+
+enum WhatsAppTarget {
+  GROOM
+  BRIDE
+
+  @@map("whatsapp_target")
+}
+
+enum MediaType {
+  HERO
+  GALLERY
+  MUSIC
+  LOGO
+
+  @@map("media_type")
+}
+
+enum MediaStatus {
+  PENDING
+  READY
+  FAILED
+
+  @@map("media_status")
+}
+
+// ───────────────────────── Better Auth ─────────────────────────
+
+model User {
+  id            String    @id
+  name          String
+  email         String
+  emailVerified Boolean   @default(false)
+  image         String?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime  @updatedAt @db.Timestamptz(3)
+  /// Admin plugin: "couple" (default) or "admin".
+  role          String?   @default("couple")
+  banned        Boolean?  @default(false)
+  banReason     String?
+  banExpires    DateTime? @db.Timestamptz(3)
+
+  sessions  Session[]
+  accounts  Account[]
+  events    Event[]
+  auditLogs AuditLog[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id             String   @id
+  expiresAt      DateTime @db.Timestamptz(3)
+  token          String
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Admin plugin: ID of the admin impersonating this session.
+  impersonatedBy String?
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime? @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @db.Timestamptz(3)
+  scope                 String?
+  /// Scrypt hash for email + password logins (providerId "credential").
+  password              String?
+  createdAt             DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @db.Timestamptz(3)
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime @db.Timestamptz(3)
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ──────────────────────────── Events ────────────────────────────
+
+model Event {
+  id         String     @id @default(uuid(7)) @db.Uuid
+  /// The couple's account. Deleting a user never deletes their events.
+  ownerId    String
+  owner      User       @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  /// Public URL segment: /c/<slug>/<guestToken>.
+  slug       String     @unique
+  phase      EventPhase @default(SAVE_THE_DATE)
+  /// Inactive events show "Convite não encontrado" to guests.
+  isActive   Boolean    @default(true)
+  /// Maximum number of guests (the plan the couple bought).
+  guestLimit Int        @default(150)
+
+  // Appearance
+  themeId        String  @default("praia-rosa")
+  /// Per-event colour/font overrides of the theme.
+  themeOverrides Json?
+  /// Monogram initials, e.g. "BN". An uploaded LOGO media replaces it.
+  monogram       String?
+
+  // Couple and families
+  groomName    String
+  brideName    String
+  /// Up to 2 names each; either side may be empty.
+  groomParents String[] @default([])
+  brideParents String[] @default([])
+
+  // Ceremony date (UTC)
+  startsAt DateTime  @db.Timestamptz(3)
+  endsAt   DateTime? @db.Timestamptz(3)
+
+  // Editable texts. null = the default text from the pt-AO dictionary.
+  /// "Com a benção de Deus"
+  introLine       String?
+  /// "Têm a honra de convidar"
+  invitationLine  String?
+  /// "para celebrar a cerimónia de casamento dos seus filhos."
+  celebrationLine String?
+  /// "Convite válido para {seats} pessoa(s)"
+  infoBoxText     String?
+  coupleMessage   String?
+
+  // Optional sections
+  dressCodeText     String?
+  /// Hex colours, e.g. "#8A8446".
+  dressCodeColors   String[] @default([])
+  giftText          String?
+  giftIban          String?
+  giftAccountHolder String?
+
+  // RSVP
+  rsvpMode      RsvpMode  @default(BOTH)
+  rsvpDeadline  DateTime? @db.Timestamptz(3)
+  /// E.164 numbers, e.g. +244923456789.
+  groomWhatsapp String?
+  brideWhatsapp String?
+
+  /// Order and visibility of the invitation sections (src/lib/validation/sections.ts).
+  sectionConfig Json @default("[]")
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  locations     EventLocation[]
+  timelineItems TimelineItem[]
+  guestRules    GuestRule[]
+  media         Media[]
+  guests        Guest[]
+
+  @@index([ownerId])
+  @@map("event")
+}
+
+model EventLocation {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  eventId     String   @db.Uuid
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  /// Small-caps heading, e.g. "AS CERIMÓNIAS", "COPO-D'ÁGUA".
+  heading     String
+  venueName   String
+  /// Sentence around the venue. null = default ("Terão lugar na {venue}, às {time}.").
+  description String?
+  startsAt    DateTime @db.Timestamptz(3)
+  address     String?
+  /// Google Maps link pasted by the couple; coordinates are extracted from it.
+  mapsUrl     String?
+  latitude    Float?
+  longitude   Float?
+  position    Int      @default(0)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+
+  @@index([eventId, position])
+  @@map("event_location")
+}
+
+model TimelineItem {
+  id       String    @id @default(uuid(7)) @db.Uuid
+  eventId  String    @db.Uuid
+  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  label    String
+  /// null when the item has no time.
+  startsAt DateTime? @db.Timestamptz(3)
+  /// Icon key from the invitation icon set (Phase 3).
+  icon     String
+  position Int       @default(0)
+
+  @@index([eventId, position])
+  @@map("timeline_item")
+}
+
+model GuestRule {
+  id       String @id @default(uuid(7)) @db.Uuid
+  eventId  String @db.Uuid
+  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  text     String
+  icon     String
+  position Int    @default(0)
+
+  @@index([eventId, position])
+  @@map("guest_rule")
+}
+
+model Media {
+  id          String      @id @default(uuid(7)) @db.Uuid
+  eventId     String      @db.Uuid
+  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  type        MediaType
+  status      MediaStatus @default(PENDING)
+  /// Object-storage key of the uploaded original.
+  originalKey String
+  /// Processed versions, filled by the worker: { [size]: { key, width, height } }.
+  variants    Json?
+  mimeType    String
+  sizeBytes   Int
+  width       Int?
+  height      Int?
+  altText     String?
+  /// Why processing failed (shown in the dashboard).
+  error       String?
+  position    Int         @default(0)
+  createdAt   DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime    @updatedAt @db.Timestamptz(3)
+
+  @@index([eventId, type, position])
+  @@map("media")
+}
+
+// ──────────────────────────── Guests ────────────────────────────
+
+model Guest {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  eventId      String   @db.Uuid
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  /// Secret part of the personal link: 22 URL-safe characters, 128 bits (src/lib/guest-token.ts).
+  token        String   @unique
+  /// Shown on the invitation, e.g. "Família Silva".
+  displayName  String
+  /// E.164 (+244…).
+  phone        String?
+  seatsAllowed Int      @default(1)
+  groupTag     String?
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+
+  rsvp  Rsvp?
+  views InvitationView[]
+
+  // Also serves lookups by eventId alone (leading column).
+  @@index([eventId, groupTag])
+  @@map("guest")
+}
+
+model Rsvp {
+  id                   String          @id @default(uuid(7)) @db.Uuid
+  guestId              String          @unique @db.Uuid
+  guest                Guest           @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  /// null = the guest only tapped a WhatsApp button so far.
+  attending            Boolean?
+  /// Never more than guest.seatsAllowed (enforced on the server).
+  peopleCount          Int?
+  companionNames       String[]        @default([])
+  message              String?
+  source               RsvpSource
+  /// Last tap on a WhatsApp confirmation button; never overwrites a form answer.
+  whatsappIntentAt     DateTime?       @db.Timestamptz(3)
+  whatsappIntentTarget WhatsAppTarget?
+  createdAt            DateTime        @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime        @updatedAt @db.Timestamptz(3)
+
+  @@map("rsvp")
+}
+
+/// One row per guest per hour at most (de-duplicated in Redis, Phase 5). No IP or device data.
+model InvitationView {
+  id       String   @id @default(uuid(7)) @db.Uuid
+  guestId  String   @db.Uuid
+  guest    Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  openedAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([guestId, openedAt])
+  @@map("invitation_view")
+}
+
+// ──────────────────────────── Audit ────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  /// Kept (set to null) when the acting user is deleted.
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  /// e.g. "event.activate", "user.create".
+  action     String
+  /// e.g. "event", "user".
+  targetType String
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId])
+  @@map("audit_log")
+}
