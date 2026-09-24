@@ -11,8 +11,7 @@ relevant sections before planning a phase. README.md documents setup and archite
   approval. After it: `npm run check` and `npm run build` must pass, then summarize and commit.
 - Before installing anything, check current versions with `npm view` and read the current docs
   (Next.js ships version-matched docs in `node_modules/next/dist/docs/`).
-- Phase status: 1–4 done. Next: Phase 5 (RSVP in all three modes, Redis cache, rate limiting,
-  view tracking).
+- Phase status: 1–5 done. Next: Phase 6 ("Champanhe" theme).
 
 ## Commands
 
@@ -133,6 +132,24 @@ npx vitest run path/to/file.test.ts
   server time as a prop.
 - Visual checks of a guest page: `node scripts/screenshot.mjs <url> <outDir> "--selector=main >
 section" "--click=button[aria-label='Abrir o convite']" --wait=3000`.
+- RSVP rules live in `src/features/invitation/rsvp/rules.ts` and are enforced on the server (Server
+  Action `submitRsvp`, WhatsApp route); the browser only mirrors them. The form schema
+  (`src/lib/validation/rsvp.ts`) uses `zod/mini` because it ships to guests: keep it that way.
+- A WhatsApp tap never overwrites a form answer (`recordWhatsappIntent`).
+
+## Redis (README → Caching, rate limits and views)
+
+- On request paths use `withRedis(...)` / `getReadyRedis()` from `src/server/redis.ts`, never raw
+  client calls: Redis may be down and pages must not wait for it. Always provide the Postgres (or
+  "allow") fallback.
+- Keys start with `convites:`; hash secrets and personal data in keys (`hashKeyPart`): guest
+  tokens, IPs. Bump `CACHE_VERSION` in `src/server/invitations/queries.ts` when the cached read
+  model changes shape.
+- Every change to what a guest page shows must call `invalidateInvitationEvent` /
+  `invalidateInvitationGuest` (dashboard, guests, admin).
+- Rate limits: add policies to `src/server/rate-limit/policies.ts`; subjects are IPs (`clientIp`)
+  or tokens. Integration tests use Redis database 15 (`tests/integration/redis.ts`: connect/flush/
+  close helpers); tests that change cached data must invalidate it.
 
 ## Local environment notes
 

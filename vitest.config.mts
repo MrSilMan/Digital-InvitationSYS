@@ -5,6 +5,8 @@ import { defineConfig } from 'vitest/config';
 /** Integration tests use their own database; the setup refuses any name not ending in `_test`. */
 const testDatabaseUrl =
   process.env.TEST_DATABASE_URL ?? 'postgresql://convites:convites@localhost:5433/convites_test';
+/** …and their own Redis database (never 0, where development data lives). */
+const testRedisUrl = process.env.TEST_REDIS_URL ?? 'redis://localhost:6379/15';
 
 export default defineConfig({
   resolve: {
@@ -41,8 +43,7 @@ export default defineConfig({
           hookTimeout: 120_000,
           env: {
             DATABASE_URL: testDatabaseUrl,
-            // Required by the environment check (src/env.ts); these tests never connect to Redis.
-            REDIS_URL: 'redis://localhost:6379',
+            REDIS_URL: testRedisUrl,
             APP_ENV: 'test',
             LOG_LEVEL: 'warn',
           },

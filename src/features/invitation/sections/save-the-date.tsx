@@ -6,7 +6,9 @@ import { invitation } from '@/i18n/pt-AO';
 import { RsvpDialog } from '../rsvp-dialog';
 import { CoupleMark, HeroIllustration, SectionPage } from '../section-page';
 
-import { canConfirm, RsvpContent } from './rsvp-section';
+import { canConfirm } from '../rsvp/rules';
+
+import { RsvpContent } from './rsvp-section';
 import type { SectionProps } from './types';
 
 const HEADING_ID = 'save-the-date';
@@ -15,7 +17,8 @@ const t = invitation.saveTheDate;
 const { buttons } = invitation;
 
 /** The only page guests see before the invitation phase (reference "1 de 14"). */
-export function SaveTheDatePage({ event, guest, theme, now }: SectionProps) {
+export function SaveTheDatePage(props: SectionProps) {
+  const { event, theme } = props;
   return (
     <SectionPage
       theme={theme}
@@ -57,7 +60,7 @@ export function SaveTheDatePage({ event, guest, theme, now }: SectionProps) {
             script={invitation.sections.rsvp.script}
             caps={invitation.sections.rsvp.caps}
           />
-          <RsvpContent event={event} guest={guest} now={now} />
+          <RsvpContent {...props} />
         </RsvpDialog>
       ) : null}
       <p className="font-body text-[clamp(1.15rem,5.4cqi,1.35rem)]">{t.officialInviteSoon}</p>

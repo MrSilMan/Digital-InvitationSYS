@@ -1,16 +1,22 @@
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { after } from 'next/server';
 
 import { getServerEnv } from '@/env';
 import { InvitationView } from '@/features/invitation/invitation-view';
 import { invitationDescription, invitationTitle } from '@/features/invitation/metadata';
+import { acceptsForm } from '@/features/invitation/rsvp/rules';
 import type { Invitation } from '@/features/invitation/types';
 import { t } from '@/i18n';
+import { isBotUserAgent } from '@/lib/bots';
 import { serverNow } from '@/lib/clock';
+import { logger } from '@/lib/logger';
 import { NONCE_HEADER } from '@/lib/security/csp';
 import { invitationParamsSchema } from '@/lib/validation/invitation';
 import { getInvitation } from '@/server/invitations/queries';
+import { recordInvitationView } from '@/server/invitations/views';
+import { getGuestRsvp } from '@/server/rsvp/rsvp-service';
 import { getTheme, resolveThemeColors } from '@/themes';
 
 type Props = PageProps<'/c/[eventSlug]/[guestToken]'>;
@@ -54,14 +60,30 @@ export default async function InvitationPage({ params }: Props) {
   if (!data) notFound();
 
   const { eventSlug, guestToken } = await params;
-  const nonce = (await headers()).get(NONCE_HEADER) ?? undefined;
+  const requestHeaders = await headers();
+  const rsvp = acceptsForm(data.event) ? await getGuestRsvp(data.guest.id) : null;
+
+  // "Opened", at most once an hour, after the response is sent; link previews do not count.
+  if (!isBotUserAgent(requestHeaders.get('user-agent'))) {
+    const guestId = data.guest.id;
+    after(async () => {
+      try {
+        await recordInvitationView(guestId);
+      } catch (err) {
+        logger.error('Could not record an invitation view', { err, guestId });
+      }
+    });
+  }
+
   return (
     <InvitationView
       invitation={data}
+      rsvp={rsvp}
       theme={getTheme(data.event.themeId)}
       now={serverNow()}
+      guestToken={guestToken}
       basePath={`/c/${eventSlug}/${guestToken}`}
-      nonce={nonce}
+      nonce={requestHeaders.get(NONCE_HEADER) ?? undefined}
     />
   );
 }

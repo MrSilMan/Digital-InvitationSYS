@@ -1,14 +1,18 @@
-import { OPENED_ATTRIBUTE } from './constants';
+import { EARLY_TAP_FLAG, ENVELOPE_ATTRIBUTE, OPENED_ATTRIBUTE } from './constants';
 
 /**
- * Runs while the HTML is parsed, before the envelope is painted: skips the envelope when this tab
- * already opened the invitation. Carries the request's CSP nonce. Without JavaScript, a <noscript>
- * style hides the envelope instead (the invitation stays readable).
+ * Runs while the HTML is parsed, before the envelope is painted (carries the request's CSP nonce):
+ * - skips the envelope when this tab already opened the invitation;
+ * - remembers a tap on the envelope made before React is ready (slow phones: the JavaScript may
+ *   still be downloading), so the envelope opens as soon as it is, instead of ignoring the tap.
+ * Without JavaScript, a <noscript> style hides the envelope instead (the invitation stays readable).
  */
 export function OpeningBootScript({ nonce, storageKey }: { nonce?: string; storageKey: string }) {
   const code =
     `try{if(sessionStorage.getItem(${JSON.stringify(storageKey)})==='1')` +
-    `document.documentElement.setAttribute(${JSON.stringify(OPENED_ATTRIBUTE)},'')}catch(e){}`;
+    `document.documentElement.setAttribute(${JSON.stringify(OPENED_ATTRIBUTE)},'')}catch(e){}` +
+    `document.addEventListener('click',function(e){var t=e.target;` +
+    `if(t&&t.closest&&t.closest('[${ENVELOPE_ATTRIBUTE}]'))window[${JSON.stringify(EARLY_TAP_FLAG)}]=true},true);`;
   return (
     <>
       <script nonce={nonce} dangerouslySetInnerHTML={{ __html: code }} />

@@ -30,11 +30,22 @@ export const errors = {
     backHome: 'Voltar ao início',
   },
   reference: 'Referência do erro',
+  tooManyRequests: {
+    title: 'Demasiados pedidos',
+    description: 'Recebemos muitos pedidos da sua ligação. Tente novamente daqui a pouco.',
+  },
 } as const;
 
 export const validation = {
   phone: {
     invalid: 'Introduza um número de telemóvel angolano válido (ex.: 923 456 789).',
+  },
+  rsvp: {
+    attendingRequired: 'Indique se vai estar presente.',
+    /** {max} = the guest's seats. */
+    peopleRange: 'Escolha entre 1 e {max} pessoas.',
+    nameTooLong: 'Use no máximo 80 caracteres.',
+    messageTooLong: 'A mensagem pode ter até 500 caracteres.',
   },
 } as const;
 
@@ -132,6 +143,32 @@ export const invitation = {
       bride: 'Confirmar presença (noiva)',
       whatsappMessage:
         'Olá! Sou {guest} e confirmo a minha presença no casamento de {groom} e {bride}.',
+      orWhatsapp: 'Prefere confirmar pelo WhatsApp?',
+      form: {
+        question: 'Vai estar presente?',
+        yes: 'Sim, estarei presente',
+        no: 'Não poderei ir',
+        people: 'Quantas pessoas vão?',
+        companions: 'Nomes dos acompanhantes',
+        companion: 'Acompanhante {n}',
+        companionPlaceholder: 'Nome (opcional)',
+        message: 'Mensagem para os noivos (opcional)',
+        submit: 'Enviar resposta',
+        sending: 'A enviar…',
+        confirmed: 'Obrigado, {guest}! A presença está confirmada para {people}.',
+        declined: 'Obrigado por nos avisar, {guest}. Vamos sentir a vossa falta!',
+        change: 'Alterar a resposta',
+        errors: {
+          'not-found': 'Não encontrámos o seu convite. Atualize a página e tente novamente.',
+          'not-allowed': 'A confirmação por formulário não está disponível neste convite.',
+          closed: 'O prazo para confirmar a presença já terminou.',
+          'rate-limited':
+            'Recebemos muitas respostas seguidas. Tente novamente daqui a alguns minutos.',
+          invalid: 'Verifique as respostas e tente novamente.',
+          unavailable: 'Não foi possível guardar a resposta agora. Tente novamente daqui a pouco.',
+          network: 'Não foi possível enviar. Verifique a ligação à internet e tente novamente.',
+        },
+      },
     },
     closing: {
       script: 'Obrigado',

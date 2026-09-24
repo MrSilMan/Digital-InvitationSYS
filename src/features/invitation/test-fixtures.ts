@@ -77,4 +77,8 @@ export function invitationEventFixture(overrides: Partial<InvitationEvent> = {})
   };
 }
 
-export const guestFixture: InvitationGuest = { displayName: 'Família Silva', seatsAllowed: 4 };
+export const guestFixture: InvitationGuest = {
+  id: '01a0d063-4a2b-7c3d-8e4f-5a6b7c8d9e0f',
+  displayName: 'Família Silva',
+  seatsAllowed: 4,
+};

@@ -1,5 +1,6 @@
 import type { SectionId } from '@/lib/validation/sections';
 
+import { canConfirm } from './rsvp/rules';
 import type { InvitationEvent } from './types';
 
 /** Whether a section has anything to show; empty optional sections are skipped. */
@@ -22,11 +23,7 @@ export function sectionHasContent(section: SectionId, event: InvitationEvent): b
     case 'gifts':
       return event.gifts.text !== null || event.gifts.iban !== null;
     case 'rsvp':
-      // The in-page form arrives in Phase 5; until then the section needs a WhatsApp number.
-      return (
-        event.rsvp.mode !== 'FORM' &&
-        (event.rsvp.groomWhatsapp !== null || event.rsvp.brideWhatsapp !== null)
-      );
+      return canConfirm(event);
   }
 }
 

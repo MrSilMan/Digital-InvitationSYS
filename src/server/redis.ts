@@ -70,6 +70,57 @@ export function getRedis(): Redis {
   return g[CLIENT_KEY];
 }
 
+/**
+ * The client if it is connected right now, else null, without waiting: callers then skip Redis
+ * (cache miss, no rate limit, Postgres fallback) instead of queueing behind a reconnect. The
+ * first call starts the lazy connection in the background.
+ */
+export function getReadyRedis(): Redis | null {
+  const client = getRedis();
+  if (client.status === 'ready') return client;
+  if (client.status === 'wait') void client.connect().catch(() => {});
+  return null;
+}
+
+/** Longest a Redis command may take on a request path before we carry on without it. */
+const COMMAND_TIMEOUT_MS = 250;
+const warnedAt = new Map<string, number>();
+
+/**
+ * Runs `operation` against Redis when it is available, within COMMAND_TIMEOUT_MS; otherwise, or on
+ * any error, returns `fallback`. Failures are logged at most every 30 seconds per `what`.
+ * `redis` overrides the shared client (tests pass null to simulate an outage).
+ */
+export async function withRedis<T>(
+  what: string,
+  operation: (redis: Redis) => Promise<T>,
+  fallback: T,
+  redis: Redis | null = getReadyRedis(),
+): Promise<T> {
+  if (!redis) return fallback;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation(redis),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`Redis ${what} timed out after ${COMMAND_TIMEOUT_MS} ms`)),
+          COMMAND_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } catch (err) {
+    const now = Date.now();
+    if (now - (warnedAt.get(what) ?? 0) >= ERROR_LOG_INTERVAL_MS) {
+      warnedAt.set(what, now);
+      logger.warn('Redis operation failed, continuing without it', { what, err });
+    }
+    return fallback;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function pingRedis(): Promise<void> {
   const reply = await getRedis().ping();
   if (reply !== 'PONG') throw new Error(`Unexpected Redis PING reply: ${reply}`);

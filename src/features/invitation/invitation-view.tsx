@@ -23,7 +23,7 @@ import { SaveTheDatePage } from './sections/save-the-date';
 import { ScheduleSection } from './sections/schedule-section';
 import type { SectionProps } from './sections/types';
 import { coupleNames, fillTemplate } from './text';
-import type { Invitation } from './types';
+import type { GuestRsvp, Invitation } from './types';
 
 const SECTION_COMPONENTS: Record<SectionId, ComponentType<SectionProps>> = {
   invitation: InvitationCardSection,
@@ -43,8 +43,11 @@ const HEADING_ID = 'convite-titulo';
 
 interface InvitationViewProps {
   invitation: Invitation;
+  /** The guest's saved RSVP (null when none, or when the event has no RSVP form). */
+  rsvp: GuestRsvp | null;
   theme: ThemeDefinition;
   now: Date;
+  guestToken: string;
   /** "/c/<slug>/<token>" */
   basePath: string;
   /** CSP nonce of this request, for the inline opening script. */
@@ -57,15 +60,17 @@ interface InvitationViewProps {
  */
 export function InvitationView({
   invitation: data,
+  rsvp,
   theme,
   now,
+  guestToken,
   basePath,
   nonce,
 }: InvitationViewProps) {
   const { event, guest } = data;
   const couple = coupleNames(event);
   const storageKey = openedStorageKey(event.slug);
-  const props: SectionProps = { event, guest, theme, now, basePath };
+  const props: SectionProps = { event, guest, rsvp, theme, now, guestToken, basePath };
 
   return (
     <ThemeRoot

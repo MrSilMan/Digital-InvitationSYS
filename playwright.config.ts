@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * End-to-end tests (tests/e2e) in a phone-sized Chromium, against the demo data:
- * `docker compose up -d`, `npm run db:seed`, then `npm run test:e2e`.
+ * `docker compose up -d`, then `npm run test:e2e` (the global setup re-seeds the demo data and
+ * clears rate-limit counters; E2E_SKIP_RESET=1 skips that for a remote server).
  * Starts `next dev` on port 3100 unless E2E_BASE_URL points at a running app (e.g. the production
  * build in CI, Phase 10).
  */
@@ -10,6 +11,7 @@ const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:3100';
 
 export default defineConfig({
   testDir: 'tests/e2e',
+  globalSetup: './tests/e2e/global-setup.ts',
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

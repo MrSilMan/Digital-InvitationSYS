@@ -5,6 +5,12 @@
  */
 export const OPENED_ATTRIBUTE = 'data-convite-aberto';
 
+/** Marks the envelope button, for the early-tap listener of the boot script. */
+export const ENVELOPE_ATTRIBUTE = 'data-opening-envelope';
+
+/** Set on window by the boot script when the envelope was tapped before React was ready. */
+export const EARLY_TAP_FLAG = '__conviteEarlyTap';
+
 /** sessionStorage key, per event (never the guest token). */
 export function openedStorageKey(eventSlug: string): string {
   return `convite-aberto:${eventSlug}`;

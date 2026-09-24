@@ -4,10 +4,11 @@ import { createRequire } from 'node:module';
 import type { TestProject } from 'vitest/node';
 
 import { assertTestDatabase, createTestPrisma, wipeDatabase } from './db';
+import { flushTestRedis } from './redis';
 
 /**
  * Brings the test database up to date with `prisma migrate deploy` (creates it if needed,
- * never resets it), then empties it so every run starts clean.
+ * never resets it), then empties it and the test Redis database so every run starts clean.
  *
  * If a migration was edited after it was applied here, drop the test database and re-run:
  *   docker compose exec postgres dropdb -U convites convites_test
@@ -15,6 +16,8 @@ import { assertTestDatabase, createTestPrisma, wipeDatabase } from './db';
 export default async function setup(project: TestProject): Promise<void> {
   const url = assertTestDatabase(project.config.env.DATABASE_URL);
   process.env.DATABASE_URL = url;
+  process.env.REDIS_URL = project.config.env.REDIS_URL;
+  await flushTestRedis();
 
   const prismaCli = createRequire(import.meta.url).resolve('prisma/build/index.js');
   execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy'], {

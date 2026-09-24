@@ -1,5 +1,5 @@
 # Quality gate for every push and pull request.
-# Phase 10 extends it with Redis, Playwright E2E and the deploy workflow.
+# Phase 10 extends it with Playwright E2E and the deploy workflow.
 name: CI
 
 on:
@@ -34,12 +34,23 @@ jobs:
           --health-interval 5s
           --health-timeout 3s
           --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
 
     env:
       NEXT_TELEMETRY_DISABLED: 1
       # Only the integration tests and the migration checks use this throwaway database.
       DATABASE_URL: postgresql://convites:convites@localhost:5432/convites_test
       TEST_DATABASE_URL: postgresql://convites:convites@localhost:5432/convites_test
+      # Integration tests: cache, rate limiter and view tracking against a real Redis.
+      TEST_REDIS_URL: redis://localhost:6379/15
 
     steps:
       # Actions are pinned to commit SHAs (supply-chain safety); Dependabot keeps them current.

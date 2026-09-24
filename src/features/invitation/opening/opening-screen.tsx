@@ -2,12 +2,20 @@
 
 import { IconVolume, IconVolumeOff } from '@tabler/icons-react';
 import { useAnimate } from 'motion/react-mini';
-import { useEffect, useId, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 
 import { Monogram } from '@/components/ui/monogram';
 import { cn } from '@/lib/cn';
 
-import { OPENED_ATTRIBUTE } from './constants';
+import { EARLY_TAP_FLAG, OPENED_ATTRIBUTE } from './constants';
 import styles from './opening.module.css';
 
 interface OpeningScreenProps {
@@ -126,6 +134,19 @@ export function OpeningScreen({
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, []);
 
+  // A tap before React was ready (recorded by the boot script) opens the envelope now. Browsers
+  // still count it as a user gesture for a few seconds, so the music can start too.
+  const openAfterEarlyTap = useEffectEvent(() => void open());
+  useEffect(() => {
+    const flags = window as Window & { [EARLY_TAP_FLAG]?: boolean };
+    if (!flags[EARLY_TAP_FLAG]) return;
+    const timer = setTimeout(() => {
+      flags[EARLY_TAP_FLAG] = false;
+      openAfterEarlyTap();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
+
   function playMusic() {
     wantsMusic.current = true;
     void audioRef.current?.play().catch(() => {});
@@ -196,6 +217,7 @@ export function OpeningScreen({
             </p>
             <button
               type="button"
+              data-opening-envelope=""
               className={styles.envelope}
               onClick={open}
               aria-label={labels.openButton}

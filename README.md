@@ -17,7 +17,7 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 | 2     | Database: Prisma schema, migrations, seed                                         | Done    |
 | 3     | Design system, fonts, i18n, themes                                                | Done    |
 | 4     | Invitation pages ("Praia Rosa")                                                   | Done    |
-| 5     | RSVP, Redis cache, rate limiting, view tracking                                   | Planned |
+| 5     | RSVP, Redis cache, rate limiting, view tracking                                   | Done    |
 | 6     | "Champanhe" theme                                                                 | Planned |
 | 7     | Auth, couple dashboard, uploads, BullMQ worker                                    | Planned |
 | 8     | Guest management, CSV, WhatsApp                                                   | Planned |
@@ -29,7 +29,8 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 
 Next.js 16.3 (App Router, Turbopack, React 19.3) · TypeScript 6.0 (strict) · Tailwind CSS 4.3 ·
 Zod 4 · Winston 3 · Sentry 11 · PostgreSQL 18 with Prisma 7.10 · Better Auth 1.7 (tables and
-password hashing so far) · Redis 8 (ioredis 6) · Tabler Icons 3 · Motion 13 · Embla Carousel 8 ·
+password hashing so far) · Redis 8 (ioredis 6) · React Hook Form 7 · Tabler Icons 3 · Motion 13 ·
+Embla Carousel 8 ·
 sharp 0.35 (preview images; image processing later) · Vitest 5 · Playwright · Node.js 24 LTS.
 Coming in later phases: BullMQ.
 
@@ -120,6 +121,7 @@ one image can be promoted from staging to production. `.env.example` documents e
 | `SEED_COUPLE_PASSWORD`                  | seed     | `noivos-demo-2027`      | Password of the demo couple login                     |
 | `SEED_ADMIN_PASSWORD`                   | seed     | `admin-demo-2027`       | Password of the demo admin login                      |
 | `TEST_DATABASE_URL`                     | tests    | `…:5433/convites_test`  | Integration test database (name must end in `_test`)  |
+| `TEST_REDIS_URL`                        | tests    | `…:6379/15`             | Integration test Redis database (never 0; flushed)    |
 
 ## Scripts
 
@@ -307,7 +309,8 @@ the server in the event's theme.
   which browsers only allow after a tap. A floating button then mutes and unmutes; music pauses
   while the guest is in another app. The envelope shows once per browser tab (an inline script with
   the CSP nonce hides it before the first paint on a reload), and without JavaScript the invitation
-  is simply readable.
+  is simply readable. The same script remembers a tap made while the page's JavaScript is still
+  loading (slow phones), and the envelope opens as soon as it is ready.
 - **Phases:** in the Save the Date phase the guest sees only that page, whose "Confirmar presença"
   opens the RSVP options in a dialog. In the invitation phase the sections follow the couple's order
   and visibility (`Event.sectionConfig`), one full screen each with gentle scroll snap; optional
@@ -316,10 +319,8 @@ the server in the event's theme.
   card, countdown (against the server's clock, so a phone with the wrong time still counts right),
   message, gallery (Embla coverflow and a full-screen lightbox in a native `<dialog>`), schedule
   (venues with Google Maps and Waze, serpentine timeline), dress code, guest manual, gifts (IBAN
-  with a copy button), RSVP and closing ("Adicionar ao calendário": an `.ics` file from
-  `calendario.ics/route.ts` and a Google Calendar link). RSVP shows the couple's two WhatsApp
-  buttons with a pre-filled message; the form, recording the taps and the deadline rules on the
-  server arrive in Phase 5.
+  with a copy button), RSVP (see below) and closing ("Adicionar ao calendário": an `.ics` file
+  from `calendario.ics/route.ts` and a Google Calendar link).
 - **WhatsApp link preview:** `generateMetadata` sets the title ("Convite de Casamento – Braúlio &
   Nanda"), the date and `noindex`; WhatsApp's crawler gets them in the `<head>` (Next.js serves
   metadata blocking to it). The image, `opengraph-image.tsx`, is drawn with `next/og` in the theme's
@@ -330,6 +331,55 @@ the server in the event's theme.
   framework bundle (about 240 KB, mostly React, Next.js and the Sentry browser SDK). The first
   screen's images are preloaded, the rest load lazily. Guest links send `Referrer-Policy:
 no-referrer` and `X-Robots-Tag: noindex`.
+
+### RSVP
+
+Each event has an RSVP mode (`Event.rsvpMode`); the Save the Date's "Confirmar presença" opens the
+same options in a dialog.
+
+- **FORM** (and BOTH): "Vai estar presente?", the number of people (up to the guest's seats),
+  companion names and a message, in [src/features/invitation/rsvp/](src/features/invitation/rsvp/).
+  React Hook Form validates in the browser with the Zod schema shared with the server
+  ([src/lib/validation/rsvp.ts](src/lib/validation/rsvp.ts), built on `zod/mini` to keep the page
+  light); the `submitRsvp` Server Action trusts nothing from the browser: it checks the link, the
+  event (active, form mode), the deadline and the rate limits, and validates the answer again
+  against the guest's seats from the database. A saved answer is shown with "Alterar a resposta"
+  until the deadline, read-only after it. The form needs JavaScript (its submit button stays
+  disabled until the page is interactive); its code only loads on pages that show it.
+- **WHATSAPP** (and BOTH): round buttons for the groom and the bride. They open
+  `/c/<slug>/<token>/whatsapp/<noivo|noiva>`, which records the tap as a confirmation intent (after
+  the response; never overwriting a form answer; not after the deadline) and forwards to `wa.me`
+  with the pre-filled message.
+- The deadline (`Event.rsvpDeadline`, inclusive) and the seat limit are enforced on the server.
+
+### Caching, rate limits and views
+
+Redis is optional at runtime ([src/server/redis.ts](src/server/redis.ts)): request paths only use
+it through `withRedis`, which skips it at once when it is not connected (no waiting on a
+reconnect) and gives up after 250 ms, logging a warning at most every 30 s.
+
+- **Cache** ([src/server/invitations/queries.ts](src/server/invitations/queries.ts)): the event read
+  model by slug and the guest by a hash of the token, 10 minutes each. Anything that changes a guest
+  page must call `invalidateInvitationEvent(slug)` / `invalidateInvitationGuest(token)` (dashboard
+  edits in Phases 7 and 8, activation changes in Phase 9). RSVPs are not cached.
+- **Rate limits** ([src/server/rate-limit/](src/server/rate-limit/)): a sliding-window log in a
+  sorted set, one atomic Lua script per request; subjects (IPs, tokens) are hashed in the keys.
+  Without Redis the request is allowed and the failure logged.
+
+  | Limit                           | Value         | Where                                       |
+  | ------------------------------- | ------------- | ------------------------------------------- |
+  | Guest pages (`/c/…`) per IP     | 300 per 5 min | `proxy.ts` (link-preview bots exempt) → 429 |
+  | RSVP form per guest link        | 10 per 10 min | `submitRsvp`                                |
+  | RSVP form per IP                | 30 per 10 min | `submitRsvp`                                |
+  | WhatsApp taps recorded per link | 20 per 10 min | WhatsApp route (still forwards to WhatsApp) |
+
+  The per-IP limits are generous because Angolan mobile carriers put many phones behind one IP.
+  The client IP is the right-most `X-Forwarded-For` entry (set by Caddy in production).
+
+- **Views** ([src/server/invitations/views.ts](src/server/invitations/views.ts)): one
+  `InvitationView` per guest per hour, recorded with `after()` once the page has been sent; link
+  preview bots do not count. A Redis key de-duplicates; without Redis, Postgres is asked for a view
+  in the last hour.
 
 **Demo media.** Until uploads exist (Phase 7), the demo event's gallery photos and music are
 placeholder files in `public/demo/` (`npm run demo:media`), referenced by `Media` rows with `demo/…`
@@ -449,19 +499,24 @@ Vitest runs two projects, Playwright a third suite:
   sections rendered to HTML with `react-dom/server`, and one test that serves real HTTP requests
   through the request hooks. No services needed.
 - `npm run test:e2e`: `tests/e2e/*.spec.ts` in a phone-sized Chromium: opening the envelope, the
-  reload, reduced motion, the gallery lightbox, the calendar file, the 404 page and the Save the
-  Date dialog. Needs the seeded database; starts `next dev` on port 3100, or tests a running app
-  given in `E2E_BASE_URL`. Runs locally for now; CI gets it in Phase 10.
-- `npm run test:integration`: `tests/integration/*.int.test.ts` against a real Postgres: the
-  migrations, the demo seed (twice), guest lookup by token (including that no other guest's data
-  leaks), the integrity rules and the delete
-  behaviour. It uses the `convites_test` database on the Docker Postgres (`TEST_DATABASE_URL` to
-  change it), applies migrations with `prisma migrate deploy` and empties it before each run; it
-  refuses any database whose name does not end in `_test`. If a migration was edited after the test
-  database applied it, drop it: `docker compose exec postgres dropdb -U convites convites_test`.
+  reload, reduced motion, the gallery lightbox, the calendar file, the 404 page, the Save the Date
+  dialog, answering and changing the RSVP form, and the WhatsApp link. Its global setup re-seeds
+  the demo data and clears the rate-limit counters, so runs are repeatable (`E2E_SKIP_RESET=1`
+  skips that for a server that does not use the local database and Redis). It starts `next dev` on
+  port 3100, or tests a running app given in `E2E_BASE_URL`. Runs locally for
+  now; CI gets it in Phase 10.
+- `npm run test:integration`: `tests/integration/*.int.test.ts` against a real Postgres and Redis:
+  the migrations, the demo seed (twice), guest lookup by token (including that no other guest's
+  data leaks), the cache and its invalidation, the rate limiter (exact under concurrency), RSVP
+  storage and the Server Action's rules, view de-duplication (with and without Redis), the
+  integrity rules and the delete behaviour. It uses the `convites_test` database on the Docker
+  Postgres (`TEST_DATABASE_URL`) and Redis database 15 (`TEST_REDIS_URL`, never 0), applies
+  migrations with `prisma migrate deploy` and empties both before each run; it refuses a database
+  whose name does not end in `_test`. If a migration was edited after the test database applied
+  it, drop it: `docker compose exec postgres dropdb -U convites convites_test`.
 
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request, with a
 Postgres service container: Prisma schema validation, format check, lint, type-check, unit tests,
 migrations applied to an empty database, a check that fails if the schema changed without a
-migration, integration tests, and the production build. Redis, Playwright E2E and the deploy
-workflow arrive in Phase 10.
+migration, integration tests (with a Redis service container too), and the production build.
+Playwright E2E and the deploy workflow arrive in Phase 10.

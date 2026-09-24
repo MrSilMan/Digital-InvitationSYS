@@ -1,30 +1,38 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { getPrisma } from '@/server/db/prisma';
-import { getInvitation } from '@/server/invitations/queries';
+import { getInvitation, invalidateInvitationEvent } from '@/server/invitations/queries';
 
 import { seedDemo } from '../../prisma/seed/demo';
 import { DEMO_EVENT, DEMO_GUESTS, DEMO_SAVE_THE_DATE } from '../../prisma/seed/demo-data';
 
 import { createTestPrisma, wipeDatabase } from './db';
+import { closeAppRedis, connectAppRedis, flushTestRedis } from './redis';
 
 const prisma = createTestPrisma();
 const [silva, ...otherGuests] = DEMO_GUESTS;
 
 beforeAll(async () => {
   await wipeDatabase(prisma);
+  await flushTestRedis();
   await seedDemo(prisma, { couplePassword: 'couple-test-pass', adminPassword: 'admin-test-pass' });
+  await connectAppRedis();
 });
 
 afterAll(async () => {
   await prisma.$disconnect();
   await getPrisma().$disconnect();
+  await closeAppRedis();
 });
 
 describe('guest invitation lookup', () => {
   it('returns the event and this one guest', async () => {
     const invitation = await getInvitation(DEMO_EVENT.slug, silva!.token);
-    expect(invitation?.guest).toEqual({ displayName: 'Família Silva', seatsAllowed: 4 });
+    expect(invitation?.guest).toEqual({
+      id: expect.any(String),
+      displayName: 'Família Silva',
+      seatsAllowed: 4,
+    });
     expect(invitation?.event).toMatchObject({
       slug: DEMO_EVENT.slug,
       phase: 'INVITATION',
@@ -67,10 +75,12 @@ describe('guest invitation lookup', () => {
 
   it('hides inactive events', async () => {
     await prisma.event.update({ where: { slug: DEMO_EVENT.slug }, data: { isActive: false } });
+    await invalidateInvitationEvent(DEMO_EVENT.slug);
     try {
       expect(await getInvitation(DEMO_EVENT.slug, silva!.token)).toBeNull();
     } finally {
       await prisma.event.update({ where: { slug: DEMO_EVENT.slug }, data: { isActive: true } });
+      await invalidateInvitationEvent(DEMO_EVENT.slug);
     }
   });
 

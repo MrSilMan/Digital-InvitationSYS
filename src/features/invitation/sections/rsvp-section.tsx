@@ -3,83 +3,91 @@ import { SectionTitle } from '@/components/ui/section-title';
 import { formatDate } from '@/i18n/format';
 import { invitation } from '@/i18n/pt-AO';
 
-import { whatsappUrl } from '../links';
+import { LazyRsvpForm } from '../rsvp/lazy-rsvp-form';
+import { acceptsForm, acceptsWhatsapp, rsvpClosed } from '../rsvp/rules';
 import { SectionPage } from '../section-page';
 import { fillTemplate } from '../text';
-import type { InvitationEvent, InvitationGuest } from '../types';
 
 import type { SectionProps } from './types';
 
 const HEADING_ID = 'secao-confirmacao';
 const t = invitation.sections.rsvp;
 
-/** Whether the guest can confirm at all (a WhatsApp number now; the form joins in Phase 5). */
-export function canConfirm(event: InvitationEvent): boolean {
-  return event.rsvp.groomWhatsapp !== null || event.rsvp.brideWhatsapp !== null;
-}
+type RsvpContentProps = Pick<
+  SectionProps,
+  'event' | 'guest' | 'rsvp' | 'now' | 'guestToken' | 'basePath'
+>;
 
 /**
- * How to confirm: the deadline, then the WhatsApp buttons with a pre-filled message. Shared by the
- * RSVP section and the Save the Date panel. Recording the taps and the form come in Phase 5.
+ * How to confirm, per the event's mode: the deadline, the form (FORM, BOTH) and the WhatsApp
+ * buttons (WHATSAPP, BOTH). Shared by the RSVP section and the Save the Date panel. The buttons go
+ * through /whatsapp/<noivo|noiva>, which records the tap and forwards to WhatsApp.
  */
-export function RsvpContent({
-  event,
-  guest,
-  now,
-}: {
-  event: InvitationEvent;
-  guest: InvitationGuest;
-  now: Date;
-}) {
+export function RsvpContent({ event, guest, rsvp, now, guestToken, basePath }: RsvpContentProps) {
   const deadline = event.rsvp.deadline ? new Date(event.rsvp.deadline) : null;
+  const closed = rsvpClosed(event, now);
+  const withForm = acceptsForm(event);
+  const answeredWithForm = withForm && rsvp !== null && rsvp.attending !== null;
+  // After a form answer, WhatsApp is no longer offered as another way to confirm.
+  const withWhatsapp = acceptsWhatsapp(event) && !closed && !answeredWithForm;
   const textClass =
     'max-w-88 font-body text-[clamp(1.2rem,5.6cqi,1.4rem)] leading-snug font-medium text-balance';
 
-  if (deadline && now > deadline) {
-    return <p className={textClass}>{fillTemplate(t.closed, { date: formatDate(deadline) })}</p>;
-  }
-
-  const message = fillTemplate(t.whatsappMessage, {
-    guest: guest.displayName,
-    groom: event.groomName,
-    bride: event.brideName,
-  });
-  const buttons: { phone: string | null; label: string }[] = [
-    { phone: event.rsvp.groomWhatsapp, label: t.groom },
-    { phone: event.rsvp.brideWhatsapp, label: t.bride },
-  ];
-  const targets = buttons.filter(
-    (target): target is { phone: string; label: string } => target.phone !== null,
-  );
+  const buttons = [
+    { phone: event.rsvp.groomWhatsapp, label: t.groom, target: 'noivo' },
+    { phone: event.rsvp.brideWhatsapp, label: t.bride, target: 'noiva' },
+  ].filter((button) => button.phone !== null);
 
   return (
     <>
       {deadline ? (
-        <p className={textClass}>{fillTemplate(t.deadline, { date: formatDate(deadline) })}</p>
+        <p className={textClass}>
+          {fillTemplate(closed ? t.closed : t.deadline, { date: formatDate(deadline) })}
+        </p>
       ) : null}
-      <div className="flex flex-wrap justify-center gap-6">
-        {targets.map((target) => (
-          <PillButton
-            key={target.label}
-            href={whatsappUrl(target.phone, message)}
-            external
-            icon="whatsapp"
-            shape="circle"
-          >
-            {target.label}
-          </PillButton>
-        ))}
-      </div>
+      {withForm ? (
+        <LazyRsvpForm
+          eventSlug={event.slug}
+          guestToken={guestToken}
+          guestName={guest.displayName}
+          seatsAllowed={guest.seatsAllowed}
+          initial={rsvp}
+          closed={closed}
+          labels={{ ...t.form, peopleForms: invitation.people }}
+        />
+      ) : null}
+      {withWhatsapp ? (
+        <div className="flex flex-col items-center gap-4">
+          {withForm ? (
+            <p className="font-caps text-[clamp(1rem,4.6cqi,1.2rem)] tracking-wider">
+              {t.orWhatsapp}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap justify-center gap-6">
+            {buttons.map((button) => (
+              <PillButton
+                key={button.target}
+                href={`${basePath}/whatsapp/${button.target}`}
+                external
+                icon="whatsapp"
+                shape="circle"
+              >
+                {button.label}
+              </PillButton>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
 
-/** "Confirmação de presença": two round WhatsApp buttons, groom and bride. */
-export function RsvpSection({ event, guest, theme, now }: SectionProps) {
+/** "Confirmação de presença": the form and/or the two round WhatsApp buttons. */
+export function RsvpSection(props: SectionProps) {
   return (
-    <SectionPage theme={theme} area="rsvp" labelledBy={HEADING_ID} contentClassName="gap-8">
+    <SectionPage theme={props.theme} area="rsvp" labelledBy={HEADING_ID} contentClassName="gap-8">
       <SectionTitle id={HEADING_ID} icon="check-circle" script={t.script} caps={t.caps} />
-      <RsvpContent event={event} guest={guest} now={now} />
+      <RsvpContent {...props} />
     </SectionPage>
   );
 }

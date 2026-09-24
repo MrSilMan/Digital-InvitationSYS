@@ -1,5 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { ClosingSection } from '@/features/invitation/sections/closing-section';
 import { GallerySection } from '@/features/invitation/sections/gallery-section';
@@ -12,14 +12,22 @@ import type { SectionProps } from '@/features/invitation/sections/types';
 import { guestFixture, invitationEventFixture } from '@/features/invitation/test-fixtures';
 import { getTheme } from '@/themes';
 
+// renderToStaticMarkup cannot wait for next/dynamic's lazy chunk (Next.js preloads it when it
+// renders the page): render the form itself. The lazy loading is covered by the e2e tests.
+vi.mock('@/features/invitation/rsvp/lazy-rsvp-form', async () => ({
+  LazyRsvpForm: (await import('@/features/invitation/rsvp/rsvp-form')).RsvpForm,
+}));
+
 const basePath = '/c/braulio-e-nanda/demo-familia-silva-001';
 
 function props(overrides: Partial<SectionProps> = {}): SectionProps {
   return {
     event: invitationEventFixture(),
     guest: guestFixture,
+    rsvp: null,
     theme: getTheme('praia-rosa'),
     now: new Date('2026-09-24T10:00:00Z'),
+    guestToken: 'demo-familia-silva-001',
     basePath,
     ...overrides,
   };
@@ -56,33 +64,70 @@ describe('invitation card', () => {
 });
 
 describe('RSVP', () => {
-  const now = new Date('2026-09-24T10:00:00Z');
+  const withMode = (mode: 'WHATSAPP' | 'FORM' | 'BOTH') =>
+    invitationEventFixture({ rsvp: { ...invitationEventFixture().rsvp, mode } });
+  const whatsappLinks = (html: string) =>
+    [...html.matchAll(/<a href="([^"]+)" target="_blank" rel="noopener noreferrer"/g)].map(
+      (match) => match[1],
+    );
+  const saved = {
+    attending: true,
+    peopleCount: 3,
+    companionNames: ['Maria Silva', 'João Silva'],
+    message: null,
+    updatedAt: '2026-09-20T10:00:00.000Z',
+  };
 
-  it("opens WhatsApp chats with the couple, with the guest's name in the message", () => {
-    const html = renderToStaticMarkup(
-      <RsvpContent event={invitationEventFixture()} guest={guestFixture} now={now} />,
-    );
-    const links = [...html.matchAll(/href="(https:\/\/wa\.me\/[^"]+)"/g)].map((match) =>
-      decodeURIComponent((match[1] ?? '').replace(/&amp;/g, '&')),
-    );
-    expect(links).toEqual([
-      'https://wa.me/244900000001?text=Olá! Sou Família Silva e confirmo a minha presença no casamento de Braúlio e Nanda.',
-      'https://wa.me/244900000002?text=Olá! Sou Família Silva e confirmo a minha presença no casamento de Braúlio e Nanda.',
-    ]);
+  it('offers the form, then WhatsApp through our tracking links (BOTH)', () => {
+    const html = renderToStaticMarkup(<RsvpContent {...props({ event: withMode('BOTH') })} />);
     expect(text(html)).toContain('Por favor, confirme a sua presença até 31 de dezembro de 2026.');
-    expect(html).toContain('rel="noopener noreferrer"');
+    expect(text(html)).toContain('Vai estar presente?');
+    expect(text(html)).toContain('Prefere confirmar pelo WhatsApp?');
+    expect(whatsappLinks(html)).toEqual([
+      `${basePath}/whatsapp/noivo`,
+      `${basePath}/whatsapp/noiva`,
+    ]);
   });
 
-  it('says so, without buttons, once the deadline has passed', () => {
-    const html = renderToStaticMarkup(
-      <RsvpContent
-        event={invitationEventFixture()}
-        guest={guestFixture}
-        now={new Date('2027-01-01T00:00:00Z')}
-      />,
+  it('shows only what the mode allows', () => {
+    const whatsappOnly = renderToStaticMarkup(
+      <RsvpContent {...props({ event: withMode('WHATSAPP') })} />,
     );
-    expect(text(html)).toBe('O prazo para confirmar a presença terminou a 31 de dezembro de 2026.');
-    expect(html).not.toContain('wa.me');
+    expect(whatsappOnly).not.toContain('<form');
+    expect(whatsappLinks(whatsappOnly)).toHaveLength(2);
+
+    const formOnly = renderToStaticMarkup(<RsvpContent {...props({ event: withMode('FORM') })} />);
+    expect(formOnly).toContain('<form');
+    expect(whatsappLinks(formOnly)).toEqual([]);
+  });
+
+  it('shows the saved answer with a way to change it', () => {
+    const html = renderToStaticMarkup(
+      <RsvpContent {...props({ event: withMode('FORM'), rsvp: saved })} />,
+    );
+    expect(text(html)).toContain(
+      'Obrigado, Família Silva! A presença está confirmada para 3 pessoas.',
+    );
+    expect(text(html)).toContain('Maria Silva · João Silva');
+    expect(text(html)).toContain('Alterar a resposta');
+  });
+
+  it('closes after the deadline: no form, no buttons, the answer read-only', () => {
+    const after = new Date('2027-01-01T00:00:00Z');
+    const unanswered = renderToStaticMarkup(<RsvpContent {...props({ now: after })} />);
+    expect(text(unanswered)).toBe(
+      'O prazo para confirmar a presença terminou a 31 de dezembro de 2026.',
+    );
+    expect(whatsappLinks(unanswered)).toEqual([]);
+
+    const answered = renderToStaticMarkup(<RsvpContent {...props({ now: after, rsvp: saved })} />);
+    expect(text(answered)).toContain('confirmada para 3 pessoas');
+    expect(text(answered)).not.toContain('Alterar a resposta');
+  });
+
+  it("never puts the guest's database id in the page", () => {
+    const html = renderToStaticMarkup(<RsvpContent {...props()} />);
+    expect(html).not.toContain(guestFixture.id);
   });
 });
 

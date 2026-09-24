@@ -34,16 +34,18 @@ describe('sections a guest sees', () => {
     expect(sectionsToShow(event)).toEqual(['invitation', 'countdown', 'rsvp', 'closing']);
   });
 
-  it('show the RSVP section only when there is a way to confirm (the form arrives in Phase 5)', () => {
+  it('show the RSVP section only when there is a way to confirm', () => {
     const noNumbers = {
       mode: 'WHATSAPP',
       deadline: null,
       groomWhatsapp: null,
       brideWhatsapp: null,
     } as const;
+    // WhatsApp mode without a number: no way to answer.
     expect(sectionsToShow(invitationEventFixture({ rsvp: noNumbers }))).not.toContain('rsvp');
-    const formOnly = { ...invitationEventFixture().rsvp, mode: 'FORM' } as const;
-    expect(sectionsToShow(invitationEventFixture({ rsvp: formOnly }))).not.toContain('rsvp');
+    // The form needs no number.
+    const formOnly = { ...noNumbers, mode: 'FORM' } as const;
+    expect(sectionsToShow(invitationEventFixture({ rsvp: formOnly }))).toContain('rsvp');
     const brideOnly = { ...noNumbers, brideWhatsapp: '+244900000002' };
     expect(sectionsToShow(invitationEventFixture({ rsvp: brideOnly }))).toContain('rsvp');
   });

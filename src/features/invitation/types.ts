@@ -12,9 +12,21 @@ export interface Invitation {
 }
 
 export interface InvitationGuest {
+  /** Database id: server-side use only (RSVP, views), never sent to Client Components. */
+  id: string;
   /** e.g. "Família Silva" */
   displayName: string;
   seatsAllowed: number;
+}
+
+/** The guest's current answer, shown (and editable until the deadline) in the RSVP form. */
+export interface GuestRsvp {
+  /** null: the guest only tapped a WhatsApp button so far. */
+  attending: boolean | null;
+  peopleCount: number | null;
+  companionNames: string[];
+  message: string | null;
+  updatedAt: string;
 }
 
 export type InvitationPhase = 'SAVE_THE_DATE' | 'INVITATION';

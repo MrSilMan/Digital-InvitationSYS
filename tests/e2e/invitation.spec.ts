@@ -72,7 +72,66 @@ test.describe('Save the Date', () => {
     const panel = page.getByRole('dialog', { name: 'Confirmação de presença' });
     await expect(panel).toBeVisible();
     const groom = panel.getByRole('link', { name: 'Confirmar presença (noivo)' });
-    await expect(groom).toHaveAttribute('href', /^https:\/\/wa\.me\/244900000001\?text=/);
+    // Through our link, which records the tap before forwarding to WhatsApp.
+    await expect(groom).toHaveAttribute('href', `${SAVE_THE_DATE}/whatsapp/noivo`);
     await expect(groom).toHaveAttribute('target', '_blank');
+  });
+});
+
+test.describe('RSVP', () => {
+  // A demo guest without an answer in the seed (4 seats is Família Silva; Cassule has 3).
+  const GUEST = '/c/braulio-e-nanda/demo-familia-cassule06';
+
+  test('a guest confirms with the form, then changes the answer', async ({ page }) => {
+    await page.goto(GUEST);
+    await page.getByRole('button', { name: 'Abrir o convite' }).click();
+    const content = page.locator('main#convite');
+
+    // Earlier runs may have left an answer: start from the form either way.
+    const change = content.getByRole('button', { name: 'Alterar a resposta' });
+    if (await change.isVisible()) await change.click();
+
+    await content.getByText('Sim, estarei presente').click();
+    await content.getByLabel('Quantas pessoas vão?').selectOption('2');
+    await content.getByLabel('Acompanhante 1').fill('Rui Cassule');
+    await content.getByLabel('Mensagem para os noivos (opcional)').fill('Até lá!');
+    await content.getByRole('button', { name: 'Enviar resposta' }).click();
+
+    const summary = content.getByRole('status').filter({ hasText: 'confirmada' });
+    await expect(summary).toContainText(
+      'Obrigado, Família Cassule! A presença está confirmada para 2 pessoas.',
+    );
+    await expect(summary).toContainText('Rui Cassule');
+    await expect(summary).toBeFocused();
+
+    // Change it: cannot come after all.
+    await content.getByRole('button', { name: 'Alterar a resposta' }).click();
+    await content.getByText('Não poderei ir').click();
+    await content.getByRole('button', { name: 'Enviar resposta' }).click();
+    await expect(content.getByRole('status').filter({ hasText: 'avisar' })).toContainText(
+      'Obrigado por nos avisar, Família Cassule.',
+    );
+
+    // Saved on the server: still there after a reload.
+    await page.reload();
+    await expect(content.getByText('Obrigado por nos avisar, Família Cassule.')).toBeAttached();
+  });
+
+  test('asks for an answer before sending', async ({ page }) => {
+    await page.goto('/c/braulio-e-nanda/demo-familia-domingos9');
+    await page.getByRole('button', { name: 'Abrir o convite' }).click();
+    const content = page.locator('main#convite');
+    const change = content.getByRole('button', { name: 'Alterar a resposta' });
+    if (await change.isVisible()) await change.click();
+    await content.getByRole('button', { name: 'Enviar resposta' }).click();
+    await expect(content.getByText('Indique se vai estar presente.')).toBeVisible();
+  });
+
+  test('the WhatsApp button goes through our link to wa.me', async ({ request }) => {
+    const response = await request.get(`${INVITATION}/whatsapp/noiva`, { maxRedirects: 0 });
+    expect(response.status()).toBe(303);
+    const location = response.headers()['location'] ?? '';
+    expect(location).toMatch(/^https:\/\/wa\.me\/244900000002\?text=/);
+    expect(decodeURIComponent(location)).toContain('Sou Família Silva e confirmo');
   });
 });
