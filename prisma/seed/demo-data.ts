@@ -99,6 +99,18 @@ export const DEMO_SAVE_THE_DATE = {
   ],
 } as const;
 
+/** The same wedding in the "Champanhe" theme, with every section (only a few guests). */
+export const DEMO_CHAMPANHE = {
+  slug: 'braulio-e-nanda-champanhe',
+  themeId: 'champanhe',
+  // Warm tones that suit the theme (ivory is left out: it is too close to the bride's white).
+  dressCodeColors: ['#D8C3A5', '#B08D57', '#8A9A80', '#5E5247'],
+  guests: [
+    { token: 'demo-champanhe-silva-01', displayName: 'Família Silva', seatsAllowed: 4 },
+    { token: 'demo-champanhe-joao-002', displayName: 'João Manuel', seatsAllowed: 1 },
+  ],
+} as const;
+
 export const DEMO_TIMELINE = [
   { label: 'Chegada dos convidados', startsAt: luanda('2027-01-15T15:30'), icon: 'guests' },
   { label: 'Chegada dos noivos', startsAt: luanda('2027-01-15T16:00'), icon: 'bride-groom' },

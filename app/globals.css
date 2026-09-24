@@ -71,3 +71,15 @@
   font-family: var(--theme-font-body, ui-serif, Georgia, serif);
   font-variant-numeric: lining-nums;
 }
+
+/*
+ * The theme's size adjustment of its caps font (ThemeFonts.capsSizeAdjust), e.g. Champanhe's
+ * Cinzel runs larger than the sizes were designed for. It also applies to the fallback font while
+ * the web font loads. Always set the caps font with the `font-caps` class: plain CSS that sets
+ * `font-family: var(--theme-font-caps)` itself would miss the adjustment.
+ */
+@layer utilities {
+  .font-caps {
+    font-size-adjust: var(--theme-caps-size-adjust, none);
+  }
+}

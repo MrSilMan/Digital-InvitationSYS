@@ -11,7 +11,7 @@ relevant sections before planning a phase. README.md documents setup and archite
   approval. After it: `npm run check` and `npm run build` must pass, then summarize and commit.
 - Before installing anything, check current versions with `npm view` and read the current docs
   (Next.js ships version-matched docs in `node_modules/next/dist/docs/`).
-- Phase status: 1–5 done. Next: Phase 6 ("Champanhe" theme).
+- Phase status: 1–6 done. Next: Phase 7 (Better Auth, couple dashboard, uploads, BullMQ worker).
 
 ## Commands
 
@@ -98,6 +98,14 @@ npx vitest run path/to/file.test.ts
 
 - Themes in `src/themes/` are plain data: never import `next/font` or React there. Fonts are bound
   per theme in `src/themes/fonts.ts`, applied by `ThemeRoot` with the `--theme-*` variables.
+- A theme needs entries in `THEMES`, `src/themes/fonts.ts` and `OG_FONTS` (og-image.tsx, `.woff`
+  files in `assets/fonts/`), plus artwork in `public/themes/<id>/` (README → Adding a theme).
+  Theme fonts use `preload: false`: next/font preloads per route, not per theme, so a preloaded
+  theme font is downloaded by every guest. Only the shared body font is preloaded.
+- Set the caps font only with the `font-caps` class: it also applies the theme's `capsSizeAdjust`
+  (Champanhe's Cinzel runs ~20% larger). Never `font-family: var(--theme-font-caps)` in plain CSS.
+- Main actions take `theme.buttonShape` (`PillButton shape`, `RsvpDialog shape`); WhatsApp RSVP
+  buttons are always circles, buttons inside a form or box always pills.
 - Invitation components use the Tailwind tokens (`text-script`, `bg-accent`, `text-ink`,
   `font-caps`…), never hex colours, so theme overrides just work. Size invitation text with `cqi`
   (`text-[clamp(1rem,5cqi,1.5rem)]`), never `vw`: it also renders in the dashboard's phone preview.
@@ -112,8 +120,10 @@ npx vitest run path/to/file.test.ts
 - Visual checks: open `/design` (404 in production), capture it with `scripts/screenshot.mjs`
   (usage in its header) and look at the PNGs. Compare with the reference screenshots in
   `docs/reference/` (gitignored: they show a real couple).
-- `public/themes/*` artwork is placeholder art until licensed files replace it. Never redraw it with
-  `npm run themes:placeholders -- --force` once real artwork is in.
+- `public/themes/*` artwork is placeholder art until licensed files replace it. Never redraw a theme
+  whose real artwork is in (`npm run themes:placeholders -- --theme=<id> --force`). Placeholder
+  drawings live in `scripts/theme-placeholders/<id>.ts`; keep their edges opaque where possible
+  (the image optimizer keeps alpha lossless, soft transparency makes images several times heavier).
 
 ## Guest invitation (README → Guest invitation)
 
@@ -131,7 +141,11 @@ npx vitest run path/to/file.test.ts
 - Read the time with `serverNow()` (`src/lib/clock.ts`) in server code; client countdowns get the
   server time as a prop.
 - Visual checks of a guest page: `node scripts/screenshot.mjs <url> <outDir> "--selector=main >
-section" "--click=button[aria-label='Abrir o convite']" --wait=3000`.
+section" "--click=button[aria-label='Abrir o convite']" --wait=3000`. Demo links per theme:
+  `/c/braulio-e-nanda/demo-familia-silva-001` (Praia Rosa),
+  `/c/braulio-e-nanda-champanhe/demo-champanhe-silva-01` (Champanhe). To see a Save the Date in
+  another theme, change the demo event's `phase` in the local database, delete its cached read
+  model (`convites:inv:v1:event:<slug>`, else up to 10 min stale) and re-seed afterwards.
 - RSVP rules live in `src/features/invitation/rsvp/rules.ts` and are enforced on the server (Server
   Action `submitRsvp`, WhatsApp route); the browser only mirrors them. The form schema
   (`src/lib/validation/rsvp.ts`) uses `zod/mini` because it ships to guests: keep it that way.

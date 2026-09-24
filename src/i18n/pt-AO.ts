@@ -201,6 +201,7 @@ export const designPreview = {
   title: 'Sistema de design',
   intro:
     'Página interna com os tipos de letra candidatos, as cores do tema e todos os componentes partilhados. Não existe em produção.',
+  themes: 'Tema',
   fonts: {
     title: 'Tipos de letra',
     script: 'Manuscrita — títulos e nomes dos noivos',

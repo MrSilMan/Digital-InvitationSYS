@@ -122,7 +122,12 @@ export function ComponentGallery({ theme }: { theme: ThemeDefinition }) {
               <strong>{SAMPLE.location.venue}</strong>
               {locationAfter?.replace('{time}', SAMPLE.location.time)}
             </p>
-            <PillButton href={SAMPLE.location.mapsUrl} external icon="map-pin">
+            <PillButton
+              href={SAMPLE.location.mapsUrl}
+              external
+              icon="map-pin"
+              shape={theme.buttonShape}
+            >
               <strong>{buttons.googleMaps.bold}</strong> {buttons.googleMaps.regular}
             </PillButton>
             <a
@@ -156,7 +161,7 @@ export function ComponentGallery({ theme }: { theme: ThemeDefinition }) {
             <p className="-mt-3 max-w-[16rem] text-center font-caps text-xl tracking-wider">
               {sections.gallery.subtitle}
             </p>
-            <PillButton icon="check-circle">
+            <PillButton icon="check-circle" shape={theme.buttonShape}>
               {buttons.confirmAttendance.regular} <strong>{buttons.confirmAttendance.bold}</strong>
             </PillButton>
             <PillButton icon="whatsapp" shape="circle">

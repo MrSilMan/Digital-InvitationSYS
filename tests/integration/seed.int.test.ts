@@ -3,6 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { seedDemo } from '../../prisma/seed/demo';
 import {
+  DEMO_CHAMPANHE,
+  DEMO_EVENT,
   DEMO_GALLERY,
   DEMO_GUESTS,
   DEMO_SAVE_THE_DATE,
@@ -50,17 +52,38 @@ describe('demo seed', () => {
     expect(afterFirst).toEqual({
       users: 2,
       accounts: 2,
-      // The wedding, and the same wedding in the Save the Date phase.
-      events: 2,
-      locations: 2,
-      timeline: 7,
-      rules: 8,
-      // Gallery and music for the wedding; music for the Save the Date.
-      media: DEMO_GALLERY.length + 2,
-      guests: DEMO_GUESTS.length + DEMO_SAVE_THE_DATE.guests.length,
+      // The wedding, the same wedding in the Save the Date phase and in the Champanhe theme.
+      events: 3,
+      // Venues, timeline and rules for the wedding and its Champanhe copy.
+      locations: 2 * 2,
+      timeline: 2 * 7,
+      rules: 2 * 8,
+      // Gallery and music for the wedding and its Champanhe copy; music for the Save the Date.
+      media: 2 * (DEMO_GALLERY.length + 1) + 1,
+      guests: DEMO_GUESTS.length + DEMO_SAVE_THE_DATE.guests.length + DEMO_CHAMPANHE.guests.length,
       rsvps: DEMO_GUESTS.filter((guest) => guest.rsvp).length,
       views: DEMO_GUESTS.reduce((total, guest) => total + guest.views.length, 0),
     });
+  });
+
+  it('shows the same wedding in the Champanhe theme', async () => {
+    const [praiaRosa, champanhe] = await Promise.all(
+      [DEMO_EVENT.slug, DEMO_CHAMPANHE.slug].map((slug) =>
+        prisma.event.findUniqueOrThrow({
+          where: { slug },
+          include: { locations: true, timelineItems: true, guestRules: true, media: true },
+        }),
+      ),
+    );
+    expect(champanhe).toMatchObject({
+      themeId: 'champanhe',
+      phase: 'INVITATION',
+      ownerId: praiaRosa?.ownerId,
+      groomName: praiaRosa?.groomName,
+    });
+    for (const list of ['locations', 'timelineItems', 'guestRules', 'media'] as const) {
+      expect(champanhe?.[list]).toHaveLength(praiaRosa?.[list].length ?? -1);
+    }
   });
 
   it('creates logins that Better Auth accepts, with the right roles', async () => {

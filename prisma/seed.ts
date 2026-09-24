@@ -48,11 +48,16 @@ async function main(): Promise<void> {
         `    ${guest.displayName.padEnd(width)}  ${appUrl}/c/${result.slug}/${guest.token}`,
       );
     }
-    console.log('  Save the Date links (same wedding, earlier phase):');
-    for (const guest of result.saveTheDate.guests) {
-      console.log(
-        `    ${guest.displayName.padEnd(width)}  ${appUrl}/c/${result.saveTheDate.slug}/${guest.token}`,
-      );
+    for (const [title, links] of [
+      ['Save the Date links (same wedding, earlier phase)', result.saveTheDate],
+      ['"Champanhe" theme links (same wedding, other theme)', result.champanhe],
+    ] as const) {
+      console.log(`  ${title}:`);
+      for (const guest of links.guests) {
+        console.log(
+          `    ${guest.displayName.padEnd(width)}  ${appUrl}/c/${links.slug}/${guest.token}`,
+        );
+      }
     }
     console.log('');
   } finally {

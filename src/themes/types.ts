@@ -59,6 +59,12 @@ export interface ThemeFonts {
   script: string;
   caps: string;
   body: string;
+  /**
+   * CSS `font-size-adjust` for the caps font: its small capitals are drawn this share of the font
+   * size tall. The invitation's caps sizes were set for Cormorant SC (0.386); a font that runs
+   * larger needs this to keep lines from wrapping. Applied by the `font-caps` class.
+   */
+  capsSizeAdjust?: number;
 }
 
 /**
@@ -80,6 +86,7 @@ export interface ThemeDefinition {
   };
   /** Illustration at the bottom of the hero pages (Save the Date, invitation card). */
   hero: ThemeImage;
-  /** Shape of the main call-to-action buttons. */
+  /** Shape of the main actions ("Confirmar presença" on the Save the Date, "Google Maps",
+   * "Adicionar ao calendário"). WhatsApp buttons are always round, form buttons always pills. */
   buttonShape: 'pill' | 'circle';
 }

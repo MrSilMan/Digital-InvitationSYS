@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 /** Demo links (npm run db:seed). */
 const INVITATION = '/c/braulio-e-nanda/demo-familia-silva-001';
 const SAVE_THE_DATE = '/c/braulio-e-nanda-save-the-date/demo-std-familia-silva1';
+const CHAMPANHE = '/c/braulio-e-nanda-champanhe/demo-champanhe-silva-01';
 
 test.describe('guest invitation', () => {
   test('opens the envelope and shows the personal invitation', async ({ page }) => {
@@ -59,6 +60,21 @@ test.describe('guest invitation', () => {
     const response = await page.goto('/c/braulio-e-nanda/demo-nao-existe-0000000');
     expect(response?.status()).toBe(404);
     await expect(page.getByRole('heading', { name: 'Convite não encontrado' })).toBeVisible();
+  });
+});
+
+test.describe('Champanhe theme', () => {
+  test('shows the invitation and its link preview in the theme', async ({ page, request }) => {
+    await page.goto(CHAMPANHE);
+    await expect(page.locator('[data-theme="champanhe"]')).toBeAttached();
+    await page.getByRole('button', { name: 'Abrir o convite' }).click();
+    const content = page.locator('main#convite');
+    await expect(content.getByText('Família Silva', { exact: true })).toBeVisible();
+    await expect(content.getByRole('link', { name: 'Google Maps' })).toHaveCount(2);
+
+    const preview = await request.get(`${CHAMPANHE}/opengraph-image`);
+    expect(preview.status()).toBe(200);
+    expect(preview.headers()['content-type']).toBe('image/jpeg');
   });
 });
 

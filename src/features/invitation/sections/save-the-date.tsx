@@ -52,6 +52,7 @@ export function SaveTheDatePage(props: SectionProps) {
               {buttons.confirmAttendance.regular} <strong>{buttons.confirmAttendance.bold}</strong>
             </>
           }
+          shape={theme.buttonShape}
           closeLabel={buttons.close}
           labelledBy={RSVP_HEADING_ID}
         >

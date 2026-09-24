@@ -1,3 +1,6 @@
+import path from 'node:path';
+
+import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -52,13 +55,28 @@ describe.each(Object.values(THEMES).map((theme) => [theme.name, theme] as const)
       }
     });
 
+    const images = [theme.hero, ...Object.values(theme.images)];
+    if (theme.texture) images.push(theme.texture);
+
     it('serves its artwork from its own folder under /public', () => {
-      const images = [theme.hero, ...Object.values(theme.images)];
-      if (theme.texture) images.push(theme.texture);
       for (const image of images) {
         expect(image.src).toMatch(new RegExp(`^/themes/${theme.id}/[a-z0-9-]+\\.webp$`));
         expect(image.width).toBeGreaterThan(0);
         expect(image.height).toBeGreaterThan(0);
+      }
+    });
+
+    it('ships every artwork file at the size it declares', async () => {
+      // Catches artwork replaced with other dimensions without updating the theme.
+      for (const image of images) {
+        const file = path.join(process.cwd(), 'public', image.src);
+        const { width, height, format } = await sharp(file).metadata();
+        expect({ src: image.src, width, height, format }).toEqual({
+          src: image.src,
+          width: image.width,
+          height: image.height,
+          format: 'webp',
+        });
       }
     });
   },
@@ -67,6 +85,7 @@ describe.each(Object.values(THEMES).map((theme) => [theme.name, theme] as const)
 describe('theme registry', () => {
   it('falls back to the default theme for unknown or missing IDs', () => {
     expect(getTheme('praia-rosa').id).toBe('praia-rosa');
+    expect(getTheme('champanhe').id).toBe('champanhe');
     expect(getTheme('does-not-exist').id).toBe(DEFAULT_THEME_ID);
     expect(getTheme(null).id).toBe(DEFAULT_THEME_ID);
     expect(getTheme(undefined).id).toBe(DEFAULT_THEME_ID);
@@ -106,5 +125,11 @@ describe('themeCssVariables', () => {
   it('sets no texture when the theme has none', () => {
     const { texture: _texture, ...plain } = theme;
     expect(themeCssVariables(plain)).toMatchObject({ '--theme-texture': 'none' });
+  });
+
+  it("passes on the theme's size adjustment of the caps font", () => {
+    expect(themeCssVariables(theme)).toMatchObject({ '--theme-caps-size-adjust': 'none' });
+    const adjusted = { ...theme, fonts: { ...theme.fonts, capsSizeAdjust: 0.42 } };
+    expect(themeCssVariables(adjusted)).toMatchObject({ '--theme-caps-size-adjust': '0.42' });
   });
 });

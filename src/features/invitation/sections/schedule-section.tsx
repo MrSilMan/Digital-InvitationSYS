@@ -6,6 +6,7 @@ import { SectionTitle } from '@/components/ui/section-title';
 import { SerpentineTimeline } from '@/components/ui/serpentine-timeline';
 import { formatTime } from '@/i18n/format';
 import { invitation, invitationDefaults } from '@/i18n/pt-AO';
+import type { ThemeDefinition } from '@/themes';
 
 import { googleMapsUrl, wazeUrl } from '../links';
 import { SectionPage } from '../section-page';
@@ -28,7 +29,13 @@ function locationSentence(location: InvitationLocation): ReactNode[] {
     );
 }
 
-function Location({ location }: { location: InvitationLocation }) {
+function Location({
+  location,
+  shape,
+}: {
+  location: InvitationLocation;
+  shape: ThemeDefinition['buttonShape'];
+}) {
   const waze = wazeUrl(location);
   return (
     <div className="flex w-full flex-col items-center gap-4">
@@ -38,7 +45,7 @@ function Location({ location }: { location: InvitationLocation }) {
       <p className="max-w-88 font-caps text-[clamp(0.95rem,4.4cqi,1.2rem)] tracking-[0.04em] text-balance">
         {locationSentence(location)}
       </p>
-      <PillButton href={googleMapsUrl(location)} external icon="map-pin">
+      <PillButton href={googleMapsUrl(location)} external icon="map-pin" shape={shape}>
         <strong>{buttons.googleMaps.bold}</strong> {buttons.googleMaps.regular}
       </PillButton>
       {waze ? (
@@ -67,7 +74,11 @@ export function ScheduleSection({ event, theme }: SectionProps) {
     <SectionPage theme={theme} area="schedule" labelledBy={HEADING_ID} contentClassName="gap-8">
       <SectionTitle id={HEADING_ID} script={t.script} caps={t.caps} capsAlign="end" />
       {event.locations.map((location) => (
-        <Location key={`${location.heading}-${location.startsAt}`} location={location} />
+        <Location
+          key={`${location.heading}-${location.startsAt}`}
+          location={location}
+          shape={theme.buttonShape}
+        />
       ))}
       {timeline.length > 0 ? <SerpentineTimeline items={timeline} className="mt-4 w-full" /> : null}
     </SectionPage>

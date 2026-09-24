@@ -12,6 +12,7 @@ import { DEFAULT_SECTION_CONFIG } from '@/lib/validation/sections';
 import type { AppPrismaClient } from '@/server/db/client';
 
 import {
+  DEMO_CHAMPANHE,
   DEMO_EVENT,
   DEMO_GALLERY,
   DEMO_GUESTS,
@@ -24,19 +25,31 @@ import {
 } from './demo-data';
 
 type Tx = Prisma.TransactionClient;
+type MediaRow = Omit<Prisma.MediaCreateManyInput, 'eventId'>;
 
 export interface SeedDemoOptions {
   couplePassword: string;
   adminPassword: string;
 }
 
-export interface SeedDemoResult {
-  eventId: string;
+interface DemoLinks {
   slug: string;
-  users: { email: string; role: string }[];
   guests: { displayName: string; token: string }[];
-  saveTheDate: { slug: string; guests: { displayName: string; token: string }[] };
 }
+
+export interface SeedDemoResult extends DemoLinks {
+  eventId: string;
+  users: { email: string; role: string }[];
+  /** The same wedding in the Save the Date phase. */
+  saveTheDate: DemoLinks;
+  /** The same wedding in the "Champanhe" theme. */
+  champanhe: DemoLinks;
+}
+
+const links = (slug: string, guests: readonly { displayName: string; token: string }[]) => ({
+  slug,
+  guests: guests.map(({ displayName, token }) => ({ displayName, token })),
+});
 
 /** Size of a file shipped in /public (the demo media), for the Media rows. */
 async function publicFileSize(key: string): Promise<number> {
@@ -69,7 +82,20 @@ export async function seedDemo(
     originalKey: DEMO_MUSIC.key,
     mimeType: DEMO_MUSIC.mimeType,
     sizeBytes: musicSize,
-  } as const;
+  } as const satisfies MediaRow;
+  const galleryAndMusic: MediaRow[] = [
+    ...DEMO_GALLERY.map((photo, position) => ({
+      type: 'GALLERY' as const,
+      status: 'READY' as const,
+      originalKey: photo.key,
+      mimeType: photo.mimeType,
+      sizeBytes: gallerySizes[position] ?? 0,
+      width: photo.width,
+      height: photo.height,
+      position,
+    })),
+    musicRow,
+  ];
 
   return prisma.$transaction(
     async (tx) => {
@@ -112,53 +138,8 @@ export async function seedDemo(
         create: { slug: DEMO_EVENT.slug, ...eventData },
         update: eventData,
       });
-
-      await tx.eventLocation.deleteMany({ where: { eventId: event.id } });
-      await tx.eventLocation.createMany({
-        data: DEMO_LOCATIONS.map((location, position) => ({
-          ...location,
-          eventId: event.id,
-          position,
-        })),
-      });
-
-      await tx.timelineItem.deleteMany({ where: { eventId: event.id } });
-      await tx.timelineItem.createMany({
-        data: DEMO_TIMELINE.map((item, position) => ({ ...item, eventId: event.id, position })),
-      });
-
-      await tx.guestRule.deleteMany({ where: { eventId: event.id } });
-      await tx.guestRule.createMany({
-        data: DEFAULT_GUEST_RULES.map((rule, position) => ({
-          ...rule,
-          eventId: event.id,
-          position,
-        })),
-      });
-
-      await tx.media.deleteMany({ where: { eventId: event.id } });
-      await tx.media.createMany({
-        data: [
-          ...DEMO_GALLERY.map((photo, position) => ({
-            eventId: event.id,
-            type: 'GALLERY' as const,
-            status: 'READY' as const,
-            originalKey: photo.key,
-            mimeType: photo.mimeType,
-            sizeBytes: gallerySizes[position] ?? 0,
-            width: photo.width,
-            height: photo.height,
-            position,
-          })),
-          { ...musicRow, eventId: event.id },
-        ],
-      });
-
-      // Guests removed from the demo list disappear (with their RSVPs and views).
-      await tx.guest.deleteMany({
-        where: { eventId: event.id, token: { notIn: DEMO_GUESTS.map((guest) => guest.token) } },
-      });
-      for (const guest of DEMO_GUESTS) await upsertGuest(tx, event.id, guest);
+      await replaceEventContent(tx, event.id, galleryAndMusic);
+      await replaceGuests(tx, event.id, DEMO_GUESTS);
 
       // The same wedding before the invitation phase: only the Save the Date page.
       const saveTheDateData = {
@@ -174,38 +155,78 @@ export async function seedDemo(
       });
       await tx.media.deleteMany({ where: { eventId: saveTheDate.id } });
       await tx.media.create({ data: { ...musicRow, eventId: saveTheDate.id } });
-      await tx.guest.deleteMany({
-        where: {
-          eventId: saveTheDate.id,
-          token: { notIn: DEMO_SAVE_THE_DATE.guests.map((guest) => guest.token) },
-        },
+      await replaceGuests(
+        tx,
+        saveTheDate.id,
+        DEMO_SAVE_THE_DATE.guests.map((guest) => newGuest(guest, 'Save the Date')),
+      );
+
+      // The same wedding in the "Champanhe" theme, with every section.
+      const champanheData = {
+        ...eventData,
+        themeId: DEMO_CHAMPANHE.themeId,
+        dressCodeColors: [...DEMO_CHAMPANHE.dressCodeColors],
+      };
+      const champanhe = await tx.event.upsert({
+        where: { slug: DEMO_CHAMPANHE.slug },
+        create: { slug: DEMO_CHAMPANHE.slug, ...champanheData },
+        update: champanheData,
       });
-      for (const guest of DEMO_SAVE_THE_DATE.guests) {
-        await upsertGuest(tx, saveTheDate.id, {
-          ...guest,
-          phone: null,
-          groupTag: 'Save the Date',
-          views: [],
-          rsvp: null,
-        });
-      }
+      await replaceEventContent(tx, champanhe.id, galleryAndMusic);
+      await replaceGuests(
+        tx,
+        champanhe.id,
+        DEMO_CHAMPANHE.guests.map((guest) => newGuest(guest, 'Champanhe')),
+      );
 
       return {
         eventId: event.id,
-        slug: event.slug,
+        ...links(event.slug, DEMO_GUESTS),
         users: [DEMO_USERS.couple, DEMO_USERS.admin].map(({ email, role }) => ({ email, role })),
-        guests: DEMO_GUESTS.map(({ displayName, token }) => ({ displayName, token })),
-        saveTheDate: {
-          slug: saveTheDate.slug,
-          guests: DEMO_SAVE_THE_DATE.guests.map(({ displayName, token }) => ({
-            displayName,
-            token,
-          })),
-        },
+        saveTheDate: links(saveTheDate.slug, DEMO_SAVE_THE_DATE.guests),
+        champanhe: links(champanhe.slug, DEMO_CHAMPANHE.guests),
       };
     },
     { timeout: 30_000 },
   );
+}
+
+/** Rebuilds an event's lists: venues, timeline, guest rules and media. */
+async function replaceEventContent(tx: Tx, eventId: string, media: MediaRow[]): Promise<void> {
+  await tx.eventLocation.deleteMany({ where: { eventId } });
+  await tx.eventLocation.createMany({
+    data: DEMO_LOCATIONS.map((location, position) => ({ ...location, eventId, position })),
+  });
+
+  await tx.timelineItem.deleteMany({ where: { eventId } });
+  await tx.timelineItem.createMany({
+    data: DEMO_TIMELINE.map((item, position) => ({ ...item, eventId, position })),
+  });
+
+  await tx.guestRule.deleteMany({ where: { eventId } });
+  await tx.guestRule.createMany({
+    data: DEFAULT_GUEST_RULES.map((rule, position) => ({ ...rule, eventId, position })),
+  });
+
+  await tx.media.deleteMany({ where: { eventId } });
+  await tx.media.createMany({ data: media.map((row) => ({ ...row, eventId })) });
+}
+
+/** A guest who has not opened the invitation or answered yet. */
+function newGuest(
+  guest: { token: string; displayName: string; seatsAllowed: number },
+  groupTag: string,
+): DemoGuest {
+  return { ...guest, phone: null, groupTag, views: [], rsvp: null };
+}
+
+/** Upserts the event's demo guests; guests no longer in the list disappear (with their RSVPs and
+ * views). */
+async function replaceGuests(tx: Tx, eventId: string, guests: readonly DemoGuest[]): Promise<void> {
+  await tx.guest.deleteMany({
+    where: { eventId, token: { notIn: guests.map((guest) => guest.token) } },
+  });
+  for (const guest of guests) await upsertGuest(tx, eventId, guest);
 }
 
 /** A Better Auth user with an email + password ("credential") account. */

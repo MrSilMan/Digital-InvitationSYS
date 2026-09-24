@@ -241,7 +241,7 @@ export function OpeningScreen({
                 <path className={cn(styles.fold, styles.foldSide)} d="M142 0 L76 55 L142 100 Z" />
                 <path className={styles.fold} d="M0 100 L71 45 L142 100 Z" />
               </svg>
-              <p id={addresseeId} className={styles.address}>
+              <p id={addresseeId} className={cn(styles.address, 'font-caps')}>
                 <span className="block text-[clamp(0.7rem,3.4cqi,0.9rem)] tracking-[0.16em] text-muted">
                   {labels.addressedTo}
                 </span>
@@ -293,7 +293,10 @@ export function OpeningScreen({
                 />
               </div>
             </button>
-            <p aria-hidden="true" className={cn(styles.tap, 'text-[clamp(1rem,4.8cqi,1.25rem)]')}>
+            <p
+              aria-hidden="true"
+              className={cn(styles.tap, 'font-caps text-[clamp(1rem,4.8cqi,1.25rem)]')}
+            >
               {labels.tapToOpen}
             </p>
           </div>

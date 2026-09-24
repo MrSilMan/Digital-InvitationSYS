@@ -9,7 +9,7 @@ interface CommonProps {
   /** Line icon on the left, drawn in the button's text colour (e.g. "map-pin", "check-circle"). */
   icon?: string;
   children: ReactNode;
-  /** "pill" (Praia Rosa) or "circle" (Champanhe). */
+  /** "pill" or "circle": main actions take the theme's `buttonShape`. */
   shape?: PillShape;
   className?: string;
 }

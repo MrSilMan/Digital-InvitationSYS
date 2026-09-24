@@ -18,7 +18,7 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 | 3     | Design system, fonts, i18n, themes                                                | Done    |
 | 4     | Invitation pages ("Praia Rosa")                                                   | Done    |
 | 5     | RSVP, Redis cache, rate limiting, view tracking                                   | Done    |
-| 6     | "Champanhe" theme                                                                 | Planned |
+| 6     | "Champanhe" theme                                                                 | Done    |
 | 7     | Auth, couple dashboard, uploads, BullMQ worker                                    | Planned |
 | 8     | Guest management, CSV, WhatsApp                                                   | Planned |
 | 9     | Admin area and audit log                                                          | Planned |
@@ -57,7 +57,9 @@ npm run dev                       # http://localhost:3000
 ```
 
 Check the stack with `curl http://localhost:3000/api/health`, then open a demo invitation (the seed
-prints every link), e.g. http://localhost:3000/c/braulio-e-nanda/demo-familia-silva-001.
+prints every link), e.g. http://localhost:3000/c/braulio-e-nanda/demo-familia-silva-001, or the
+same wedding in the "Champanhe" theme:
+http://localhost:3000/c/braulio-e-nanda-champanhe/demo-champanhe-silva-01.
 
 To run the dev server in a container as well (hot reload through a bind mount):
 
@@ -143,7 +145,7 @@ one image can be promoted from staging to production. `.env.example` documents e
 | `npm run db:reset`            | Wipe the dev database, re-apply migrations, seed (asks to confirm) |
 | `npm run db:generate`         | Regenerate the Prisma client (`npm install` does it too)           |
 | `npm run db:studio`           | Prisma Studio, a browser UI for the data                           |
-| `npm run themes:placeholders` | Draw missing placeholder theme artwork (see "Themes")              |
+| `npm run themes:placeholders` | Draw missing placeholder theme artwork (see "Themes → Artwork")    |
 | `npm run demo:media`          | Draw missing demo photos and music in `public/demo/`               |
 
 ## Architecture
@@ -214,7 +216,8 @@ been applied anywhere; add a new one. CI fails if the schema changes without a m
 15 January 2027 (ceremony at Praia do Bispo at 16h00, copo-d'água at 20h00), the full timeline,
 the 8 default guest rules, 6 placeholder gallery photos, a placeholder music loop and 10 guests
 covering every RSVP state; plus the same wedding in the Save the Date phase
-(`braulio-e-nanda-save-the-date`, 2 guests). The seed prints every guest's invitation link.
+(`braulio-e-nanda-save-the-date`, 2 guests) and in the "Champanhe" theme, with every section
+(`braulio-e-nanda-champanhe`, 2 guests). The seed prints every guest's invitation link.
 Logins (usable from Phase 7):
 
 | Login                  | Default password   | Role     |
@@ -324,8 +327,8 @@ the server in the event's theme.
 - **WhatsApp link preview:** `generateMetadata` sets the title ("Convite de Casamento – Braúlio &
   Nanda"), the date and `noindex`; WhatsApp's crawler gets them in the `<head>` (Next.js serves
   metadata blocking to it). The image, `opengraph-image.tsx`, is drawn with `next/og` in the theme's
-  style from the fonts in [assets/fonts/](assets/fonts/) and re-encoded as a JPEG of about 45 KB,
-  because WhatsApp skips large previews. It shows the event only, never the guest.
+  style and fonts (files in [assets/fonts/](assets/fonts/)) and re-encoded as a JPEG of about
+  50 KB, because WhatsApp skips large previews. It shows the event only, never the guest.
 - **Performance:** everything is server-rendered; the client pieces (envelope and music, countdown,
   gallery, copy button, RSVP dialog) add about 25 KB of gzipped JavaScript to the shared
   framework bundle (about 240 KB, mostly React, Next.js and the Sentry browser SDK). The first
@@ -389,12 +392,18 @@ synthesized loop: use licensed music for anything real.
 ## Themes
 
 An invitation's look is its **theme** (`Event.themeId`) plus the couple's colour **overrides**
-(`Event.themeOverrides`). "Praia Rosa" is available now; "Champanhe" arrives in Phase 6.
+(`Event.themeOverrides`). Two themes exist (the couple will pick one in the dashboard, Phase 7):
 
-- **A theme is plain data** ([src/themes/praia-rosa.ts](src/themes/praia-rosa.ts)): colours, the
-  envelope and wax seal colours, font variables, artwork files with their sizes, decorations per
-  section, the hero illustration and the button shape. It imports no React or `next/font` code, so
-  server code and tests can use it.
+| Theme                                  | Look                                                                                                                                           | Demo link                                              |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| **Praia Rosa** (`praia-rosa`, default) | Pale-blue watercolour paper, pink script, olive-gold accents, pink rose corners, a beach wedding on the hero pages, pill buttons               | `/c/braulio-e-nanda/demo-familia-silva-001`            |
+| **Champanhe** (`champanhe`)            | Warm ivory paper, antique-gold script and accents, dark serif text, cream roses with pampas grass, a floral moon-gate arch, round gold buttons | `/c/braulio-e-nanda-champanhe/demo-champanhe-silva-01` |
+
+- **A theme is plain data** ([src/themes/praia-rosa.ts](src/themes/praia-rosa.ts),
+  [src/themes/champanhe.ts](src/themes/champanhe.ts)): colours, the envelope and wax seal colours,
+  font variables, artwork files with their sizes, decorations per section, the hero illustration
+  and the button shape. It imports no React or `next/font` code, so server code and tests can use
+  it.
 - **`ThemeRoot`** ([src/components/theme/theme-root.tsx](src/components/theme/theme-root.tsx))
   applies a theme: it sets the `--theme-*` CSS variables, attaches the fonts and the paper texture,
   and makes the invitation a size container.
@@ -405,26 +414,43 @@ An invitation's look is its **theme** (`Event.themeId`) plus the couple's colour
   `--font-*` are resolved on `:root`, above the theme, and would always give the fallbacks.
 - **Container units:** invitation text is sized in `cqi` (a share of the invitation's own width),
   not `vw`, so it scales the same on a phone and in the dashboard's phone-frame preview.
+- **Button shape** (`buttonShape`): the main actions ("Confirmar presença" on the Save the Date,
+  "Google Maps", "Adicionar ao calendário") are pills in Praia Rosa and circles in Champanhe. The
+  WhatsApp RSVP buttons are always round; buttons inside a form or box ("Enviar resposta",
+  "Copiar IBAN") are always pills.
 - **Overrides** ([src/themes/overrides.ts](src/themes/overrides.ts)): `#RRGGBB` values for
   background, ink, script and accent only; anything else discards the overrides as a whole.
 - **Contrast:** unit tests check every theme against WCAG AA: body text 4.5:1, script (large text
   only) 3:1, button labels 4.5:1, buttons, icons and lines 3:1. That is why the Praia Rosa pink and
-  olive are a touch deeper than in the reference.
+  olive are a touch deeper than in the reference, and why Champanhe uses antique gold: pale
+  champagne gold fails on ivory.
 
 ### Fonts
 
 Self-hosted with `next/font` (the guest's phone never contacts Google; only the weights in use are
-downloaded), declared in [src/themes/fonts.ts](src/themes/fonts.ts). They were chosen side by side
-with the reference on `/design`:
+downloaded), declared in [src/themes/fonts.ts](src/themes/fonts.ts). Each theme has its own script
+and small-caps fonts; the body font is shared. They were chosen side by side on `/design` (Praia
+Rosa's against the reference):
 
-| Role                                        | Font         | Why                                                      |
-| ------------------------------------------- | ------------ | -------------------------------------------------------- |
-| Script titles and the couple's names        | Ephesis      | Thin, relaxed brush-pen script, closest to the reference |
-| Small caps ("Com a benção de Deus", titles) | Cormorant SC | True small caps, elegant at small sizes                  |
-| Body text (message, rules, timeline)        | EB Garamond  | Sturdy serif, readable on small screens                  |
-| Buttons                                     | System sans  | Clean labels like the reference, nothing to download     |
+| Role                                 | Praia Rosa                                                        | Champanhe                                                  |
+| ------------------------------------ | ----------------------------------------------------------------- | ---------------------------------------------------------- |
+| Script titles and the couple's names | Ephesis: thin, relaxed brush-pen script, closest to the reference | Great Vibes: formal calligraphy, like gold-foil stationery |
+| Small caps ("Com a benção de Deus"…) | Cormorant SC: true small caps, elegant at small sizes             | Cinzel: engraved Roman capitals, lower case as small caps  |
+| Body text (message, rules, timeline) | EB Garamond: sturdy serif, readable on small screens              | EB Garamond                                                |
+| Buttons                              | System sans: clean labels like the reference, nothing to download | System sans                                                |
 
-Numbers use lining figures everywhere; the serif fonts default to old-style figures.
+- **Preloading:** Next.js preloads every font a route imports, whatever the page's theme, so only
+  the shared body font is preloaded. The script and caps fonts (`preload: false`) load when the
+  page first uses them, while the guest looks at the envelope; `display: swap` shows a fallback
+  sized like the font until then. A new theme's fonts need `preload: false` too.
+- **Size adjustment:** the invitation's caps sizes were set for Cormorant SC. Cinzel runs about 20%
+  larger, so Champanhe sets `fonts.capsSizeAdjust` (CSS `font-size-adjust`, which the `font-caps`
+  class applies to the web font and its fallback alike) and its lines break like Praia Rosa's.
+  Always set the caps font with the `font-caps` class, never with `font-family` in plain CSS.
+- **Figures:** numbers use lining figures everywhere; the serif fonts default to old-style ones.
+- **Preview image:** `next/og` cannot use `next/font`: the WhatsApp preview reads each theme's font
+  files from [assets/fonts/](assets/fonts/) (`OG_FONTS` in
+  [og-image.tsx](src/features/invitation/og/og-image.tsx)).
 
 ### Components and icons
 
@@ -444,38 +470,55 @@ rename one.
 
 ### Artwork
 
-The files in `public/themes/praia-rosa/` are **placeholders** in the positions and style of the
-reference, drawn by `npm run themes:placeholders`. Licensed artwork replaces them file for file:
+The files in `public/themes/<theme>/` are **placeholders**, in the positions and style of the
+reference (Praia Rosa) or of the brief (Champanhe), drawn by `npm run themes:placeholders`
+([scripts/theme-placeholders/](scripts/theme-placeholders/)). Licensed artwork replaces them file
+for file. Both themes use the same slots:
 
-| File                     | Pixels    | Where                                               | Requirements                                                             |
-| ------------------------ | --------- | --------------------------------------------------- | ------------------------------------------------------------------------ |
-| `background.webp`        | 1080×1920 | Paper texture behind every section                  | Opaque. Repeats vertically at full width: top and bottom edges must join |
-| `floral-corner.webp`     | 640×640   | Section corners                                     | Transparent. Drawn for the **top-left** corner; other corners mirror it  |
-| `floral-corner-alt.webp` | 640×640   | A second corner arrangement                         | Same as above                                                            |
-| `floral-garland.webp`    | 1080×440  | Top of the message section (mirrored at the bottom) | Transparent. Drawn for the top edge, flowers along the top-left          |
-| `hero-beach.webp`        | 1080×900  | Bottom of the invitation card and Save the Date     | Transparent at the top, so the paper shows through above the scene       |
+| File                                 | Pixels    | Where                                                                         | Requirements                                                             |
+| ------------------------------------ | --------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `background.webp`                    | 1080×1920 | Paper texture behind every section                                            | Opaque. Repeats vertically at full width: top and bottom edges must join |
+| `floral-corner.webp`                 | 640×640   | Section corners                                                               | Transparent. Drawn for the **top-left** corner; other corners mirror it  |
+| `floral-corner-alt.webp`             | 640×640   | A second corner arrangement                                                   | Same as above                                                            |
+| `floral-garland.webp`                | 1080×440  | Top edge of some sections (mirrored at the bottom)                            | Transparent. Drawn for the top edge, flowers along the top-left          |
+| `hero-beach.webp` / `hero-arch.webp` | 1080×900  | Bottom of the invitation card and Save the Date (beach wedding / floral arch) | Transparent at the top, so the paper shows through above the scene       |
+
+Which decorations each section shows, where and how big, is set in the theme's file
+(`src/themes/<id>.ts`).
 
 To replace a file, export the artwork as WebP (about quality 80, with alpha where transparent)
-under the same name. If its size or aspect ratio changes, update `width` and `height` in
-[src/themes/praia-rosa.ts](src/themes/praia-rosa.ts); the decorations' positions, widths and
-offsets per section are in the same file. `npm run themes:placeholders` never overwrites an
-existing file unless run with `-- --force`.
+under the same name. If its size or aspect ratio changes, update `width` and `height` in the theme's
+file (a unit test compares them with the files). Keep soft, half-transparent edges to what the art
+needs: the image optimizer keeps the alpha channel lossless, so feathery transparency costs guests
+far more bytes than detail in the colours. At a phone's 828 px, the Champanhe hero placeholder
+(pampas plumes) is about 75 KB; Praia Rosa's is about 20 KB.
+
+`npm run themes:placeholders` only draws missing files; `-- --theme=<id>` limits it to one theme,
+and `-- --theme=<id> --force` redraws that theme's files. Never force a theme whose real artwork is
+in (`--force` without `--theme` is refused).
 
 ### Adding a theme
 
 1. Create `src/themes/<id>.ts` with a `ThemeDefinition` and add it to `THEMES` in
    [src/themes/index.ts](src/themes/index.ts).
-2. Declare its fonts in [src/themes/fonts.ts](src/themes/fonts.ts) (TypeScript requires an entry
-   for every theme).
-3. Put its artwork in `public/themes/<id>/`.
-4. Run `npm test` (the contrast and artwork checks cover every theme) and review
-   `/design?theme=<id>`.
+2. Declare its script and caps fonts in [src/themes/fonts.ts](src/themes/fonts.ts) with
+   `preload: false`, and add their Latin and Latin Extended `.woff` files from Fontsource, with the
+   licence, to [assets/fonts/](assets/fonts/) and to `OG_FONTS` in
+   [og-image.tsx](src/features/invitation/og/og-image.tsx). TypeScript requires an entry for every
+   theme in both places. If the caps font runs larger than Cormorant SC, set
+   `fonts.capsSizeAdjust`.
+3. Put its artwork in `public/themes/<id>/`: licensed files, or placeholders drawn by a module in
+   [scripts/theme-placeholders/](scripts/theme-placeholders/), registered in
+   `scripts/generate-theme-placeholders.ts`.
+4. Run `npm test` (contrast, artwork files, fonts and the preview image are checked for every
+   theme), then review `/design?theme=<id>` and a guest page (give a demo event that `themeId`).
 
 ### Previewing
 
-`/design` (not available in production) shows the font candidates, the palette with contrast
-ratios, every shared component on a phone-width invitation, the narrow timeline, the date formats
-and all icons. For visual checks from the command line:
+`/design` (not available in production) has a theme switcher (`/design?theme=<id>`) and shows the
+font candidates on the theme's paper, the palette with contrast ratios, every shared component on a
+phone-width invitation, the narrow timeline, the date formats and all icons. Its components use
+fixed sample sizes: judge line breaks on a guest page. For visual checks from the command line:
 
 ```bash
 node scripts/screenshot.mjs http://localhost:3000/design shots "--selector=[data-theme] > section"
@@ -494,13 +537,15 @@ node scripts/screenshot.mjs http://localhost:3000/c/braulio-e-nanda/demo-familia
 
 Vitest runs two projects, Playwright a third suite:
 
-- `npm test`: unit tests next to the code (`*.test.ts`, `*.test.tsx`), including theme contrast
-  checks, the invitation's read model, countdown, calendar and link builders, components and
-  sections rendered to HTML with `react-dom/server`, and one test that serves real HTTP requests
-  through the request hooks. No services needed.
+- `npm test`: unit tests next to the code (`*.test.ts`, `*.test.tsx`), including every theme's
+  contrast, artwork files and link preview image, the invitation's read model, countdown, calendar
+  and link builders, components and sections rendered to HTML with `react-dom/server` (in both
+  themes where they differ), and one test that serves real HTTP requests through the request
+  hooks. No services needed.
 - `npm run test:e2e`: `tests/e2e/*.spec.ts` in a phone-sized Chromium: opening the envelope, the
-  reload, reduced motion, the gallery lightbox, the calendar file, the 404 page, the Save the Date
-  dialog, answering and changing the RSVP form, and the WhatsApp link. Its global setup re-seeds
+  reload, reduced motion, the gallery lightbox, the calendar file, the 404 page, the Champanhe
+  invitation and its preview image, the Save the Date dialog, answering and changing the RSVP
+  form, and the WhatsApp link. Its global setup re-seeds
   the demo data and clears the rate-limit counters, so runs are repeatable (`E2E_SKIP_RESET=1`
   skips that for a server that does not use the local database and Redis). It starts `next dev` on
   port 3100, or tests a running app given in `E2E_BASE_URL`. Runs locally for

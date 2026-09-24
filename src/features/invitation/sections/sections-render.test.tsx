@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
+import { pillButtonClasses } from '@/components/ui/pill-button-classes';
 import { ClosingSection } from '@/features/invitation/sections/closing-section';
 import { GallerySection } from '@/features/invitation/sections/gallery-section';
 import { GiftsSection } from '@/features/invitation/sections/gifts-section';
@@ -183,5 +184,64 @@ describe('Save the Date', () => {
     expect(text(html)).toContain('Convite oficial em breve');
     expect(html).toContain('aria-haspopup="dialog"');
     expect(text(html)).not.toContain('Praia do Bispo');
+  });
+});
+
+describe('buttons', () => {
+  const classAttribute = (shape: 'pill' | 'circle') =>
+    `class="${pillButtonClasses(shape).replaceAll('&', '&amp;')}"`;
+  /** The accent buttons of the page, by shape (other classes, like the form's, are left out). */
+  const shapes = (html: string) =>
+    (['pill', 'circle'] as const).flatMap((shape) =>
+      Array.from({ length: html.split(classAttribute(shape)).length - 1 }, () => shape),
+    );
+  const render = (themeId: string) => {
+    const theme = getTheme(themeId);
+    const saveTheDate = invitationEventFixture({
+      phase: 'SAVE_THE_DATE',
+      rsvp: { ...invitationEventFixture().rsvp, mode: 'FORM' },
+    });
+    return {
+      saveTheDate: shapes(
+        renderToStaticMarkup(<SaveTheDatePage {...props({ theme, event: saveTheDate })} />),
+      ),
+      schedule: shapes(renderToStaticMarkup(<ScheduleSection {...props({ theme })} />)),
+      closing: shapes(renderToStaticMarkup(<ClosingSection {...props({ theme })} />)),
+      gifts: shapes(renderToStaticMarkup(<GiftsSection {...props({ theme })} />)),
+      whatsapp: shapes(
+        renderToStaticMarkup(
+          <RsvpContent
+            {...props({
+              theme,
+              event: invitationEventFixture({
+                rsvp: { ...invitationEventFixture().rsvp, mode: 'WHATSAPP' },
+              }),
+            })}
+          />,
+        ),
+      ),
+    };
+  };
+
+  it("take the theme's shape for the main actions", () => {
+    expect(render('praia-rosa')).toMatchObject({
+      saveTheDate: ['pill'],
+      schedule: ['pill', 'pill'],
+      closing: ['pill'],
+    });
+    expect(render('champanhe')).toMatchObject({
+      saveTheDate: ['circle'],
+      schedule: ['circle', 'circle'],
+      closing: ['circle'],
+    });
+  });
+
+  it('stay round for WhatsApp and a pill for "Copiar IBAN" in every theme', () => {
+    for (const themeId of ['praia-rosa', 'champanhe']) {
+      expect(render(themeId)).toMatchObject({
+        whatsapp: ['circle', 'circle'],
+        gifts: ['pill'],
+      });
+    }
   });
 });

@@ -9,6 +9,7 @@ import {
   Great_Vibes,
   Mea_Culpa,
   Parisienne,
+  Pinyon_Script,
 } from 'next/font/google';
 
 /**
@@ -32,6 +33,12 @@ const greatVibes = Great_Vibes({
 const allison = Allison({ weight: '400', subsets: ['latin'], display: 'swap', preload: false });
 const ephesis = Ephesis({ weight: '400', subsets: ['latin'], display: 'swap', preload: false });
 const meaCulpa = Mea_Culpa({ weight: '400', subsets: ['latin'], display: 'swap', preload: false });
+const pinyonScript = Pinyon_Script({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+  preload: false,
+});
 const cormorantSc = Cormorant_SC({
   weight: ['500', '700'],
   subsets: ['latin'],
@@ -61,6 +68,7 @@ export const SCRIPT_CANDIDATES: readonly FontCandidate[] = [
   { name: 'Allison', className: allison.className, inBrief: false },
   { name: 'Ephesis', className: ephesis.className, inBrief: false },
   { name: 'Mea Culpa', className: meaCulpa.className, inBrief: false },
+  { name: 'Pinyon Script', className: pinyonScript.className, inBrief: false },
 ];
 
 export const CAPS_CANDIDATES: readonly FontCandidate[] = [

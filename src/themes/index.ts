@@ -1,14 +1,16 @@
 import type { CSSProperties } from 'react';
 
+import { champanhe } from './champanhe';
 import type { ThemeOverrides } from './overrides';
 import { praiaRosa } from './praia-rosa';
 import type { Decoration, ThemeArea, ThemeColors, ThemeDefinition } from './types';
 
 export type { Decoration, ThemeArea, ThemeColors, ThemeDefinition } from './types';
 
-/** Every available theme. "Champanhe" joins in Phase 6. */
+/** Every available theme (README → Themes → Adding a theme). */
 export const THEMES = {
   'praia-rosa': praiaRosa,
+  champanhe,
 } as const satisfies Record<string, ThemeDefinition>;
 
 export type ThemeId = keyof typeof THEMES;
@@ -60,6 +62,8 @@ export function themeCssVariables(
     '--theme-font-script': theme.fonts.script,
     '--theme-font-caps': theme.fonts.caps,
     '--theme-font-body': theme.fonts.body,
+    '--theme-caps-size-adjust':
+      theme.fonts.capsSizeAdjust === undefined ? 'none' : String(theme.fonts.capsSizeAdjust),
     '--theme-texture': theme.texture ? `url("${theme.texture.src}")` : 'none',
   } as CSSProperties;
 }

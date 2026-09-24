@@ -3,11 +3,17 @@
 import { IconCircleCheckFilled, IconX } from '@tabler/icons-react';
 import { useRef, type ReactNode } from 'react';
 
-import { PILL_ICON_SIZE, pillButtonClasses } from '@/components/ui/pill-button-classes';
+import {
+  PILL_ICON_SIZE,
+  pillButtonClasses,
+  type PillShape,
+} from '@/components/ui/pill-button-classes';
 
 interface RsvpDialogProps {
   /** Button label, e.g. "Confirmar <strong>presença</strong>". */
   label: ReactNode;
+  /** The theme's button shape. */
+  shape?: PillShape;
   closeLabel: string;
   /** Id of the heading inside `children`. */
   labelledBy: string;
@@ -16,17 +22,23 @@ interface RsvpDialogProps {
 }
 
 /** "Confirmar presença" on the Save the Date page: opens the RSVP options in a native dialog. */
-export function RsvpDialog({ label, closeLabel, labelledBy, children }: RsvpDialogProps) {
+export function RsvpDialog({
+  label,
+  shape = 'pill',
+  closeLabel,
+  labelledBy,
+  children,
+}: RsvpDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   return (
     <>
       <button
         type="button"
         aria-haspopup="dialog"
-        className={pillButtonClasses('pill')}
+        className={pillButtonClasses(shape)}
         onClick={() => dialogRef.current?.showModal()}
       >
-        <IconCircleCheckFilled size={PILL_ICON_SIZE.pill} aria-hidden="true" />
+        <IconCircleCheckFilled size={PILL_ICON_SIZE[shape]} aria-hidden="true" />
         <span>{label}</span>
       </button>
       <dialog

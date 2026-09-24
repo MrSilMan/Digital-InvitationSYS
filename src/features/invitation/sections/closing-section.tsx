@@ -28,6 +28,7 @@ export function ClosingSection({ event, theme, basePath }: SectionProps) {
         href={`${basePath}/calendario.ics`}
         download={`casamento-${event.slug}.ics`}
         icon="calendar-plus"
+        shape={theme.buttonShape}
       >
         {t.addToCalendar.regular} <strong>{t.addToCalendar.bold}</strong>
       </PillButton>

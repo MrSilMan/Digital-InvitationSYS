@@ -92,7 +92,6 @@
   position: absolute;
   inset-inline: 8%;
   bottom: 8%;
-  font-family: var(--theme-font-caps);
   line-height: 1.15;
   text-align: center;
 }
@@ -129,7 +128,6 @@
 }
 
 .tap {
-  font-family: var(--theme-font-caps);
   letter-spacing: 0.12em;
   animation: pulse 2.4s ease-in-out infinite;
 }

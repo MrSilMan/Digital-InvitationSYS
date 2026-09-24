@@ -8,15 +8,22 @@ import sharp, { type Sharp } from 'sharp';
 
 import { dateParts } from '@/i18n/format';
 import { invitation } from '@/i18n/pt-AO';
-import { getTheme, resolveThemeColors, type ThemeDefinition } from '@/themes';
+import {
+  DEFAULT_THEME_ID,
+  getTheme,
+  isThemeId,
+  resolveThemeColors,
+  type ThemeDefinition,
+  type ThemeId,
+} from '@/themes';
 
 import { coupleNames } from '../text';
 import type { InvitationEvent } from '../types';
 
 /**
  * The WhatsApp link preview image: the theme's paper and florals, the monogram, the couple's names
- * and the date. Event-level only (no guest name). Rendered as PNG by next/og, then re-encoded as a
- * JPEG of about 100 KB, because WhatsApp drops large preview images.
+ * and the date, in the theme's fonts. Event-level only (no guest name). Rendered as PNG by next/og,
+ * then re-encoded as a JPEG of about 100 KB, because WhatsApp drops large preview images.
  */
 
 export const OG_SIZE = { width: 1200, height: 630 } as const;
@@ -24,29 +31,76 @@ export const OG_SIZE = { width: 1200, height: 630 } as const;
 const FONT_DIR = path.join(process.cwd(), 'assets', 'fonts');
 const PUBLIC_DIR = path.join(process.cwd(), 'public');
 
-const FONT_FILES = [
-  { file: 'ephesis-latin-400-normal.woff', name: 'Ephesis', weight: 400 },
-  { file: 'ephesis-latin-ext-400-normal.woff', name: 'Ephesis Ext', weight: 400 },
-  { file: 'cormorant-sc-latin-500-normal.woff', name: 'Cormorant SC', weight: 500 },
-  { file: 'cormorant-sc-latin-ext-500-normal.woff', name: 'Cormorant SC Ext', weight: 500 },
-  { file: 'cormorant-sc-latin-700-normal.woff', name: 'Cormorant SC', weight: 700 },
-  { file: 'cormorant-sc-latin-ext-700-normal.woff', name: 'Cormorant SC Ext', weight: 700 },
-] as const;
+interface OgFontFile {
+  file: string;
+  name: string;
+  weight: 400 | 500 | 700;
+}
 
-const SCRIPT = '"Ephesis", "Ephesis Ext"';
-const CAPS = '"Cormorant SC", "Cormorant SC Ext"';
+interface OgFonts {
+  /** CSS font-family lists. */
+  script: string;
+  caps: string;
+  files: readonly OgFontFile[];
+}
 
-let fonts: ReturnType<typeof loadFonts> | undefined;
+/**
+ * Each theme's script and caps fonts. next/og cannot use next/font: it reads the Fontsource files
+ * in assets/fonts, the Latin and Latin Extended subsets registered as two families (the second
+ * one fills in the characters the first lacks). TypeScript requires an entry for every theme.
+ */
+const OG_FONTS: Record<ThemeId, OgFonts> = {
+  'praia-rosa': {
+    script: '"Ephesis", "Ephesis Ext"',
+    caps: '"Cormorant SC", "Cormorant SC Ext"',
+    files: [
+      { file: 'ephesis-latin-400-normal.woff', name: 'Ephesis', weight: 400 },
+      { file: 'ephesis-latin-ext-400-normal.woff', name: 'Ephesis Ext', weight: 400 },
+      { file: 'cormorant-sc-latin-500-normal.woff', name: 'Cormorant SC', weight: 500 },
+      { file: 'cormorant-sc-latin-ext-500-normal.woff', name: 'Cormorant SC Ext', weight: 500 },
+      { file: 'cormorant-sc-latin-700-normal.woff', name: 'Cormorant SC', weight: 700 },
+      { file: 'cormorant-sc-latin-ext-700-normal.woff', name: 'Cormorant SC Ext', weight: 700 },
+    ],
+  },
+  champanhe: {
+    script: '"Great Vibes", "Great Vibes Ext"',
+    caps: '"Cinzel", "Cinzel Ext"',
+    files: [
+      { file: 'great-vibes-latin-400-normal.woff', name: 'Great Vibes', weight: 400 },
+      { file: 'great-vibes-latin-ext-400-normal.woff', name: 'Great Vibes Ext', weight: 400 },
+      { file: 'cinzel-latin-500-normal.woff', name: 'Cinzel', weight: 500 },
+      { file: 'cinzel-latin-ext-500-normal.woff', name: 'Cinzel Ext', weight: 500 },
+      { file: 'cinzel-latin-700-normal.woff', name: 'Cinzel', weight: 700 },
+      { file: 'cinzel-latin-ext-700-normal.woff', name: 'Cinzel Ext', weight: 700 },
+    ],
+  },
+};
 
-function loadFonts() {
+/** The fonts of a theme; unknown IDs get the default theme's, like getTheme. */
+export function ogFontsFor(themeId: string): OgFonts {
+  return OG_FONTS[isThemeId(themeId) ? themeId : DEFAULT_THEME_ID];
+}
+
+const loadedFonts = new Map<string, ReturnType<typeof loadFonts>>();
+
+function loadFonts(files: readonly OgFontFile[]) {
   return Promise.all(
-    FONT_FILES.map(async ({ file, name, weight }) => ({
+    files.map(async ({ file, name, weight }) => ({
       name,
       weight,
       style: 'normal' as const,
       data: await readFile(path.join(FONT_DIR, file)),
     })),
   );
+}
+
+/** A theme's font files, read once per process. */
+function themeFonts(theme: ThemeDefinition) {
+  const cached = loadedFonts.get(theme.id);
+  if (cached) return cached;
+  const fonts = loadFonts(ogFontsFor(theme.id).files);
+  loadedFonts.set(theme.id, fonts);
+  return fonts;
 }
 
 const images = new Map<string, Promise<string>>();
@@ -107,8 +161,8 @@ function Dot({ color }: { color: string }) {
 export async function renderInvitationOgImage(event: InvitationEvent): Promise<Buffer> {
   const theme = getTheme(event.themeId);
   const colors = resolveThemeColors(theme, event.themeOverrides);
-  fonts ??= loadFonts();
-  const [fontData, art] = await Promise.all([fonts, themeArtwork(theme)]);
+  const fonts = ogFontsFor(theme.id);
+  const [fontData, art] = await Promise.all([themeFonts(theme), themeArtwork(theme)]);
   const { day, month, year } = dateParts(new Date(event.startsAt));
   const [first = '', second = ''] = Array.from(event.monogram.toLocaleUpperCase('pt-AO'));
   const heading =
@@ -172,7 +226,7 @@ export async function renderInvitationOgImage(event: InvitationEvent): Promise<B
         <div
           style={{
             display: 'flex',
-            fontFamily: CAPS,
+            fontFamily: fonts.caps,
             fontWeight: 500,
             fontSize: 104,
             lineHeight: 1,
@@ -185,7 +239,7 @@ export async function renderInvitationOgImage(event: InvitationEvent): Promise<B
         <div
           style={{
             marginTop: 18,
-            fontFamily: CAPS,
+            fontFamily: fonts.caps,
             fontWeight: 500,
             fontSize: 34,
             letterSpacing: 6,
@@ -193,7 +247,14 @@ export async function renderInvitationOgImage(event: InvitationEvent): Promise<B
         >
           {heading.toLocaleUpperCase('pt-AO')}
         </div>
-        <div style={{ fontFamily: SCRIPT, fontSize: 128, lineHeight: 1.25, color: colors.script }}>
+        <div
+          style={{
+            fontFamily: fonts.script,
+            fontSize: 128,
+            lineHeight: 1.25,
+            color: colors.script,
+          }}
+        >
           {coupleNames(event)}
         </div>
         <div
@@ -201,7 +262,7 @@ export async function renderInvitationOgImage(event: InvitationEvent): Promise<B
             display: 'flex',
             alignItems: 'center',
             gap: 22,
-            fontFamily: CAPS,
+            fontFamily: fonts.caps,
             fontWeight: 700,
             fontSize: 46,
           }}
