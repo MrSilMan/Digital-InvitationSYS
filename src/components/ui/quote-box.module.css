@@ -1,0 +1,25 @@
+/*
+ * The border has two gaps where the quotation marks sit. The gaps are cut with a mask instead of
+ * covering the line with a background patch, so the watercolour texture shows through.
+ * Mask layers: gap 1, gap 2, everything — combined with XOR.
+ */
+.border {
+  --gap-inset: 1.5rem;
+  --gap-width: 3.6rem;
+  --gap-height: 6px;
+
+  -webkit-mask:
+    linear-gradient(#000 0 0) left var(--gap-inset) top 0 / var(--gap-width) var(--gap-height)
+      no-repeat,
+    linear-gradient(#000 0 0) right var(--gap-inset) bottom 0 / var(--gap-width) var(--gap-height)
+      no-repeat,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) left var(--gap-inset) top 0 / var(--gap-width) var(--gap-height)
+      no-repeat,
+    linear-gradient(#000 0 0) right var(--gap-inset) bottom 0 / var(--gap-width) var(--gap-height)
+      no-repeat,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}

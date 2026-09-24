@@ -1,0 +1,121 @@
+/*
+ * Every row has a fixed height so the SVG line (drawn in viewBox units, see serpentine-layout.ts)
+ * lines up with the dots: the dot centre sits at 43% of the row, like DEFAULT_GEOMETRY.dotY.
+ * The turns reach past the timeline's box (12% of a column in rows of 3, 6% in rows of 2: the
+ * geometries' `overhang`), so leave at least 1.25rem of room on both sides. Labels are inset in
+ * their column and start well below the dot: the turns pass beside them.
+ * The 3-column layout switches to 2 columns when the timeline itself is narrower than 340px
+ * (container query: it also works inside the dashboard's phone preview).
+ */
+.timeline {
+  --row-h: 9.5rem;
+  --dot-y: calc(var(--row-h) * 0.43);
+  --dot-size: 0.9rem;
+
+  position: relative;
+  container-type: inline-size;
+  color: var(--color-line);
+}
+
+.line {
+  position: absolute;
+  inset: 0 0 auto;
+  width: 100%;
+  overflow: visible;
+}
+
+.lineWide {
+  height: calc(var(--rows-wide) * var(--row-h));
+}
+
+.lineNarrow {
+  display: none;
+  height: calc(var(--rows-narrow) * var(--row-h));
+}
+
+.grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: var(--row-h);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  position: relative;
+  grid-row: var(--row-wide);
+  grid-column: var(--col-wide);
+}
+
+.icon {
+  position: absolute;
+  top: calc(var(--dot-y) - var(--dot-size) / 2 - 3.6rem);
+  left: 50%;
+  width: 3.2rem;
+  height: 3.2rem;
+  translate: -50% 0;
+  color: var(--color-accent);
+}
+
+.dot {
+  position: absolute;
+  top: calc(var(--dot-y) - var(--dot-size) / 2);
+  left: 50%;
+  width: var(--dot-size);
+  height: var(--dot-size);
+  translate: -50% 0;
+  border-radius: 9999px;
+  background: var(--color-accent);
+}
+
+.label {
+  position: absolute;
+  top: calc(var(--dot-y) + var(--dot-size) / 2 + 0.8rem);
+  inset-inline: 9%;
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* Two lines at most (the dashboard limits the length); the time below is never cut off. */
+.labelText {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  text-wrap: balance;
+}
+
+.time {
+  display: block;
+}
+
+@container (max-width: 339px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .item {
+    grid-row: var(--row-narrow);
+    grid-column: var(--col-narrow);
+  }
+
+  .label {
+    inset-inline: 12%;
+  }
+
+  .lineWide {
+    display: none;
+  }
+
+  .lineNarrow {
+    display: block;
+  }
+}

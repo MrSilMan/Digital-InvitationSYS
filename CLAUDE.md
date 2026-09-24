@@ -11,7 +11,7 @@ relevant sections before planning a phase. README.md documents setup and archite
   approval. After it: `npm run check` and `npm run build` must pass, then summarize and commit.
 - Before installing anything, check current versions with `npm view` and read the current docs
   (Next.js ships version-matched docs in `node_modules/next/dist/docs/`).
-- Phase status: 1 and 2 done. Next: Phase 3 (design system: fonts, i18n, themes, shared UI).
+- Phase status: 1, 2 and 3 done. Next: Phase 4 (invitation pages, "Praia Rosa" theme).
 
 ## Commands
 
@@ -89,8 +89,26 @@ npx vitest run path/to/file.test.ts
   Session Replay, never send guest names, phones, IBANs or tokens.
 - Guest pages must stay light (low-end Android): Server Components by default, small Client
   Components, no heavy client libraries.
-- Tests: Vitest, `*.test.ts` next to the code; root-level files are tested in `tests/unit/`;
-  database tests are `tests/integration/*.int.test.ts`.
+- Tests: Vitest, `*.test.ts(x)` next to the code; root-level files are tested in `tests/unit/`;
+  database tests are `tests/integration/*.int.test.ts`. Components: render with
+  `renderToStaticMarkup` from `react-dom/server` (no DOM environment needed).
+
+## Design system and themes (README → Themes)
+
+- Themes in `src/themes/` are plain data: never import `next/font` or React there. Fonts are bound
+  per theme in `src/themes/fonts.ts`, applied by `ThemeRoot` with the `--theme-*` variables.
+- Invitation components use the Tailwind tokens (`text-script`, `bg-accent`, `text-ink`,
+  `font-caps`…), never hex colours, so theme overrides just work. Size invitation text with `cqi`
+  (`text-[clamp(1rem,5cqi,1.5rem)]`), never `vw`: it also renders in the dashboard's phone preview.
+- Icon keys (`src/components/icons/index.tsx`) are stored in the database: never rename or remove
+  one without a data migration.
+- The serpentine timeline's geometry lives in both `serpentine-layout.ts` and its CSS module (row
+  height, dot position, overhang, label inset): change them together, then check `/design`.
+- Visual checks: open `/design` (404 in production), capture it with `scripts/screenshot.mjs`
+  (usage in its header) and look at the PNGs. Compare with the reference screenshots in
+  `docs/reference/` (gitignored: they show a real couple).
+- `public/themes/*` artwork is placeholder art until licensed files replace it. Never redraw it with
+  `npm run themes:placeholders -- --force` once real artwork is in.
 
 ## Local environment notes
 

@@ -1,0 +1,53 @@
+import type { CSSProperties } from 'react';
+
+import type { ThemeOverrides } from './overrides';
+import { praiaRosa } from './praia-rosa';
+import type { Decoration, ThemeArea, ThemeDefinition } from './types';
+
+export type { Decoration, ThemeArea, ThemeDefinition } from './types';
+
+/** Every available theme. "Champanhe" joins in Phase 6. */
+export const THEMES = {
+  'praia-rosa': praiaRosa,
+} as const satisfies Record<string, ThemeDefinition>;
+
+export type ThemeId = keyof typeof THEMES;
+
+export const DEFAULT_THEME_ID: ThemeId = 'praia-rosa';
+
+export function isThemeId(value: unknown): value is ThemeId {
+  return typeof value === 'string' && Object.hasOwn(THEMES, value);
+}
+
+/** The theme for `Event.themeId`; unknown IDs fall back to the default theme. */
+export function getTheme(id: string | null | undefined): ThemeDefinition {
+  return THEMES[isThemeId(id) ? id : DEFAULT_THEME_ID];
+}
+
+export function decorationsFor(theme: ThemeDefinition, area: ThemeArea): readonly Decoration[] {
+  return theme.decorations[area] ?? theme.decorations.default;
+}
+
+/**
+ * The CSS variables a theme root sets. Tailwind's theme tokens (app/globals.css) read them, so
+ * `text-script`, `bg-accent`, `font-caps`… follow the theme and the couple's overrides.
+ */
+export function themeCssVariables(
+  theme: ThemeDefinition,
+  overrides: ThemeOverrides = {},
+): CSSProperties {
+  const colors = { ...theme.colors, ...overrides.colors };
+  return {
+    '--theme-background': colors.background,
+    '--theme-ink': colors.ink,
+    '--theme-muted': colors.muted,
+    '--theme-script': colors.script,
+    '--theme-accent': colors.accent,
+    '--theme-accent-contrast': colors.accentContrast,
+    '--theme-line': colors.line,
+    '--theme-font-script': theme.fonts.script,
+    '--theme-font-caps': theme.fonts.caps,
+    '--theme-font-body': theme.fonts.body,
+    '--theme-texture': theme.texture ? `url("${theme.texture.src}")` : 'none',
+  } as CSSProperties;
+}

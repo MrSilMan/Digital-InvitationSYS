@@ -15,7 +15,7 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 | ----- | --------------------------------------------------------------------------------- | ------- |
 | 1     | Foundation: Next.js, tooling, env validation, logging, Sentry, Docker dev, health | Done    |
 | 2     | Database: Prisma schema, migrations, seed                                         | Done    |
-| 3     | Design system, fonts, i18n, themes                                                | Planned |
+| 3     | Design system, fonts, i18n, themes                                                | Done    |
 | 4     | Invitation pages ("Praia Rosa")                                                   | Planned |
 | 5     | RSVP, Redis cache, rate limiting, view tracking                                   | Planned |
 | 6     | "Champanhe" theme                                                                 | Planned |
@@ -29,8 +29,9 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 
 Next.js 16.3 (App Router, Turbopack, React 19.3) · TypeScript 6.0 (strict) · Tailwind CSS 4.3 ·
 Zod 4 · Winston 3 · Sentry 11 · PostgreSQL 18 with Prisma 7.10 · Better Auth 1.7 (tables and
-password hashing so far) · Redis 8 (ioredis 6) · Vitest 5 · Node.js 24 LTS.
-Coming in later phases: BullMQ, sharp, Motion, Playwright.
+password hashing so far) · Redis 8 (ioredis 6) · Tabler Icons 3 · Vitest 5 · Node.js 24 LTS.
+Tooling: sharp (placeholder artwork), Playwright (screenshots; end-to-end tests later).
+Coming in later phases: BullMQ, Motion.
 
 Every package is on its latest stable release except where a newer major is blocked:
 
@@ -121,37 +122,44 @@ one image can be promoted from staging to production. `.env.example` documents e
 
 ## Scripts
 
-| Command                    | What it does                                                       |
-| -------------------------- | ------------------------------------------------------------------ |
-| `npm run dev`              | Development server (Turbopack)                                     |
-| `npm run build`            | Production build (standalone output) + observability preload       |
-| `npm start`                | Runs the production build locally, the way the Docker image does   |
-| `npm run lint`             | ESLint (zero warnings allowed)                                     |
-| `npm run typecheck`        | Generates route types, then `tsc --noEmit`                         |
-| `npm run format`           | Prettier (also sorts Tailwind classes)                             |
-| `npm test`                 | Vitest unit tests (fast, no services needed)                       |
-| `npm run test:integration` | Integration tests against Postgres (needs `docker compose up`)     |
-| `npm run check`            | Format check, lint, type-check and unit tests                      |
-| `npm run db:migrate`       | Create and apply a migration after editing the schema (dev)        |
-| `npm run db:deploy`        | Apply pending migrations (CI, staging, production)                 |
-| `npm run db:seed`          | Load or refresh the demo data (never in production)                |
-| `npm run db:reset`         | Wipe the dev database, re-apply migrations, seed (asks to confirm) |
-| `npm run db:generate`      | Regenerate the Prisma client (`npm install` does it too)           |
-| `npm run db:studio`        | Prisma Studio, a browser UI for the data                           |
+| Command                       | What it does                                                       |
+| ----------------------------- | ------------------------------------------------------------------ |
+| `npm run dev`                 | Development server (Turbopack)                                     |
+| `npm run build`               | Production build (standalone output) + observability preload       |
+| `npm start`                   | Runs the production build locally, the way the Docker image does   |
+| `npm run lint`                | ESLint (zero warnings allowed)                                     |
+| `npm run typecheck`           | Generates route types, then `tsc --noEmit`                         |
+| `npm run format`              | Prettier (also sorts Tailwind classes)                             |
+| `npm test`                    | Vitest unit tests (fast, no services needed)                       |
+| `npm run test:integration`    | Integration tests against Postgres (needs `docker compose up`)     |
+| `npm run check`               | Format check, lint, type-check and unit tests                      |
+| `npm run db:migrate`          | Create and apply a migration after editing the schema (dev)        |
+| `npm run db:deploy`           | Apply pending migrations (CI, staging, production)                 |
+| `npm run db:seed`             | Load or refresh the demo data (never in production)                |
+| `npm run db:reset`            | Wipe the dev database, re-apply migrations, seed (asks to confirm) |
+| `npm run db:generate`         | Regenerate the Prisma client (`npm install` does it too)           |
+| `npm run db:studio`           | Prisma Studio, a browser UI for the data                           |
+| `npm run themes:placeholders` | Draw missing placeholder theme artwork (see "Themes")              |
 
 ## Architecture
 
 ```
 app/                    Routes (App Router): (public), api/health; dashboard, admin and c/[eventSlug]/[guestToken] in later phases
+app/(internal)/design/  Design preview page (/design; 404 in production)
 proxy.ts                Next.js 16 proxy (formerly middleware): request ID + nonce-based Content-Security-Policy
 instrumentation.ts      Server startup: environment check, request hooks, Sentry (server/edge), onRequestError
 instrumentation-client.ts  Sentry browser SDK
 sentry.*.config.ts      Sentry server/edge initialization
 scripts/preload.ts      Runs before the production server (see "Request IDs")
+scripts/                Also: placeholder artwork generator, screenshot helper (see "Themes")
 prisma/                 Schema, migrations, demo seed (prisma/seed/)
 prisma.config.ts        Prisma 7 configuration (database URL, seed command)
+public/themes/<id>/     Theme artwork (placeholders until the licensed artwork replaces them)
 src/env.ts              Zod-validated server environment; src/env.public.ts for browser values
-src/i18n/pt-AO.ts       Every user-facing string (Portuguese, Angola), including default invitation texts
+src/i18n/               pt-AO.ts: every user-facing string (Portuguese, Angola); date and plural formatting
+src/components/         Shared UI: invitation building blocks (ui/), icons, the theme root
+src/features/           Feature code by area (design-preview/ so far)
+src/themes/             Theme definitions (plain data), fonts, colour overrides, contrast maths
 src/lib/                Logger, redaction, request context, Sentry privacy, CSP, guest tokens, validation
 src/server/             Server-only code: Prisma client, Redis client, health checks
 src/generated/prisma    Generated Prisma client (not committed)
@@ -269,13 +277,107 @@ No Session Replay or feedback widget, to keep the JavaScript light on low-end ph
 
 Failure details are logged, never returned.
 
+## Themes
+
+An invitation's look is its **theme** (`Event.themeId`) plus the couple's colour **overrides**
+(`Event.themeOverrides`). "Praia Rosa" is available now; "Champanhe" arrives in Phase 6.
+
+- **A theme is plain data** ([src/themes/praia-rosa.ts](src/themes/praia-rosa.ts)): colours, font
+  variables, artwork files with their sizes, decorations per section, the hero illustration and the
+  button shape. It imports no React or `next/font` code, so server code and tests can use it.
+- **`ThemeRoot`** ([src/components/theme/theme-root.tsx](src/components/theme/theme-root.tsx))
+  applies a theme: it sets the `--theme-*` CSS variables, attaches the fonts and the paper texture,
+  and makes the invitation a size container.
+- **Tailwind tokens** in [app/globals.css](app/globals.css) read those variables. Components use
+  `text-script`, `bg-accent`, `text-ink`, `text-muted`, `font-script`, `font-caps`, `font-body`…
+  and never hard-code theme colours, so overrides need no component changes.
+- **Container units:** invitation text is sized in `cqi` (a share of the invitation's own width),
+  not `vw`, so it scales the same on a phone and in the dashboard's phone-frame preview.
+- **Overrides** ([src/themes/overrides.ts](src/themes/overrides.ts)): `#RRGGBB` values for
+  background, ink, script and accent only; anything else discards the overrides as a whole.
+- **Contrast:** unit tests check every theme against WCAG AA: body text 4.5:1, script (large text
+  only) 3:1, button labels 4.5:1, buttons, icons and lines 3:1. That is why the Praia Rosa pink and
+  olive are a touch deeper than in the reference.
+
+### Fonts
+
+Self-hosted with `next/font` (the guest's phone never contacts Google; only the weights in use are
+downloaded), declared in [src/themes/fonts.ts](src/themes/fonts.ts). They were chosen side by side
+with the reference on `/design`:
+
+| Role                                        | Font         | Why                                                      |
+| ------------------------------------------- | ------------ | -------------------------------------------------------- |
+| Script titles and the couple's names        | Ephesis      | Thin, relaxed brush-pen script, closest to the reference |
+| Small caps ("Com a benção de Deus", titles) | Cormorant SC | True small caps, elegant at small sizes                  |
+| Body text (message, rules, timeline)        | EB Garamond  | Sturdy serif, readable on small screens                  |
+| Buttons                                     | System sans  | Clean labels like the reference, nothing to download     |
+
+Numbers use lining figures everywhere; the serif fonts default to old-style figures.
+
+### Components and icons
+
+[src/components/ui/](src/components/ui/) holds the invitation building blocks: `SectionTitle`
+(script word over a small-caps subtitle), `PillButton` (link or button; external links open in a
+new tab without a referrer), `Monogram`, `DottedNameLine` (the guest's name), `DateLine` (Luanda
+time with a machine-readable `<time>`), `InfoBox`, `QuoteBox`, `CornerDecorations` and
+`SerpentineTimeline` (rows of 3, rows of 2 below 340 px; the list stays in chronological order for
+screen readers).
+
+Icons ([src/components/icons/](src/components/icons/)) are Tabler icons plus four custom line icons
+(wedding dress, bride and groom, bouquet, dancing couple), rendered as plain SVG on the server.
+**Icon keys are stored in the database** (timeline items, guest rules): add keys freely, never
+rename one.
+
+### Artwork
+
+The files in `public/themes/praia-rosa/` are **placeholders** in the positions and style of the
+reference, drawn by `npm run themes:placeholders`. Licensed artwork replaces them file for file:
+
+| File                     | Pixels    | Where                                               | Requirements                                                             |
+| ------------------------ | --------- | --------------------------------------------------- | ------------------------------------------------------------------------ |
+| `background.webp`        | 1080×1920 | Paper texture behind every section                  | Opaque. Repeats vertically at full width: top and bottom edges must join |
+| `floral-corner.webp`     | 640×640   | Section corners                                     | Transparent. Drawn for the **top-left** corner; other corners mirror it  |
+| `floral-corner-alt.webp` | 640×640   | A second corner arrangement                         | Same as above                                                            |
+| `floral-garland.webp`    | 1080×440  | Top of the message section (mirrored at the bottom) | Transparent. Drawn for the top edge, flowers along the top-left          |
+| `hero-beach.webp`        | 1080×900  | Bottom of the invitation card and Save the Date     | Transparent at the top, so the paper shows through above the scene       |
+
+To replace a file, export the artwork as WebP (about quality 80, with alpha where transparent)
+under the same name. If its size or aspect ratio changes, update `width` and `height` in
+[src/themes/praia-rosa.ts](src/themes/praia-rosa.ts); the decorations' positions, widths and
+offsets per section are in the same file. `npm run themes:placeholders` never overwrites an
+existing file unless run with `-- --force`.
+
+### Adding a theme
+
+1. Create `src/themes/<id>.ts` with a `ThemeDefinition` and add it to `THEMES` in
+   [src/themes/index.ts](src/themes/index.ts).
+2. Declare its fonts in [src/themes/fonts.ts](src/themes/fonts.ts) (TypeScript requires an entry
+   for every theme).
+3. Put its artwork in `public/themes/<id>/`.
+4. Run `npm test` (the contrast and artwork checks cover every theme) and review
+   `/design?theme=<id>`.
+
+### Previewing
+
+`/design` (not available in production) shows the font candidates, the palette with contrast
+ratios, every shared component on a phone-width invitation, the narrow timeline, the date formats
+and all icons. For visual checks from the command line:
+
+```bash
+node scripts/screenshot.mjs http://localhost:3000/design shots "--selector=[data-theme] > section"
+```
+
+It saves one PNG per matching element, at phone size by default (`--width`, `--height`, `--scale`
+and `--full` change that).
+
 ## Testing and CI
 
 Vitest runs two projects:
 
-- `npm test` — unit tests next to the code (`*.test.ts`), including one that serves real HTTP
-  requests through the request hooks. No services needed.
-- `npm run test:integration` — `tests/integration/*.int.test.ts` against a real Postgres: the
+- `npm test`: unit tests next to the code (`*.test.ts`, `*.test.tsx`), including theme contrast
+  checks, shared components rendered to HTML with `react-dom/server`, and one test that serves real
+  HTTP requests through the request hooks. No services needed.
+- `npm run test:integration`: `tests/integration/*.int.test.ts` against a real Postgres: the
   migrations, the demo seed (twice), guest lookup by token, the integrity rules and the delete
   behaviour. It uses the `convites_test` database on the Docker Postgres (`TEST_DATABASE_URL` to
   change it), applies migrations with `prisma migrate deploy` and empties it before each run; it

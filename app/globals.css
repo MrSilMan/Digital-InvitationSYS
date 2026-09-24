@@ -1,18 +1,31 @@
 @import 'tailwindcss';
 
 /*
- * Base design tokens, exposed as CSS variables by Tailwind's @theme.
- * Phase 3 replaces these placeholders with the real design system and per-theme overrides.
+ * Design tokens. Colours and fonts read the `--theme-*` variables that a theme root sets
+ * (src/themes → themeCssVariables), so `text-script`, `bg-accent`, `font-caps`… follow the theme
+ * and each couple's overrides at runtime. Outside a theme root (app pages) the fallbacks apply.
+ * `inline` makes utilities reference the variables directly instead of resolving them on :root.
  */
-@theme {
-  --color-paper: #f7fafc;
-  --color-ink: #1f2a37;
-  --color-muted: #5b6573;
-  --color-accent: #857d45;
-  --color-accent-contrast: #ffffff;
+@theme inline {
+  --color-paper: var(--theme-background, #f7fafc);
+  --color-ink: var(--theme-ink, #1d2433);
+  --color-muted: var(--theme-muted, #4a5566);
+  --color-script: var(--theme-script, #d95c91);
+  --color-accent: var(--theme-accent, #7b7440);
+  --color-accent-contrast: var(--theme-accent-contrast, #ffffff);
+  --color-line: var(--theme-line, #2b3446);
 
+  --font-script: var(--theme-font-script, cursive);
+  --font-caps: var(--theme-font-caps, ui-serif, Georgia, serif);
+  --font-body: var(--theme-font-body, ui-serif, Georgia, serif);
+}
+
+@theme {
   --font-sans: ui-sans-serif, system-ui, sans-serif;
   --font-serif: ui-serif, Georgia, 'Times New Roman', serif;
+  /* Button labels: the reference uses a clean sans; the system font costs no download. */
+  --font-button:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
 
 @layer base {
@@ -29,4 +42,18 @@
     outline: 2px solid var(--color-accent);
     outline-offset: 3px;
   }
+}
+
+/*
+ * Watercolour paper texture of a theme root, repeated vertically under every section.
+ * Lining figures everywhere: the theme fonts default to old-style ones ("16h00" reads "16hoo").
+ */
+@utility theme-surface {
+  background-color: var(--color-paper);
+  background-image: var(--theme-texture, none);
+  background-repeat: repeat-y;
+  background-size: 100% auto;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-variant-numeric: lining-nums;
 }
