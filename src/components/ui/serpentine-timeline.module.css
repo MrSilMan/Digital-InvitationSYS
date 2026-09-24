@@ -14,7 +14,7 @@
 
   position: relative;
   container-type: inline-size;
-  color: var(--color-line);
+  color: var(--theme-line);
 }
 
 .line {
@@ -56,7 +56,7 @@
   width: 3.2rem;
   height: 3.2rem;
   translate: -50% 0;
-  color: var(--color-accent);
+  color: var(--theme-accent);
 }
 
 .dot {
@@ -67,7 +67,7 @@
   height: var(--dot-size);
   translate: -50% 0;
   border-radius: 9999px;
-  background: var(--color-accent);
+  background: var(--theme-accent);
 }
 
 .label {
@@ -75,8 +75,8 @@
   top: calc(var(--dot-y) + var(--dot-size) / 2 + 0.8rem);
   inset-inline: 9%;
   margin: 0;
-  color: var(--color-ink);
-  font-family: var(--font-body);
+  color: var(--theme-ink);
+  font-family: var(--theme-font-body);
   font-size: 1rem;
   font-weight: 500;
   line-height: 1.2;

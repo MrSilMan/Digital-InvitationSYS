@@ -1,0 +1,106 @@
+/*
+ * Coverflow gallery (reference "6 de 14"): the active photo large in the centre, its neighbours
+ * smaller and partly visible on each side. Slides are 62% of the carousel wide (SLIDE_WIDTH in
+ * gallery-carousel.tsx); the coverflow transforms are set by the component while swiping.
+ */
+.viewport {
+  width: 100%;
+  overflow: hidden;
+  padding-block: 1.25rem 1.75rem;
+}
+
+.container {
+  display: flex;
+  touch-action: pan-y pinch-zoom;
+}
+
+.slide {
+  position: relative;
+  flex: 0 0 62%;
+  min-width: 0;
+}
+
+.frame {
+  display: block;
+  width: 100%;
+  padding: 0.45rem;
+  border: 0;
+  background: #fff;
+  box-shadow: 0 18px 30px -18px rgb(0 0 0 / 0.6);
+  cursor: pointer;
+  transform-origin: center;
+}
+
+.frame:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 4px;
+}
+
+.photo {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--theme-background) 70%, #fff);
+}
+
+/* Lightbox: a full-screen native <dialog>. */
+.lightbox {
+  width: 100vw;
+  max-width: none;
+  height: 100svh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgb(12 14 20 / 0.95);
+  color: #fff;
+}
+
+.lightbox::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+
+.lightboxViewport {
+  height: 100%;
+  overflow: hidden;
+}
+
+.lightboxContainer {
+  display: flex;
+  height: 100%;
+  touch-action: pan-y pinch-zoom;
+}
+
+.lightboxSlide {
+  position: relative;
+  flex: 0 0 100%;
+  min-width: 0;
+  height: 100%;
+}
+
+.lightboxPhoto {
+  position: absolute;
+  inset: 4.5rem 0.75rem;
+}
+
+.lightboxButton {
+  position: absolute;
+  display: inline-flex;
+  width: 3rem;
+  height: 3rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.12);
+  color: #fff;
+}
+
+.lightboxButton:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.lightboxButton:disabled {
+  opacity: 0.35;
+}

@@ -2,9 +2,9 @@ import type { CSSProperties } from 'react';
 
 import type { ThemeOverrides } from './overrides';
 import { praiaRosa } from './praia-rosa';
-import type { Decoration, ThemeArea, ThemeDefinition } from './types';
+import type { Decoration, ThemeArea, ThemeColors, ThemeDefinition } from './types';
 
-export type { Decoration, ThemeArea, ThemeDefinition } from './types';
+export type { Decoration, ThemeArea, ThemeColors, ThemeDefinition } from './types';
 
 /** Every available theme. "Champanhe" joins in Phase 6. */
 export const THEMES = {
@@ -28,6 +28,14 @@ export function decorationsFor(theme: ThemeDefinition, area: ThemeArea): readonl
   return theme.decorations[area] ?? theme.decorations.default;
 }
 
+/** The theme's colours with the couple's overrides applied. */
+export function resolveThemeColors(
+  theme: ThemeDefinition,
+  overrides: ThemeOverrides = {},
+): ThemeColors {
+  return { ...theme.colors, ...overrides.colors };
+}
+
 /**
  * The CSS variables a theme root sets. Tailwind's theme tokens (app/globals.css) read them, so
  * `text-script`, `bg-accent`, `font-caps`… follow the theme and the couple's overrides.
@@ -36,7 +44,7 @@ export function themeCssVariables(
   theme: ThemeDefinition,
   overrides: ThemeOverrides = {},
 ): CSSProperties {
-  const colors = { ...theme.colors, ...overrides.colors };
+  const colors = resolveThemeColors(theme, overrides);
   return {
     '--theme-background': colors.background,
     '--theme-ink': colors.ink,
@@ -45,6 +53,10 @@ export function themeCssVariables(
     '--theme-accent': colors.accent,
     '--theme-accent-contrast': colors.accentContrast,
     '--theme-line': colors.line,
+    '--theme-envelope-paper': theme.envelope.paper,
+    '--theme-envelope-shade': theme.envelope.shade,
+    '--theme-seal': theme.envelope.seal,
+    '--theme-seal-ink': theme.envelope.sealInk,
     '--theme-font-script': theme.fonts.script,
     '--theme-font-caps': theme.fonts.caps,
     '--theme-font-body': theme.fonts.body,

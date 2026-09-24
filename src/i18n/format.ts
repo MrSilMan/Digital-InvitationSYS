@@ -75,6 +75,12 @@ export function formatLongDate(date: Date): string {
   return `${weekday}, ${day} de ${month} de ${year}`;
 }
 
+/** "31 de dezembro de 2026" */
+export function formatDate(date: Date): string {
+  const { day, month, year } = dateParts(date);
+  return `${day} de ${month} de ${year}`;
+}
+
 /** ISO 8601 with the Luanda offset, for `<time dateTime>`: "2027-01-15T16:00+01:00". */
 export function toLuandaIso(date: Date): string {
   const {

@@ -39,21 +39,35 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--theme-accent, #7b7440);
     outline-offset: 3px;
+  }
+
+  /* Invitation pages: gentle snapping to each full-screen section, never trapping taller ones. */
+  html:has(.invitation-root) {
+    scroll-snap-type: y proximity;
+  }
+
+  /* The envelope was already opened in this tab (src/features/invitation/opening). */
+  html[data-convite-aberto] [data-opening-screen] {
+    display: none;
   }
 }
 
 /*
  * Watercolour paper texture of a theme root, repeated vertically under every section.
  * Lining figures everywhere: the theme fonts default to old-style ones ("16h00" reads "16hoo").
+ *
+ * Plain CSS (here and in CSS modules) must read the `--theme-*` variables, never `--color-*` or
+ * `--font-*`: those are defined on :root, where the theme's variables do not exist yet, so they
+ * always resolve to the fallbacks. Tailwind utilities are fine (`inline` theme above).
  */
 @utility theme-surface {
-  background-color: var(--color-paper);
+  background-color: var(--theme-background, #f7fafc);
   background-image: var(--theme-texture, none);
   background-repeat: repeat-y;
   background-size: 100% auto;
-  color: var(--color-ink);
-  font-family: var(--font-body);
+  color: var(--theme-ink, #1d2433);
+  font-family: var(--theme-font-body, ui-serif, Georgia, serif);
   font-variant-numeric: lining-nums;
 }

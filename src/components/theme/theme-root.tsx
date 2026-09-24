@@ -8,6 +8,8 @@ import type { ThemeOverrides } from '@/themes/overrides';
 interface ThemeRootProps {
   theme: ThemeDefinition;
   overrides?: ThemeOverrides;
+  /** Make the root a size container (default). Turn off when a wrapper inside sets the width. */
+  container?: boolean;
   className?: string;
   children: ReactNode;
 }
@@ -18,11 +20,22 @@ interface ThemeRootProps {
  * It is also a size container: components size text with `cqi` units, so the invitation scales
  * with its own width (a phone screen, or the dashboard's phone-frame preview).
  */
-export function ThemeRoot({ theme, overrides, className, children }: ThemeRootProps) {
+export function ThemeRoot({
+  theme,
+  overrides,
+  container = true,
+  className,
+  children,
+}: ThemeRootProps) {
   return (
     <div
       data-theme={theme.id}
-      className={cn(themeFontClassName(theme.id), '@container theme-surface', className)}
+      className={cn(
+        themeFontClassName(theme.id),
+        container && '@container',
+        'theme-surface',
+        className,
+      )}
       style={themeCssVariables(theme, overrides)}
     >
       {children}

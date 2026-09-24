@@ -16,14 +16,19 @@ import {
   IconMapPinFilled,
   IconMoodSmile,
   IconMusic,
-  IconRings,
   IconUserPlus,
   IconUsersGroup,
   IconVolume,
   IconVolumeOff,
 } from '@tabler/icons-react';
 
-import { BouquetIcon, BrideGroomIcon, DancingCoupleIcon, WeddingDressIcon } from './custom';
+import {
+  BouquetIcon,
+  BrideGroomIcon,
+  DancingCoupleIcon,
+  WeddingDressIcon,
+  WeddingRingsIcon,
+} from './custom';
 
 /**
  * The invitation icon set, by key. Keys are stored in the database (timeline items, guest rules),
@@ -43,7 +48,7 @@ export const ICONS = {
   buffet: IconGlassChampagne,
   cake: IconCake,
   bouquet: BouquetIcon,
-  rings: IconRings,
+  rings: WeddingRingsIcon,
   camera: IconCamera,
   'map-pin': IconMapPinFilled,
   'check-circle': IconCircleCheckFilled,

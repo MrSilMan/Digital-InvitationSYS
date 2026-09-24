@@ -39,7 +39,13 @@ export default defineConfig({
           fileParallelism: false,
           testTimeout: 30_000,
           hookTimeout: 120_000,
-          env: { DATABASE_URL: testDatabaseUrl, APP_ENV: 'test', LOG_LEVEL: 'warn' },
+          env: {
+            DATABASE_URL: testDatabaseUrl,
+            // Required by the environment check (src/env.ts); these tests never connect to Redis.
+            REDIS_URL: 'redis://localhost:6379',
+            APP_ENV: 'test',
+            LOG_LEVEL: 'warn',
+          },
         },
       },
     ],

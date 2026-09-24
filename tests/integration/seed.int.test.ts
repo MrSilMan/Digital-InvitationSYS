@@ -2,7 +2,12 @@ import { verifyPassword } from 'better-auth/crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { seedDemo } from '../../prisma/seed/demo';
-import { DEMO_GUESTS, DEMO_USERS } from '../../prisma/seed/demo-data';
+import {
+  DEMO_GALLERY,
+  DEMO_GUESTS,
+  DEMO_SAVE_THE_DATE,
+  DEMO_USERS,
+} from '../../prisma/seed/demo-data';
 
 import { createTestPrisma, wipeDatabase } from './db';
 
@@ -18,7 +23,7 @@ afterAll(async () => {
 });
 
 async function counts() {
-  const [users, accounts, events, locations, timeline, rules, guests, rsvps, views] =
+  const [users, accounts, events, locations, timeline, rules, media, guests, rsvps, views] =
     await Promise.all([
       prisma.user.count(),
       prisma.account.count(),
@@ -26,11 +31,12 @@ async function counts() {
       prisma.eventLocation.count(),
       prisma.timelineItem.count(),
       prisma.guestRule.count(),
+      prisma.media.count(),
       prisma.guest.count(),
       prisma.rsvp.count(),
       prisma.invitationView.count(),
     ]);
-  return { users, accounts, events, locations, timeline, rules, guests, rsvps, views };
+  return { users, accounts, events, locations, timeline, rules, media, guests, rsvps, views };
 }
 
 describe('demo seed', () => {
@@ -44,11 +50,14 @@ describe('demo seed', () => {
     expect(afterFirst).toEqual({
       users: 2,
       accounts: 2,
-      events: 1,
+      // The wedding, and the same wedding in the Save the Date phase.
+      events: 2,
       locations: 2,
       timeline: 7,
       rules: 8,
-      guests: DEMO_GUESTS.length,
+      // Gallery and music for the wedding; music for the Save the Date.
+      media: DEMO_GALLERY.length + 2,
+      guests: DEMO_GUESTS.length + DEMO_SAVE_THE_DATE.guests.length,
       rsvps: DEMO_GUESTS.filter((guest) => guest.rsvp).length,
       views: DEMO_GUESTS.reduce((total, guest) => total + guest.views.length, 0),
     });

@@ -48,6 +48,12 @@ async function main(): Promise<void> {
         `    ${guest.displayName.padEnd(width)}  ${appUrl}/c/${result.slug}/${guest.token}`,
       );
     }
+    console.log('  Save the Date links (same wedding, earlier phase):');
+    for (const guest of result.saveTheDate.guests) {
+      console.log(
+        `    ${guest.displayName.padEnd(width)}  ${appUrl}/c/${result.saveTheDate.slug}/${guest.token}`,
+      );
+    }
     console.log('');
   } finally {
     await prisma.$disconnect();

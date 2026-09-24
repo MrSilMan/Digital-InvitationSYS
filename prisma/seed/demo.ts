@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { stat } from 'node:fs/promises';
+import path from 'node:path';
 
 import { hashPassword } from 'better-auth/crypto';
 
@@ -11,8 +13,11 @@ import type { AppPrismaClient } from '@/server/db/client';
 
 import {
   DEMO_EVENT,
+  DEMO_GALLERY,
   DEMO_GUESTS,
   DEMO_LOCATIONS,
+  DEMO_MUSIC,
+  DEMO_SAVE_THE_DATE,
   DEMO_TIMELINE,
   DEMO_USERS,
   type DemoGuest,
@@ -30,6 +35,16 @@ export interface SeedDemoResult {
   slug: string;
   users: { email: string; role: string }[];
   guests: { displayName: string; token: string }[];
+  saveTheDate: { slug: string; guests: { displayName: string; token: string }[] };
+}
+
+/** Size of a file shipped in /public (the demo media), for the Media rows. */
+async function publicFileSize(key: string): Promise<number> {
+  try {
+    return (await stat(path.join(process.cwd(), 'public', key))).size;
+  } catch {
+    throw new Error(`Missing demo file public/${key}: run \`npm run demo:media\`.`);
+  }
 }
 
 /**
@@ -42,10 +57,19 @@ export async function seedDemo(
 ): Promise<SeedDemoResult> {
   // Same hashing as Better Auth's email + password sign-in (scrypt), done before the
   // transaction because it is deliberately slow.
-  const [coupleHash, adminHash] = await Promise.all([
+  const [coupleHash, adminHash, gallerySizes, musicSize] = await Promise.all([
     hashPassword(options.couplePassword),
     hashPassword(options.adminPassword),
+    Promise.all(DEMO_GALLERY.map((photo) => publicFileSize(photo.key))),
+    publicFileSize(DEMO_MUSIC.key),
   ]);
+  const musicRow = {
+    type: 'MUSIC',
+    status: 'READY',
+    originalKey: DEMO_MUSIC.key,
+    mimeType: DEMO_MUSIC.mimeType,
+    sizeBytes: musicSize,
+  } as const;
 
   return prisma.$transaction(
     async (tx) => {
@@ -112,17 +136,72 @@ export async function seedDemo(
         })),
       });
 
+      await tx.media.deleteMany({ where: { eventId: event.id } });
+      await tx.media.createMany({
+        data: [
+          ...DEMO_GALLERY.map((photo, position) => ({
+            eventId: event.id,
+            type: 'GALLERY' as const,
+            status: 'READY' as const,
+            originalKey: photo.key,
+            mimeType: photo.mimeType,
+            sizeBytes: gallerySizes[position] ?? 0,
+            width: photo.width,
+            height: photo.height,
+            position,
+          })),
+          { ...musicRow, eventId: event.id },
+        ],
+      });
+
       // Guests removed from the demo list disappear (with their RSVPs and views).
       await tx.guest.deleteMany({
         where: { eventId: event.id, token: { notIn: DEMO_GUESTS.map((guest) => guest.token) } },
       });
       for (const guest of DEMO_GUESTS) await upsertGuest(tx, event.id, guest);
 
+      // The same wedding before the invitation phase: only the Save the Date page.
+      const saveTheDateData = {
+        ...eventData,
+        phase: 'SAVE_THE_DATE',
+        rsvpMode: 'WHATSAPP',
+        sectionConfig: DEFAULT_SECTION_CONFIG.map((section) => ({ ...section })),
+      } as const;
+      const saveTheDate = await tx.event.upsert({
+        where: { slug: DEMO_SAVE_THE_DATE.slug },
+        create: { slug: DEMO_SAVE_THE_DATE.slug, ...saveTheDateData },
+        update: saveTheDateData,
+      });
+      await tx.media.deleteMany({ where: { eventId: saveTheDate.id } });
+      await tx.media.create({ data: { ...musicRow, eventId: saveTheDate.id } });
+      await tx.guest.deleteMany({
+        where: {
+          eventId: saveTheDate.id,
+          token: { notIn: DEMO_SAVE_THE_DATE.guests.map((guest) => guest.token) },
+        },
+      });
+      for (const guest of DEMO_SAVE_THE_DATE.guests) {
+        await upsertGuest(tx, saveTheDate.id, {
+          ...guest,
+          phone: null,
+          groupTag: 'Save the Date',
+          views: [],
+          rsvp: null,
+        });
+      }
+
       return {
         eventId: event.id,
         slug: event.slug,
         users: [DEMO_USERS.couple, DEMO_USERS.admin].map(({ email, role }) => ({ email, role })),
         guests: DEMO_GUESTS.map(({ displayName, token }) => ({ displayName, token })),
+        saveTheDate: {
+          slug: saveTheDate.slug,
+          guests: DEMO_SAVE_THE_DATE.guests.map(({ displayName, token }) => ({
+            displayName,
+            token,
+          })),
+        },
       };
     },
     { timeout: 30_000 },

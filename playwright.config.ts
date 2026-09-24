@@ -1,0 +1,32 @@
+import { defineConfig, devices } from '@playwright/test';
+
+/**
+ * End-to-end tests (tests/e2e) in a phone-sized Chromium, against the demo data:
+ * `docker compose up -d`, `npm run db:seed`, then `npm run test:e2e`.
+ * Starts `next dev` on port 3100 unless E2E_BASE_URL points at a running app (e.g. the production
+ * build in CI, Phase 10).
+ */
+const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:3100';
+
+export default defineConfig({
+  testDir: 'tests/e2e',
+  fullyParallel: true,
+  forbidOnly: Boolean(process.env.CI),
+  retries: process.env.CI ? 1 : 0,
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  use: {
+    baseURL,
+    trace: 'retain-on-failure',
+    locale: 'pt-AO',
+    timezoneId: 'Africa/Luanda',
+  },
+  projects: [{ name: 'phone', use: { ...devices['Pixel 7'] } }],
+  webServer: process.env.E2E_BASE_URL
+    ? undefined
+    : {
+        command: 'npm run dev -- --port 3100',
+        url: `${baseURL}/api/health`,
+        reuseExistingServer: !process.env.CI,
+        timeout: 180_000,
+      },
+});

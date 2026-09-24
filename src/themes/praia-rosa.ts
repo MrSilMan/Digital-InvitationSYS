@@ -21,6 +21,7 @@ export const praiaRosa: ThemeDefinition = {
     accentContrast: '#ffffff',
     line: '#2b3446',
   },
+  envelope: { paper: '#fbf8f3', shade: '#ded3c4', seal: '#b23a61', sealInk: '#f6d5df' },
   fonts: {
     script: 'var(--font-theme-script)',
     caps: 'var(--font-theme-caps)',

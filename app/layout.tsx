@@ -23,7 +23,9 @@ export default async function RootLayout({ children }: LayoutProps<'/'>) {
   const requestId = (await headers()).get(REQUEST_ID_HEADER) ?? undefined;
 
   return (
-    <html lang={DEFAULT_LOCALE} data-request-id={requestId}>
+    // suppressHydrationWarning: invitation pages set an attribute on <html> from an inline script
+    // before React hydrates (src/features/invitation/opening/opening-boot-script.tsx).
+    <html lang={DEFAULT_LOCALE} data-request-id={requestId} suppressHydrationWarning>
       <body className="min-h-svh antialiased">{children}</body>
     </html>
   );

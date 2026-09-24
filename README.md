@@ -16,7 +16,7 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 | 1     | Foundation: Next.js, tooling, env validation, logging, Sentry, Docker dev, health | Done    |
 | 2     | Database: Prisma schema, migrations, seed                                         | Done    |
 | 3     | Design system, fonts, i18n, themes                                                | Done    |
-| 4     | Invitation pages ("Praia Rosa")                                                   | Planned |
+| 4     | Invitation pages ("Praia Rosa")                                                   | Done    |
 | 5     | RSVP, Redis cache, rate limiting, view tracking                                   | Planned |
 | 6     | "Champanhe" theme                                                                 | Planned |
 | 7     | Auth, couple dashboard, uploads, BullMQ worker                                    | Planned |
@@ -29,9 +29,9 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 
 Next.js 16.3 (App Router, Turbopack, React 19.3) · TypeScript 6.0 (strict) · Tailwind CSS 4.3 ·
 Zod 4 · Winston 3 · Sentry 11 · PostgreSQL 18 with Prisma 7.10 · Better Auth 1.7 (tables and
-password hashing so far) · Redis 8 (ioredis 6) · Tabler Icons 3 · Vitest 5 · Node.js 24 LTS.
-Tooling: sharp (placeholder artwork), Playwright (screenshots; end-to-end tests later).
-Coming in later phases: BullMQ, Motion.
+password hashing so far) · Redis 8 (ioredis 6) · Tabler Icons 3 · Motion 13 · Embla Carousel 8 ·
+sharp 0.35 (preview images; image processing later) · Vitest 5 · Playwright · Node.js 24 LTS.
+Coming in later phases: BullMQ.
 
 Every package is on its latest stable release except where a newer major is blocked:
 
@@ -55,7 +55,8 @@ npm run db:seed                   # demo event, guests and logins (see "Database
 npm run dev                       # http://localhost:3000
 ```
 
-Check the stack with `curl http://localhost:3000/api/health`.
+Check the stack with `curl http://localhost:3000/api/health`, then open a demo invitation (the seed
+prints every link), e.g. http://localhost:3000/c/braulio-e-nanda/demo-familia-silva-001.
 
 To run the dev server in a container as well (hot reload through a bind mount):
 
@@ -132,6 +133,7 @@ one image can be promoted from staging to production. `.env.example` documents e
 | `npm run format`              | Prettier (also sorts Tailwind classes)                             |
 | `npm test`                    | Vitest unit tests (fast, no services needed)                       |
 | `npm run test:integration`    | Integration tests against Postgres (needs `docker compose up`)     |
+| `npm run test:e2e`            | Playwright end-to-end tests in a phone-sized Chromium (seeded DB)  |
 | `npm run check`               | Format check, lint, type-check and unit tests                      |
 | `npm run db:migrate`          | Create and apply a migration after editing the schema (dev)        |
 | `npm run db:deploy`           | Apply pending migrations (CI, staging, production)                 |
@@ -140,12 +142,15 @@ one image can be promoted from staging to production. `.env.example` documents e
 | `npm run db:generate`         | Regenerate the Prisma client (`npm install` does it too)           |
 | `npm run db:studio`           | Prisma Studio, a browser UI for the data                           |
 | `npm run themes:placeholders` | Draw missing placeholder theme artwork (see "Themes")              |
+| `npm run demo:media`          | Draw missing demo photos and music in `public/demo/`               |
 
 ## Architecture
 
 ```
-app/                    Routes (App Router): (public), api/health; dashboard, admin and c/[eventSlug]/[guestToken] in later phases
+app/                    Routes (App Router): (public), api/health; dashboard and admin in later phases
+app/c/[eventSlug]/[guestToken]/  Guest invitation, its WhatsApp preview image and calendar file
 app/(internal)/design/  Design preview page (/design; 404 in production)
+assets/fonts/           Theme fonts as WOFF files for the generated preview image (OFL)
 proxy.ts                Next.js 16 proxy (formerly middleware): request ID + nonce-based Content-Security-Policy
 instrumentation.ts      Server startup: environment check, request hooks, Sentry (server/edge), onRequestError
 instrumentation-client.ts  Sentry browser SDK
@@ -155,16 +160,18 @@ scripts/                Also: placeholder artwork generator, screenshot helper (
 prisma/                 Schema, migrations, demo seed (prisma/seed/)
 prisma.config.ts        Prisma 7 configuration (database URL, seed command)
 public/themes/<id>/     Theme artwork (placeholders until the licensed artwork replaces them)
+public/demo/            Demo event media: placeholder photos and music (npm run demo:media)
 src/env.ts              Zod-validated server environment; src/env.public.ts for browser values
 src/i18n/               pt-AO.ts: every user-facing string (Portuguese, Angola); date and plural formatting
 src/components/         Shared UI: invitation building blocks (ui/), icons, the theme root
-src/features/           Feature code by area (design-preview/ so far)
+src/features/           Feature code by area: invitation/ (guest pages), design-preview/
 src/themes/             Theme definitions (plain data), fonts, colour overrides, contrast maths
 src/lib/                Logger, redaction, request context, Sentry privacy, CSP, guest tokens, validation
-src/server/             Server-only code: Prisma client, Redis client, health checks
+src/server/             Server-only code: Prisma and Redis clients, health checks, invitation queries, media URLs
 src/generated/prisma    Generated Prisma client (not committed)
 tests/unit/             Tests for root-level files (the rest live next to the code as *.test.ts)
 tests/integration/      Tests against a real Postgres (*.int.test.ts)
+tests/e2e/              Playwright end-to-end tests (*.spec.ts)
 ```
 
 ### Database
@@ -203,8 +210,10 @@ been applied anywhere; add a new one. CI fails if the schema changes without a m
 
 **Demo data** (`npm run db:seed`): the Braúlio & Nanda wedding in the "Praia Rosa" theme on Friday
 15 January 2027 (ceremony at Praia do Bispo at 16h00, copo-d'água at 20h00), the full timeline,
-the 8 default guest rules and 10 guests covering every RSVP state. The seed prints every guest's
-invitation link. Logins (usable from Phase 7):
+the 8 default guest rules, 6 placeholder gallery photos, a placeholder music loop and 10 guests
+covering every RSVP state; plus the same wedding in the Save the Date phase
+(`braulio-e-nanda-save-the-date`, 2 guests). The seed prints every guest's invitation link.
+Logins (usable from Phase 7):
 
 | Login                  | Default password   | Role     |
 | ---------------------- | ------------------ | -------- |
@@ -277,20 +286,73 @@ No Session Replay or feedback widget, to keep the JavaScript light on low-end ph
 
 Failure details are logged, never returned.
 
+## Guest invitation
+
+Every guest has a personal link, `/c/<eventSlug>/<guestToken>`
+([app/c/[eventSlug]/[guestToken]/page.tsx](app/c/[eventSlug]/[guestToken]/page.tsx)), rendered on
+the server in the event's theme.
+
+- **Data:** the link is checked with Zod first, so malformed or probing URLs never reach Postgres.
+  [src/server/invitations/queries.ts](src/server/invitations/queries.ts) then loads the event by
+  slug and the guest by token (two lookups, cached separately in Redis from Phase 5) and builds a
+  JSON-safe read model ([src/features/invitation/types.ts](src/features/invitation/types.ts)): this
+  event and this one guest's name and seats. Never other guests, guests' phone numbers or the
+  owner's account. Couple-provided values that reach HTML or CSS (links, colours, phone numbers)
+  are validated again there.
+- **Not found:** a malformed or unknown link, a guest of another event and an inactive event all
+  show the same "Convite não encontrado" page with a real 404 status. The route has no
+  `loading.tsx` on purpose: a streamed loading screen would turn that 404 into a 200.
+- **Opening screen:** an envelope addressed to the guest, sealed with the monogram. The tap opens it
+  (Motion's small WAAPI-based `useAnimate`, a plain fade with reduced motion) and starts the music,
+  which browsers only allow after a tap. A floating button then mutes and unmutes; music pauses
+  while the guest is in another app. The envelope shows once per browser tab (an inline script with
+  the CSP nonce hides it before the first paint on a reload), and without JavaScript the invitation
+  is simply readable.
+- **Phases:** in the Save the Date phase the guest sees only that page, whose "Confirmar presença"
+  opens the RSVP options in a dialog. In the invitation phase the sections follow the couple's order
+  and visibility (`Event.sectionConfig`), one full screen each with gentle scroll snap; optional
+  sections without content are skipped.
+- **Sections** ([src/features/invitation/sections/](src/features/invitation/sections/)): invitation
+  card, countdown (against the server's clock, so a phone with the wrong time still counts right),
+  message, gallery (Embla coverflow and a full-screen lightbox in a native `<dialog>`), schedule
+  (venues with Google Maps and Waze, serpentine timeline), dress code, guest manual, gifts (IBAN
+  with a copy button), RSVP and closing ("Adicionar ao calendário": an `.ics` file from
+  `calendario.ics/route.ts` and a Google Calendar link). RSVP shows the couple's two WhatsApp
+  buttons with a pre-filled message; the form, recording the taps and the deadline rules on the
+  server arrive in Phase 5.
+- **WhatsApp link preview:** `generateMetadata` sets the title ("Convite de Casamento – Braúlio &
+  Nanda"), the date and `noindex`; WhatsApp's crawler gets them in the `<head>` (Next.js serves
+  metadata blocking to it). The image, `opengraph-image.tsx`, is drawn with `next/og` in the theme's
+  style from the fonts in [assets/fonts/](assets/fonts/) and re-encoded as a JPEG of about 45 KB,
+  because WhatsApp skips large previews. It shows the event only, never the guest.
+- **Performance:** everything is server-rendered; the client pieces (envelope and music, countdown,
+  gallery, copy button, RSVP dialog) add about 25 KB of gzipped JavaScript to the shared
+  framework bundle (about 240 KB, mostly React, Next.js and the Sentry browser SDK). The first
+  screen's images are preloaded, the rest load lazily. Guest links send `Referrer-Policy:
+no-referrer` and `X-Robots-Tag: noindex`.
+
+**Demo media.** Until uploads exist (Phase 7), the demo event's gallery photos and music are
+placeholder files in `public/demo/` (`npm run demo:media`), referenced by `Media` rows with `demo/…`
+keys that [src/server/media/urls.ts](src/server/media/urls.ts) maps to `/demo/…`. The music is a
+synthesized loop: use licensed music for anything real.
+
 ## Themes
 
 An invitation's look is its **theme** (`Event.themeId`) plus the couple's colour **overrides**
 (`Event.themeOverrides`). "Praia Rosa" is available now; "Champanhe" arrives in Phase 6.
 
-- **A theme is plain data** ([src/themes/praia-rosa.ts](src/themes/praia-rosa.ts)): colours, font
-  variables, artwork files with their sizes, decorations per section, the hero illustration and the
-  button shape. It imports no React or `next/font` code, so server code and tests can use it.
+- **A theme is plain data** ([src/themes/praia-rosa.ts](src/themes/praia-rosa.ts)): colours, the
+  envelope and wax seal colours, font variables, artwork files with their sizes, decorations per
+  section, the hero illustration and the button shape. It imports no React or `next/font` code, so
+  server code and tests can use it.
 - **`ThemeRoot`** ([src/components/theme/theme-root.tsx](src/components/theme/theme-root.tsx))
   applies a theme: it sets the `--theme-*` CSS variables, attaches the fonts and the paper texture,
   and makes the invitation a size container.
 - **Tailwind tokens** in [app/globals.css](app/globals.css) read those variables. Components use
   `text-script`, `bg-accent`, `text-ink`, `text-muted`, `font-script`, `font-caps`, `font-body`…
-  and never hard-code theme colours, so overrides need no component changes.
+  and never hard-code theme colours, so overrides need no component changes. Plain CSS (CSS
+  modules, `@utility`) must read `var(--theme-accent)` and friends directly: `--color-*` and
+  `--font-*` are resolved on `:root`, above the theme, and would always give the fallbacks.
 - **Container units:** invitation text is sized in `cqi` (a share of the invitation's own width),
   not `vw`, so it scales the same on a phone and in the dashboard's phone-frame preview.
 - **Overrides** ([src/themes/overrides.ts](src/themes/overrides.ts)): `#RRGGBB` values for
@@ -323,8 +385,10 @@ time with a machine-readable `<time>`), `InfoBox`, `QuoteBox`, `CornerDecoration
 `SerpentineTimeline` (rows of 3, rows of 2 below 340 px; the list stays in chronological order for
 screen readers).
 
-Icons ([src/components/icons/](src/components/icons/)) are Tabler icons plus four custom line icons
-(wedding dress, bride and groom, bouquet, dancing couple), rendered as plain SVG on the server.
+Icons ([src/components/icons/](src/components/icons/)) are Tabler icons plus five custom line icons
+(wedding dress, bride and groom, bouquet, dancing couple, wedding rings), rendered as plain SVG on
+the server. Client Components import the Tabler icons they need directly instead of `Icon`, which
+would bundle the whole set.
 **Icon keys are stored in the database** (timeline items, guest rules): add keys freely, never
 rename one.
 
@@ -368,17 +432,29 @@ node scripts/screenshot.mjs http://localhost:3000/design shots "--selector=[data
 ```
 
 It saves one PNG per matching element, at phone size by default (`--width`, `--height`, `--scale`
-and `--full` change that).
+and `--full` change that). `--click` (repeatable) and `--wait` interact first, e.g. to open an
+invitation's envelope:
+
+```bash
+node scripts/screenshot.mjs http://localhost:3000/c/braulio-e-nanda/demo-familia-silva-001 shots \
+  "--selector=main > section" "--click=button[aria-label='Abrir o convite']" --wait=3000
+```
 
 ## Testing and CI
 
-Vitest runs two projects:
+Vitest runs two projects, Playwright a third suite:
 
 - `npm test`: unit tests next to the code (`*.test.ts`, `*.test.tsx`), including theme contrast
-  checks, shared components rendered to HTML with `react-dom/server`, and one test that serves real
-  HTTP requests through the request hooks. No services needed.
+  checks, the invitation's read model, countdown, calendar and link builders, components and
+  sections rendered to HTML with `react-dom/server`, and one test that serves real HTTP requests
+  through the request hooks. No services needed.
+- `npm run test:e2e`: `tests/e2e/*.spec.ts` in a phone-sized Chromium: opening the envelope, the
+  reload, reduced motion, the gallery lightbox, the calendar file, the 404 page and the Save the
+  Date dialog. Needs the seeded database; starts `next dev` on port 3100, or tests a running app
+  given in `E2E_BASE_URL`. Runs locally for now; CI gets it in Phase 10.
 - `npm run test:integration`: `tests/integration/*.int.test.ts` against a real Postgres: the
-  migrations, the demo seed (twice), guest lookup by token, the integrity rules and the delete
+  migrations, the demo seed (twice), guest lookup by token (including that no other guest's data
+  leaks), the integrity rules and the delete
   behaviour. It uses the `convites_test` database on the Docker Postgres (`TEST_DATABASE_URL` to
   change it), applies migrations with `prisma migrate deploy` and empties it before each run; it
   refuses any database whose name does not end in `_test`. If a migration was edited after the test

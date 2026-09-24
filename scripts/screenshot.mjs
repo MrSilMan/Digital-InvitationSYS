@@ -2,7 +2,10 @@
 // Playwright's Chromium, after web fonts have loaded.
 //
 //   node scripts/screenshot.mjs <url> <outDir> [--selector="main section"] [--width=390]
-//        [--height=844] [--scale=2] [--full]
+//        [--height=844] [--scale=2] [--full] [--click="button[aria-label='…']"] [--wait=2500]
+//
+// --click clicks an element first (e.g. the invitation's envelope; repeat the flag for several
+// clicks, in order) and --wait then waits (ms) after each, e.g. for animations.
 //
 // Example (phone size, each invitation section separately):
 //   node scripts/screenshot.mjs http://localhost:3000/design .screenshots --selector="[data-theme] > section"
@@ -14,7 +17,7 @@ import { chromium } from '@playwright/test';
 const [url, outDir, ...flags] = process.argv.slice(2);
 if (!url || !outDir) {
   console.error(
-    'Usage: node scripts/screenshot.mjs <url> <outDir> [--selector=…] [--width=390] [--height=844] [--scale=2] [--full]',
+    'Usage: node scripts/screenshot.mjs <url> <outDir> [--selector=…] [--width=390] [--height=844] [--scale=2] [--full] [--click=…] [--wait=ms]',
   );
   process.exit(1);
 }
@@ -27,6 +30,9 @@ const width = Number(option('width', '390'));
 const height = Number(option('height', '844'));
 const scale = Number(option('scale', '2'));
 const selector = option('selector', '');
+// Several --click flags run in order, each followed by the --wait.
+const clicks = flags.filter((f) => f.startsWith('--click=')).map((f) => f.slice('--click='.length));
+const wait = Number(option('wait', '0'));
 
 await mkdir(outDir, { recursive: true });
 const browser = await chromium.launch();
@@ -36,6 +42,10 @@ try {
   await page.evaluate(async () => {
     await document.fonts.ready;
   });
+  for (const click of clicks) {
+    await page.locator(click).first().click();
+    if (wait > 0) await page.waitForTimeout(wait);
+  }
   if (selector) {
     const elements = page.locator(selector);
     const count = await elements.count();

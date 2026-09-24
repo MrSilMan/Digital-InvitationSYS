@@ -38,7 +38,7 @@ export const DEMO_EVENT = {
   startsAt: luanda('2027-01-15T16:00'),
   endsAt: luanda('2027-01-16T01:00'),
   coupleMessage:
-    'O amor é um presente de Deus, e Ele nos uniu para sempre.\n\n' +
+    'O amor é um presente de Deus,\ne Ele nos uniu para sempre.\n\n' +
     'Venha testemunhar esta promessa eterna e celebrar connosco o dia em que nos tornamos um só diante do Senhor.',
   dressCodeText: 'Traje social. Pedimos que evitem o branco, a cor reservada à noiva.',
   dressCodeColors: ['#A8C5D6', '#E7B7C3', '#857D45', '#F3E9DC'],
@@ -55,7 +55,8 @@ export const DEMO_EVENT = {
 
 export const DEMO_LOCATIONS = [
   {
-    heading: 'AS CERIMÓNIAS',
+    // Written in normal case: the small-caps font draws "As cerimónias" like the reference.
+    heading: 'As cerimónias',
     venueName: 'Praia do Bispo',
     startsAt: luanda('2027-01-15T16:00'),
     address: 'Praia do Bispo, Luanda',
@@ -64,8 +65,10 @@ export const DEMO_LOCATIONS = [
     longitude: 13.225,
   },
   {
-    heading: "COPO-D'ÁGUA",
+    heading: "Copo-d'água",
     venueName: 'Salão de Festas Jardim das Rosas',
+    // Like the reference; the default sentence ("Terão lugar na…") suits the first venue.
+    description: 'Será realizado às {time}, no {venue}, Morro Bento.',
     startsAt: luanda('2027-01-15T20:00'),
     address: 'Morro Bento, Luanda',
     mapsUrl: 'https://www.google.com/maps/search/?api=1&query=-8.8960,13.1900',
@@ -73,6 +76,28 @@ export const DEMO_LOCATIONS = [
     longitude: 13.19,
   },
 ] as const;
+
+/**
+ * Placeholder media shipped in public/demo (npm run demo:media): six gallery "photos" and a short
+ * synthesized music loop. `demo/…` keys resolve to /public (src/server/media/urls.ts).
+ */
+export const DEMO_GALLERY = Array.from({ length: 6 }, (_, index) => ({
+  key: `demo/gallery/foto-${index + 1}.webp`,
+  mimeType: 'image/webp',
+  width: 1200,
+  height: 1500,
+}));
+
+export const DEMO_MUSIC = { key: 'demo/musica.wav', mimeType: 'audio/wav' } as const;
+
+/** The same wedding in the Save the Date phase, to see that page (only a few guests). */
+export const DEMO_SAVE_THE_DATE = {
+  slug: 'braulio-e-nanda-save-the-date',
+  guests: [
+    { token: 'demo-std-familia-silva1', displayName: 'Família Silva', seatsAllowed: 4 },
+    { token: 'demo-std-joao-manuel-02', displayName: 'João Manuel', seatsAllowed: 1 },
+  ],
+} as const;
 
 export const DEMO_TIMELINE = [
   { label: 'Chegada dos convidados', startsAt: luanda('2027-01-15T15:30'), icon: 'guests' },

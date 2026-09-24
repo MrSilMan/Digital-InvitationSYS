@@ -43,6 +43,17 @@ export interface ThemeColors {
   line: string;
 }
 
+/** The envelope of the opening screen. */
+export interface EnvelopeColors {
+  paper: string;
+  /** Folds and edges on the paper. */
+  shade: string;
+  /** Wax seal. */
+  seal: string;
+  /** Monogram pressed into the seal. */
+  sealInk: string;
+}
+
 export interface ThemeFonts {
   /** CSS font-family values: the `--font-theme-*` variables that src/themes/fonts.ts declares. */
   script: string;
@@ -58,6 +69,7 @@ export interface ThemeDefinition {
   id: string;
   name: string;
   colors: ThemeColors;
+  envelope: EnvelopeColors;
   fonts: ThemeFonts;
   /** Watercolour paper texture, repeated vertically behind every section. */
   texture?: ThemeImage;

@@ -78,6 +78,16 @@ export const BouquetIcon = createLineIcon(
   </>,
 );
 
+/** Two interlocking wedding rings, a small stone on the left one (Tabler's "rings" are gym rings). */
+export const WeddingRingsIcon = createLineIcon(
+  'wedding-rings',
+  <>
+    <circle cx="9" cy="14.6" r="5.4" />
+    <circle cx="15" cy="14.6" r="5.4" />
+    <path d="M9 9.2 7.3 6.9l.9-1.5h1.6l.9 1.5z" />
+  </>,
+);
+
 export const DancingCoupleIcon = createLineIcon(
   'dancing-couple',
   <>

@@ -40,7 +40,7 @@ export const config = {
       // Pages only: skip API routes, static files, image optimization, the Sentry tunnel
       // (`/monitoring`, see next.config.ts) and public assets.
       source:
-        '/((?!api/|_next/static|_next/image|monitoring|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:png|jpe?g|webp|avif|gif|svg|ico|mp3|txt|xml|woff2?)$).*)',
+        '/((?!api/|_next/static|_next/image|monitoring|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:png|jpe?g|webp|avif|gif|svg|ico|mp3|m4a|ogg|wav|txt|xml|woff2?)$).*)',
       // Prefetches return no HTML, so they need no CSP.
       missing: [
         { type: 'header', key: 'next-router-prefetch' },

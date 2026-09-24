@@ -59,9 +59,23 @@ export const invitationDefaults = {
   },
 } as const;
 
-/** Fixed texts of the guest invitation (section titles, buttons, labels). */
+/**
+ * Fixed texts of the guest invitation (section titles, buttons, labels). Placeholders in braces
+ * ({guest}, {date}…) are filled in by the code.
+ */
 export const invitation = {
   people: { one: 'pessoa', other: 'pessoas' },
+  /** "Braúlio e Nanda" in the script lines; "Braúlio & Nanda" in titles. */
+  couple: '{groom} e {bride}',
+  coupleShort: '{groom} & {bride}',
+  /** Screen-reader heading of the whole page. */
+  pageHeading: 'Convite de casamento de {couple}',
+  opening: {
+    addressedTo: 'Convite para',
+    tapToOpen: 'Toque para abrir',
+    openButton: 'Abrir o convite',
+  },
+  music: { play: 'Ligar a música', pause: 'Desligar a música' },
   saveTheDate: {
     title: 'Save the date',
     subtitle: 'Nosso casamento',
@@ -71,13 +85,77 @@ export const invitation = {
     confirmAttendance: { regular: 'Confirmar', bold: 'presença' },
     googleMaps: { bold: 'Google', regular: 'Maps' },
     waze: 'Abrir no Waze',
+    close: 'Fechar',
   },
   sections: {
+    invitation: { heading: 'O convite' },
+    countdown: {
+      script: 'Contagem',
+      caps: 'regressiva',
+      units: {
+        days: { one: 'dia', other: 'dias' },
+        hours: { one: 'hora', other: 'horas' },
+        minutes: { one: 'minuto', other: 'minutos' },
+        seconds: { one: 'segundo', other: 'segundos' },
+      },
+      untilTheDay: 'para o grande dia',
+      after: 'O grande dia chegou! Obrigado por fazer parte da nossa história.',
+    },
     message: { script: 'Mensagem', caps: 'dos noivos' },
-    gallery: { script: 'Galeria de fotos', subtitle: 'Confira os nossos pequenos momentos' },
+    gallery: {
+      script: 'Galeria de fotos',
+      subtitle: 'Confira os nossos pequenos momentos',
+      photoAlt: 'Foto {n} de {total}',
+      openPhoto: 'Ver a foto {n} em ecrã inteiro',
+      previous: 'Foto anterior',
+      next: 'Foto seguinte',
+      counter: '{n} de {total}',
+    },
     schedule: { script: 'Cronograma', caps: 'do dia' },
+    dressCode: { script: 'Traje', caps: 'sugerido', palette: 'Paleta de cores' },
     guestManual: { script: 'Manual do', caps: 'bom convidado' },
-    countdown: { script: 'Contagem', caps: 'regressiva' },
+    gifts: {
+      script: 'Lista de',
+      caps: 'presentes',
+      iban: 'IBAN',
+      accountHolder: 'Titular: {name}',
+      copy: 'Copiar IBAN',
+      copied: 'IBAN copiado!',
+      copyFailed: 'Não foi possível copiar. Selecione o IBAN e copie-o manualmente.',
+    },
+    rsvp: {
+      script: 'Confirmação',
+      caps: 'de presença',
+      deadline: 'Por favor, confirme a sua presença até {date}.',
+      closed: 'O prazo para confirmar a presença terminou a {date}.',
+      groom: 'Confirmar presença (noivo)',
+      bride: 'Confirmar presença (noiva)',
+      whatsappMessage:
+        'Olá! Sou {guest} e confirmo a minha presença no casamento de {groom} e {bride}.',
+    },
+    closing: {
+      script: 'Obrigado',
+      caps: 'de coração',
+      message: 'Obrigado por fazer parte deste dia tão especial das nossas vidas.',
+      addToCalendar: { regular: 'Adicionar ao', bold: 'calendário' },
+      googleCalendar: 'ou adicionar ao Google Calendar',
+    },
+  },
+  calendar: {
+    title: 'Casamento de {groom} e {bride}',
+    location: '{heading}: {venue}, {time}',
+  },
+  notFound: {
+    title: 'Convite não encontrado',
+    description:
+      'Este link não é válido ou o convite já não está disponível. Confirme o link que recebeu ou fale com os noivos.',
+  },
+  metadata: {
+    invitationTitle: 'Convite de Casamento – {couple}',
+    saveTheDateTitle: 'Save the Date – {couple}',
+    description: '{date}. Toque para abrir o seu convite.',
+    imageAlt: 'Convite de casamento',
+    imageHeading: 'Convite de casamento',
   },
 } as const;
 

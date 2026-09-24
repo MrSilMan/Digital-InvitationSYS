@@ -7,7 +7,7 @@ export function InfoBox({ children, className }: { children: ReactNode; classNam
   return (
     <div
       className={cn(
-        'mx-auto w-full max-w-sm rounded-2xl border border-ink/40 px-5 py-4 text-center font-caps text-lg tracking-[0.04em] text-ink',
+        'mx-auto w-full max-w-sm rounded-2xl border border-ink/40 px-5 py-4 text-center font-caps text-[clamp(1rem,4.8cqi,1.2rem)] tracking-[0.04em] text-ink',
         className,
       )}
     >

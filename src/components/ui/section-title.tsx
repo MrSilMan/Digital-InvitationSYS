@@ -11,6 +11,8 @@ interface SectionTitleProps {
   /** "end" pushes the subtitle to the right, as under "Cronograma". */
   capsAlign?: 'center' | 'end';
   as?: 'h1' | 'h2' | 'h3';
+  /** For `aria-labelledby` on the section. */
+  id?: string;
   className?: string;
 }
 
@@ -21,10 +23,11 @@ export function SectionTitle({
   icon,
   capsAlign = 'center',
   as: Heading = 'h2',
+  id,
   className,
 }: SectionTitleProps) {
   return (
-    <Heading className={cn('flex flex-col items-center text-center', className)}>
+    <Heading id={id} className={cn('flex flex-col items-center text-center', className)}>
       {icon ? <Icon name={icon} size={56} stroke={1.25} className="mb-1 text-accent" /> : null}
       <span className="font-script text-[clamp(3rem,15cqi,4.5rem)] leading-[1.15] text-script">
         {script}

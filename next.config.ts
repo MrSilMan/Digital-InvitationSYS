@@ -28,6 +28,13 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   poweredByHeader: false,
   reactStrictMode: true,
+  images: {
+    // Only our own asset folders can go through the image optimizer, without query strings.
+    localPatterns: [
+      { pathname: '/themes/**', search: '' },
+      { pathname: '/demo/**', search: '' },
+    ],
+  },
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },

@@ -11,7 +11,8 @@ relevant sections before planning a phase. README.md documents setup and archite
   approval. After it: `npm run check` and `npm run build` must pass, then summarize and commit.
 - Before installing anything, check current versions with `npm view` and read the current docs
   (Next.js ships version-matched docs in `node_modules/next/dist/docs/`).
-- Phase status: 1, 2 and 3 done. Next: Phase 4 (invitation pages, "Praia Rosa" theme).
+- Phase status: 1–4 done. Next: Phase 5 (RSVP in all three modes, Redis cache, rate limiting,
+  view tracking).
 
 ## Commands
 
@@ -20,6 +21,7 @@ docker compose up -d        # Postgres (host port 5433), Redis, MinIO + bucket, 
 npm run dev                 # dev server
 npm run check               # format check + lint + typecheck + unit tests
 npm run test:integration    # tests against Postgres (convites_test)
+npm run test:e2e            # Playwright, phone-sized Chromium; needs `npm run db:seed`
 npm run build && npm start  # production build, run like the Docker image
 npm run db:migrate -- --name what-changed   # after editing prisma/schema.prisma
 npm run db:seed             # demo data (idempotent)
@@ -100,6 +102,10 @@ npx vitest run path/to/file.test.ts
 - Invitation components use the Tailwind tokens (`text-script`, `bg-accent`, `text-ink`,
   `font-caps`…), never hex colours, so theme overrides just work. Size invitation text with `cqi`
   (`text-[clamp(1rem,5cqi,1.5rem)]`), never `vw`: it also renders in the dashboard's phone preview.
+- Plain CSS (CSS modules, `@utility`) must use `var(--theme-*)` directly, never `var(--color-*)` /
+  `var(--font-*)`: those resolve on `:root`, above the theme root, and silently give the fallbacks.
+- `cn()` does not merge conflicting Tailwind classes: never pass a class that overrides one the
+  component already sets (e.g. `px-0` over `px-6`); add a prop instead (`SectionPage padded`).
 - Icon keys (`src/components/icons/index.tsx`) are stored in the database: never rename or remove
   one without a data migration.
 - The serpentine timeline's geometry lives in both `serpentine-layout.ts` and its CSS module (row
@@ -109,6 +115,24 @@ npx vitest run path/to/file.test.ts
   `docs/reference/` (gitignored: they show a real couple).
 - `public/themes/*` artwork is placeholder art until licensed files replace it. Never redraw it with
   `npm run themes:placeholders -- --force` once real artwork is in.
+
+## Guest invitation (README → Guest invitation)
+
+- Guest pages get their data only from `getInvitation(slug, token)` (`src/server/invitations`):
+  a JSON-safe read model of one event and one guest. Never query guests in a page, never add other
+  guests or phone numbers to it; validate couple-provided URLs/colours/phones in the mapper.
+- Every guest-link route (page, `opengraph-image`, `calendario.ics`) validates params with
+  `invitationParamsSchema` and answers "not found" identically for every failure. No `loading.tsx`
+  on the invitation route (it would turn the 404 into a 200).
+- A section = a component in `src/features/invitation/sections/` + an entry in
+  `SECTION_COMPONENTS` (invitation-view.tsx) + a content rule in `sections.ts`.
+- Client Components stay small: import Tabler icons directly (not `Icon`, which bundles all of
+  them), style buttons with `pillButtonClasses`, use `fillTemplate` from `@/lib/template`, and never
+  import the whole pt-AO dictionary (pass labels as props).
+- Read the time with `serverNow()` (`src/lib/clock.ts`) in server code; client countdowns get the
+  server time as a prop.
+- Visual checks of a guest page: `node scripts/screenshot.mjs <url> <outDir> "--selector=main >
+section" "--click=button[aria-label='Abrir o convite']" --wait=3000`.
 
 ## Local environment notes
 
