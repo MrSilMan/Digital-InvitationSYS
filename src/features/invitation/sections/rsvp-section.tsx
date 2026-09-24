@@ -1,7 +1,7 @@
 import { PillButton } from '@/components/ui/pill-button';
 import { SectionTitle } from '@/components/ui/section-title';
 import { formatDate } from '@/i18n/format';
-import { invitation } from '@/i18n/pt-AO';
+import { editor, invitation } from '@/i18n/pt-AO';
 
 import { LazyRsvpForm } from '../rsvp/lazy-rsvp-form';
 import { acceptsForm, acceptsWhatsapp, rsvpClosed } from '../rsvp/rules';
@@ -15,7 +15,7 @@ const t = invitation.sections.rsvp;
 
 type RsvpContentProps = Pick<
   SectionProps,
-  'event' | 'guest' | 'rsvp' | 'now' | 'guestToken' | 'basePath'
+  'event' | 'guest' | 'rsvp' | 'now' | 'guestToken' | 'basePath' | 'preview'
 >;
 
 /**
@@ -23,7 +23,15 @@ type RsvpContentProps = Pick<
  * buttons (WHATSAPP, BOTH). Shared by the RSVP section and the Save the Date panel. The buttons go
  * through /whatsapp/<noivo|noiva>, which records the tap and forwards to WhatsApp.
  */
-export function RsvpContent({ event, guest, rsvp, now, guestToken, basePath }: RsvpContentProps) {
+export function RsvpContent({
+  event,
+  guest,
+  rsvp,
+  now,
+  guestToken,
+  basePath,
+  preview = false,
+}: RsvpContentProps) {
   const deadline = event.rsvp.deadline ? new Date(event.rsvp.deadline) : null;
   const closed = rsvpClosed(event, now);
   const withForm = acceptsForm(event);
@@ -54,6 +62,7 @@ export function RsvpContent({ event, guest, rsvp, now, guestToken, basePath }: R
           initial={rsvp}
           closed={closed}
           labels={{ ...t.form, peopleForms: invitation.people }}
+          previewNotice={preview ? editor.preview.inertNotice : undefined}
         />
       ) : null}
       {withWhatsapp ? (
@@ -64,17 +73,23 @@ export function RsvpContent({ event, guest, rsvp, now, guestToken, basePath }: R
             </p>
           ) : null}
           <div className="flex flex-wrap justify-center gap-6">
-            {buttons.map((button) => (
-              <PillButton
-                key={button.target}
-                href={`${basePath}/whatsapp/${button.target}`}
-                external
-                icon="whatsapp"
-                shape="circle"
-              >
-                {button.label}
-              </PillButton>
-            ))}
+            {buttons.map((button) =>
+              preview ? (
+                <PillButton key={button.target} icon="whatsapp" shape="circle">
+                  {button.label}
+                </PillButton>
+              ) : (
+                <PillButton
+                  key={button.target}
+                  href={`${basePath}/whatsapp/${button.target}`}
+                  external
+                  icon="whatsapp"
+                  shape="circle"
+                >
+                  {button.label}
+                </PillButton>
+              ),
+            )}
           </div>
         </div>
       ) : null}

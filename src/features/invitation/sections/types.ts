@@ -15,4 +15,6 @@ export interface SectionProps {
   guestToken: string;
   /** "/c/<slug>/<token>": base of the guest's own links (calendar file, WhatsApp buttons). */
   basePath: string;
+  /** The dashboard's preview: a sample guest, and nothing a guest could send or record. */
+  preview?: boolean;
 }

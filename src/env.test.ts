@@ -5,6 +5,7 @@ import { EnvValidationError, parseServerEnv } from '@/env';
 const minimal = {
   DATABASE_URL: 'postgresql://convites:convites@localhost:5432/convites',
   REDIS_URL: 'redis://localhost:6379',
+  BETTER_AUTH_SECRET: 'test-secret-that-is-long-enough-0123456789',
 };
 
 function problemsOf(raw: Record<string, string | undefined>): readonly string[] {
@@ -50,10 +51,17 @@ describe('parseServerEnv', () => {
   it('lists every missing or invalid variable in one error', () => {
     const problems = problemsOf({ REDIS_URL: 'http://localhost:6379', LOG_LEVEL: 'verbose' });
 
-    expect(problems).toHaveLength(3);
+    expect(problems).toHaveLength(4);
     expect(problems).toContain('DATABASE_URL: is required');
     expect(problems).toContain('REDIS_URL: must be a redis:// URL');
+    expect(problems).toContain('BETTER_AUTH_SECRET: is required');
     expect(problems.some((problem) => problem.startsWith('LOG_LEVEL:'))).toBe(true);
+  });
+
+  it('requires a long enough session secret', () => {
+    expect(problemsOf({ ...minimal, BETTER_AUTH_SECRET: 'too-short' })).toEqual([
+      'BETTER_AUTH_SECRET: must be at least 32 characters (e.g. `openssl rand -base64 32`)',
+    ]);
   });
 
   it('requires https for APP_URL on staging and production', () => {

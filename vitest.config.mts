@@ -44,6 +44,7 @@ export default defineConfig({
           env: {
             DATABASE_URL: testDatabaseUrl,
             REDIS_URL: testRedisUrl,
+            BETTER_AUTH_SECRET: 'integration-test-secret-not-for-real-use-0123',
             APP_ENV: 'test',
             LOG_LEVEL: 'warn',
           },

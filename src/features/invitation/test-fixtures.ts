@@ -29,7 +29,7 @@ export function invitationEventFixture(overrides: Partial<InvitationEvent> = {})
     dressCode: { text: 'Traje social.', colors: ['#A8C5D6'] },
     gifts: {
       text: 'A vossa presença é o nosso maior presente.',
-      iban: 'AO06 0000 0000 0000 0000 0000 0',
+      iban: 'AO33 0000 0000 0000 0000 0000 0',
       accountHolder: 'Braúlio Santos',
     },
     rsvp: {

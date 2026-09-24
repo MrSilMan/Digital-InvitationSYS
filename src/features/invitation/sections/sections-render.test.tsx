@@ -150,7 +150,7 @@ describe('schedule', () => {
 describe('gifts', () => {
   it('shows the IBAN and copies it without spaces', () => {
     const html = renderToStaticMarkup(<GiftsSection {...props()} />);
-    expect(text(html)).toContain('AO06 0000 0000 0000 0000 0000 0');
+    expect(text(html)).toContain('AO33 0000 0000 0000 0000 0000 0');
     expect(text(html)).toContain('Titular: Braúlio Santos');
     expect(text(html)).toContain('Copiar IBAN');
   });
@@ -184,6 +184,24 @@ describe('Save the Date', () => {
     expect(text(html)).toContain('Convite oficial em breve');
     expect(html).toContain('aria-haspopup="dialog"');
     expect(text(html)).not.toContain('Praia do Bispo');
+  });
+});
+
+describe('dashboard preview', () => {
+  it('shows the RSVP options without links or a working form', () => {
+    const html = renderToStaticMarkup(<RsvpContent {...props({ preview: true })} />);
+    expect(html).not.toContain('/whatsapp/');
+    expect(text(html)).toContain('Confirmar presença (noivo)');
+    expect(text(html)).toContain(
+      'Pré-visualização: as respostas dos convidados estão desativadas.',
+    );
+    expect(html).toMatch(/<button type="submit" disabled=""/);
+  });
+
+  it('offers no calendar file (it belongs to a guest link)', () => {
+    const html = renderToStaticMarkup(<ClosingSection {...props({ preview: true })} />);
+    expect(html).not.toContain('calendario.ics');
+    expect(text(html)).toContain('Adicionar ao calendário');
   });
 });
 

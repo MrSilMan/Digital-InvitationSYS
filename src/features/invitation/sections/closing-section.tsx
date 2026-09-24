@@ -13,7 +13,12 @@ const HEADING_ID = 'secao-encerramento';
 const t = invitation.sections.closing;
 
 /** "Obrigado": the couple's names and "Adicionar ao calendário" (.ics file + Google Calendar). */
-export function ClosingSection({ event, theme, basePath }: SectionProps) {
+export function ClosingSection({ event, theme, basePath, preview = false }: SectionProps) {
+  const label = (
+    <>
+      {t.addToCalendar.regular} <strong>{t.addToCalendar.bold}</strong>
+    </>
+  );
   return (
     <SectionPage theme={theme} area="closing" labelledBy={HEADING_ID} contentClassName="gap-7">
       <SectionTitle id={HEADING_ID} script={t.script} caps={t.caps} />
@@ -24,14 +29,21 @@ export function ClosingSection({ event, theme, basePath }: SectionProps) {
         {coupleNames(event)}
       </p>
       <DateLine date={new Date(event.startsAt)} />
-      <PillButton
-        href={`${basePath}/calendario.ics`}
-        download={`casamento-${event.slug}.ics`}
-        icon="calendar-plus"
-        shape={theme.buttonShape}
-      >
-        {t.addToCalendar.regular} <strong>{t.addToCalendar.bold}</strong>
-      </PillButton>
+      {preview ? (
+        // The calendar file belongs to a guest's link; the preview has none.
+        <PillButton icon="calendar-plus" shape={theme.buttonShape}>
+          {label}
+        </PillButton>
+      ) : (
+        <PillButton
+          href={`${basePath}/calendario.ics`}
+          download={`casamento-${event.slug}.ics`}
+          icon="calendar-plus"
+          shape={theme.buttonShape}
+        >
+          {label}
+        </PillButton>
+      )}
       <a
         href={googleCalendarUrl(calendarEventFor(event))}
         target="_blank"

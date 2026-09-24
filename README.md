@@ -19,7 +19,7 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 | 4     | Invitation pages ("Praia Rosa")                                                   | Done    |
 | 5     | RSVP, Redis cache, rate limiting, view tracking                                   | Done    |
 | 6     | "Champanhe" theme                                                                 | Done    |
-| 7     | Auth, couple dashboard, uploads, BullMQ worker                                    | Planned |
+| 7     | Auth, couple dashboard, uploads, BullMQ worker                                    | 7a done |
 | 8     | Guest management, CSV, WhatsApp                                                   | Planned |
 | 9     | Admin area and audit log                                                          | Planned |
 | 10    | Production Docker/Caddy, backups, full CI/CD with staging and rollback            | Planned |
@@ -28,10 +28,10 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 ## Stack
 
 Next.js 16.3 (App Router, Turbopack, React 19.3) · TypeScript 6.0 (strict) · Tailwind CSS 4.3 ·
-Zod 4 · Winston 3 · Sentry 11 · PostgreSQL 18 with Prisma 7.10 · Better Auth 1.7 (tables and
-password hashing so far) · Redis 8 (ioredis 6) · React Hook Form 7 · Tabler Icons 3 · Motion 13 ·
-Embla Carousel 8 ·
-sharp 0.35 (preview images; image processing later) · Vitest 5 · Playwright · Node.js 24 LTS.
+Zod 4 · Winston 3 · Sentry 11 · PostgreSQL 18 with Prisma 7.10 · Better Auth 1.7 (e-mail +
+password logins, couple/admin roles) · Redis 8 (ioredis 6) · React Hook Form 7 · Tabler Icons 3 ·
+Motion 13 · Embla Carousel 8 · sharp 0.35 (preview images; image processing later) · Vitest 5 ·
+Playwright · Node.js 24 LTS.
 Coming in later phases: BullMQ.
 
 Every package is on its latest stable release except where a newer major is blocked:
@@ -108,6 +108,7 @@ one image can be promoted from staging to production. `.env.example` documents e
 | --------------------------------------- | -------- | ----------------------- | ----------------------------------------------------- |
 | `DATABASE_URL`                          | yes      |                         | PostgreSQL connection string                          |
 | `REDIS_URL`                             | yes      |                         | Redis connection string                               |
+| `BETTER_AUTH_SECRET`                    | yes      |                         | Signs session cookies; 32+ random characters          |
 | `APP_ENV`                               | no       | `development`           | `development`, `test`, `staging` or `production`      |
 | `APP_URL`                               | no       | `http://localhost:3000` | Public base URL (must be https on staging/production) |
 | `APP_RELEASE`                           | no       | `dev`                   | Release identifier (git SHA in CI/Docker)             |
@@ -151,8 +152,9 @@ one image can be promoted from staging to production. `.env.example` documents e
 ## Architecture
 
 ```
-app/                    Routes (App Router): (public), api/health; dashboard and admin in later phases
+app/                    Routes (App Router): (public) incl. /entrar (login), (dashboard)/painel, api/health
 app/c/[eventSlug]/[guestToken]/  Guest invitation, its WhatsApp preview image and calendar file
+app/previsualizar/[eventId]/  The editor's live preview (the invitation with unsaved changes)
 app/(internal)/design/  Design preview page (/design; 404 in production)
 assets/fonts/           Theme fonts as WOFF files for the generated preview image (OFL)
 proxy.ts                Next.js 16 proxy (formerly middleware): request ID + nonce-based Content-Security-Policy
@@ -167,11 +169,11 @@ public/themes/<id>/     Theme artwork (placeholders until the licensed artwork r
 public/demo/            Demo event media: placeholder photos and music (npm run demo:media)
 src/env.ts              Zod-validated server environment; src/env.public.ts for browser values
 src/i18n/               pt-AO.ts: every user-facing string (Portuguese, Angola); date and plural formatting
-src/components/         Shared UI: invitation building blocks (ui/), icons, the theme root
-src/features/           Feature code by area: invitation/ (guest pages), design-preview/
+src/components/         Shared UI: invitation building blocks (ui/), dashboard styles (dashboard/), icons, theme root
+src/features/           Feature code by area: invitation/ (guest pages), auth/, dashboard/, design-preview/
 src/themes/             Theme definitions (plain data), fonts, colour overrides, contrast maths
 src/lib/                Logger, redaction, request context, Sentry privacy, CSP, guest tokens, validation
-src/server/             Server-only code: Prisma and Redis clients, health checks, invitation queries, media URLs
+src/server/             Server-only code: Prisma/Redis clients, auth + sessions, events (editor, access), invitations, media
 src/generated/prisma    Generated Prisma client (not committed)
 tests/unit/             Tests for root-level files (the rest live next to the code as *.test.ts)
 tests/integration/      Tests against a real Postgres (*.int.test.ts)
@@ -369,12 +371,17 @@ reconnect) and gives up after 250 ms, logging a warning at most every 30 s.
   sorted set, one atomic Lua script per request; subjects (IPs, tokens) are hashed in the keys.
   Without Redis the request is allowed and the failure logged.
 
-  | Limit                           | Value         | Where                                       |
-  | ------------------------------- | ------------- | ------------------------------------------- |
-  | Guest pages (`/c/…`) per IP     | 300 per 5 min | `proxy.ts` (link-preview bots exempt) → 429 |
-  | RSVP form per guest link        | 10 per 10 min | `submitRsvp`                                |
-  | RSVP form per IP                | 30 per 10 min | `submitRsvp`                                |
-  | WhatsApp taps recorded per link | 20 per 10 min | WhatsApp route (still forwards to WhatsApp) |
+  | Limit                           | Value          | Where                                       |
+  | ------------------------------- | -------------- | ------------------------------------------- |
+  | Guest pages (`/c/…`) per IP     | 300 per 5 min  | `proxy.ts` (link-preview bots exempt) → 429 |
+  | RSVP form per guest link        | 10 per 10 min  | `submitRsvp`                                |
+  | RSVP form per IP                | 30 per 10 min  | `submitRsvp`                                |
+  | WhatsApp taps recorded per link | 20 per 10 min  | WhatsApp route (still forwards to WhatsApp) |
+  | Login attempts per IP           | 20 per 15 min  | `signIn`                                    |
+  | Login attempts per e-mail       | 8 per 15 min   | `signIn` (password guessing on one account) |
+  | Editor saves per user           | 60 per 10 min  | `saveEvent`                                 |
+  | Live-preview drafts per user    | 900 per 10 min | `savePreviewDraft` (about one a second)     |
+  | Google Maps short links, user   | 30 per 10 min  | `resolveMapsLink`                           |
 
   The per-IP limits are generous because Angolan mobile carriers put many phones behind one IP.
   The client IP is the right-most `X-Forwarded-For` entry (set by Caddy in production).
@@ -388,6 +395,44 @@ reconnect) and gives up after 250 ms, logging a warning at most every 30 s.
 placeholder files in `public/demo/` (`npm run demo:media`), referenced by `Media` rows with `demo/…`
 keys that [src/server/media/urls.ts](src/server/media/urls.ts) maps to `/demo/…`. The music is a
 synthesized loop: use licensed music for anything real.
+
+## Couple dashboard
+
+Couples sign in at `/entrar` and edit their invitation at `/painel`. Admins can open every event
+(their own area arrives in Phase 9). Accounts are created by the admin: there is no sign-up.
+
+- **Logins** ([src/server/auth/auth.ts](src/server/auth/auth.ts)): Better Auth with e-mail + password,
+  database sessions for 30 days (refreshed daily) and the admin plugin's roles (`couple`, `admin`).
+  The login form calls our Server Action ([src/features/auth/actions.ts](src/features/auth/actions.ts)),
+  which validates the input, applies the login rate limits and logs the outcome with a hash of the
+  e-mail address, never the address. Better Auth's own HTTP handler is not mounted (its rate
+  limiter only covers HTTP calls, and in memory); `disabledPaths` keeps sign-in and sign-up off if
+  it is mounted later. Session cookies are named `convites.session_token`.
+- **Access**: `proxy.ts` sends visitors without a session cookie from `/painel`, `/previsualizar`
+  and `/admin` to `/entrar?voltar=…` (only paths inside those areas are accepted as `voltar`). That
+  is only an optimistic check: every page, Server Action and Route Handler asks
+  [src/server/auth/session.ts](src/server/auth/session.ts) and
+  [src/server/events/access.ts](src/server/events/access.ts). A couple reaches only its own events;
+  someone else's event and a missing one both answer "not found". Log lines and Sentry events of
+  signed-in requests carry the user ID and role (never the e-mail or name).
+- **Editor** (`/painel/eventos/<id>`): every field of the invitation in tabs: phase, theme, colours
+  (with WCAG warnings), sections (visibility and order), the couple and their parents, the card's
+  texts, date and venues, timeline, message, dress code, guest rules, gifts and RSVP settings.
+  One Zod schema ([src/lib/validation/event-editor.ts](src/lib/validation/event-editor.ts)) checks
+  the form in the browser and again in `saveEvent`. Couples type Luanda dates and times (stored as
+  UTC; times before 06:00 belong to the night after the wedding day) and Portuguese placeholders
+  (`{pessoas}`, `{local}`, `{hora}`, stored as `{seats}`, `{venue}`, `{time}`). Saving replaces
+  the event and its lists in one transaction and refreshes the guests' cached copy.
+- **Live preview**: the real invitation page in an iframe (`/previsualizar/<id>`, a phone frame
+  beside the form, full screen on phones), for a sample guest, with RSVP, WhatsApp and calendar
+  buttons inert. About 0.7 s after typing stops, the form's values go to Redis as a draft (2 hours,
+  per user and event) and the preview renders them. **Guests see nothing until "Guardar
+  alterações"**; drafts never reach the database. Without Redis, the preview shows the saved version
+  and says so.
+- **Google Maps links**: coordinates (for the Waze button) are read from the pasted link in the
+  browser. Short share links (`maps.app.goo.gl`) are followed on the server
+  ([src/server/maps/resolve-short-link.ts](src/server/maps/resolve-short-link.ts)), only over https
+  and only to Google hosts, at most 5 redirects.
 
 ## Themes
 
@@ -540,12 +585,15 @@ Vitest runs two projects, Playwright a third suite:
 - `npm test`: unit tests next to the code (`*.test.ts`, `*.test.tsx`), including every theme's
   contrast, artwork files and link preview image, the invitation's read model, countdown, calendar
   and link builders, components and sections rendered to HTML with `react-dom/server` (in both
-  themes where they differ), and one test that serves real HTTP requests through the request
+  themes where they differ, and in the dashboard's preview mode), the editor schema (fields,
+  Luanda times, IBANs, the live preview's lenient reading), Google Maps links and the short-link
+  resolver, safe return paths, and one test that serves real HTTP requests through the request
   hooks. No services needed.
 - `npm run test:e2e`: `tests/e2e/*.spec.ts` in a phone-sized Chromium: opening the envelope, the
   reload, reduced motion, the gallery lightbox, the calendar file, the 404 page, the Champanhe
   invitation and its preview image, the Save the Date dialog, answering and changing the RSVP
-  form, and the WhatsApp link. Its global setup re-seeds
+  form, the WhatsApp link, the login redirect, and a couple editing the invitation with the live
+  preview (guests see the change only once saved). Its global setup re-seeds
   the demo data and clears the rate-limit counters, so runs are repeatable (`E2E_SKIP_RESET=1`
   skips that for a server that does not use the local database and Redis). It starts `next dev` on
   port 3100, or tests a running app given in `E2E_BASE_URL`. Runs locally for
@@ -554,7 +602,9 @@ Vitest runs two projects, Playwright a third suite:
   the migrations, the demo seed (twice), guest lookup by token (including that no other guest's
   data leaks), the cache and its invalidation, the rate limiter (exact under concurrency), RSVP
   storage and the Server Action's rules, view de-duplication (with and without Redis), the
-  integrity rules and the delete behaviour. It uses the `convites_test` database on the Docker
+  integrity rules and the delete behaviour, and the dashboard: login (redirect, wrong password,
+  per-e-mail limit, sign-out), who may edit an event, saving and its cache refresh, a round trip
+  through the editor, and per-user preview drafts. It uses the `convites_test` database on the Docker
   Postgres (`TEST_DATABASE_URL`) and Redis database 15 (`TEST_REDIS_URL`, never 0), applies
   migrations with `prisma migrate deploy` and empties both before each run; it refuses a database
   whose name does not end in `_test`. If a migration was edited after the test database applied

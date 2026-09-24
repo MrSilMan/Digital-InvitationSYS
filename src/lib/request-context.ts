@@ -10,6 +10,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
  */
 export interface RequestContext {
   requestId: string;
+  /** The signed-in user (dashboard and admin requests), once the session has been read. */
+  userId?: string;
 }
 
 // Next.js bundles instrumentation, proxy and route code separately, which can instantiate this module
@@ -32,6 +34,12 @@ export function getRequestContext(): RequestContext | undefined {
 
 export function getRequestId(): string | undefined {
   return storage().getStore()?.requestId;
+}
+
+/** Records the signed-in user for the rest of the request (log lines then carry `userId`). */
+export function setRequestUser(userId: string): void {
+  const context = storage().getStore();
+  if (context) context.userId = userId;
 }
 
 /** Runs `fn` (and everything it awaits) inside the given context. */

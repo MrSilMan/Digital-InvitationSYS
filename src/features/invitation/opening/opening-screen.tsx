@@ -21,6 +21,8 @@ import styles from './opening.module.css';
 interface OpeningScreenProps {
   /** sessionStorage key that remembers the envelope was opened in this tab. */
   storageKey: string;
+  /** False in the dashboard's preview: the envelope shows every time it is asked for. */
+  remember?: boolean;
   monogram: string;
   /** "Braúlio e Nanda" */
   couple: string;
@@ -80,6 +82,7 @@ function rememberOpened(key: string): void {
  */
 export function OpeningScreen({
   storageKey,
+  remember = true,
   monogram,
   couple,
   guestName,
@@ -93,7 +96,7 @@ export function OpeningScreen({
   // Server and hydration: closed. Right after hydration: the tab's memory.
   const alreadyOpened = useSyncExternalStore(
     noSubscription,
-    () => wasOpened(storageKey),
+    () => remember && wasOpened(storageKey),
     () => false,
   );
   const isOpen = phase === 'open' || alreadyOpened;
@@ -166,7 +169,7 @@ export function OpeningScreen({
   async function open() {
     if (phase !== 'closed') return;
     setPhase('opening');
-    rememberOpened(storageKey);
+    if (remember) rememberOpened(storageKey);
     // Must start inside the tap: browsers block audio that starts later on its own.
     playMusic();
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

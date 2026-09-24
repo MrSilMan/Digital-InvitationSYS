@@ -36,6 +36,11 @@ const serverEnvShape = z.object({
   DATABASE_URL: z.url({ protocol: /^postgres(?:ql)?$/, ...required('a postgresql:// URL') }),
   REDIS_URL: z.url({ protocol: /^rediss?$/, ...required('a redis:// URL') }),
 
+  /** Signs session cookies (Better Auth). Changing it signs everyone out. */
+  BETTER_AUTH_SECRET: z
+    .string(required('a random string of at least 32 characters'))
+    .min(32, 'must be at least 32 characters (e.g. `openssl rand -base64 32`)'),
+
   SENTRY_DSN: z.url(required('a valid Sentry DSN URL')).optional(),
   SENTRY_TRACES_SAMPLE_RATE: sampleRate.default(0.1),
 

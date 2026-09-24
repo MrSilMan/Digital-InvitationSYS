@@ -52,6 +52,11 @@ interface InvitationViewProps {
   basePath: string;
   /** CSP nonce of this request, for the inline opening script. */
   nonce?: string;
+  /**
+   * The dashboard's live preview: a sample guest, inert RSVP and calendar buttons, and the
+   * envelope only when asked for (never remembered as opened).
+   */
+  preview?: { showEnvelope: boolean };
 }
 
 /**
@@ -66,11 +71,22 @@ export function InvitationView({
   guestToken,
   basePath,
   nonce,
+  preview,
 }: InvitationViewProps) {
   const { event, guest } = data;
   const couple = coupleNames(event);
   const storageKey = openedStorageKey(event.slug);
-  const props: SectionProps = { event, guest, rsvp, theme, now, guestToken, basePath };
+  const props: SectionProps = {
+    event,
+    guest,
+    rsvp,
+    theme,
+    now,
+    guestToken,
+    basePath,
+    preview: preview !== undefined,
+  };
+  const showEnvelope = preview ? preview.showEnvelope : true;
 
   return (
     <ThemeRoot
@@ -79,18 +95,21 @@ export function InvitationView({
       container={false}
       className="invitation-root min-h-svh"
     >
-      <OpeningBootScript nonce={nonce} storageKey={storageKey} />
-      <OpeningScreen
-        storageKey={storageKey}
-        monogram={event.monogram}
-        couple={couple}
-        guestName={guest.displayName}
-        music={event.music}
-        decorations={<CornerDecorations theme={theme} area="opening" eager />}
-        contentId={CONTENT_ID}
-        headingId={HEADING_ID}
-        labels={{ ...invitation.opening, ...invitation.music }}
-      />
+      {preview ? null : <OpeningBootScript nonce={nonce} storageKey={storageKey} />}
+      {showEnvelope ? (
+        <OpeningScreen
+          storageKey={storageKey}
+          remember={!preview}
+          monogram={event.monogram}
+          couple={couple}
+          guestName={guest.displayName}
+          music={event.music}
+          decorations={<CornerDecorations theme={theme} area="opening" eager />}
+          contentId={CONTENT_ID}
+          headingId={HEADING_ID}
+          labels={{ ...invitation.opening, ...invitation.music }}
+        />
+      ) : null}
       <main id={CONTENT_ID} className="@container mx-auto w-full max-w-120">
         <h1 id={HEADING_ID} tabIndex={-1} className="sr-only">
           {fillTemplate(invitation.pageHeading, { couple })}

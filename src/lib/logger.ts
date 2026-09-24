@@ -7,7 +7,7 @@ import TransportStream from 'winston-transport';
 
 import { getErrorReporter, isErrorAlreadyReported } from '@/lib/error-reporter';
 import { redactEntry, redactString } from '@/lib/redact';
-import { getRequestId } from '@/lib/request-context';
+import { getRequestContext } from '@/lib/request-context';
 
 /**
  * Application logger (Node.js runtime only: Server Components, Server Actions, Route Handlers,
@@ -34,7 +34,15 @@ const ORIGINAL_ERROR = Symbol.for('convites.log.originalError');
 type Info = winston.Logform.TransformableInfo & Record<string | symbol, unknown>;
 
 /** Fields added by the logger itself: never redacted. */
-const TRUSTED_FIELDS = new Set(['level', 'timestamp', 'service', 'env', 'release', 'requestId']);
+const TRUSTED_FIELDS = new Set([
+  'level',
+  'timestamp',
+  'service',
+  'env',
+  'release',
+  'requestId',
+  'userId',
+]);
 
 function isLogLevel(value: unknown): value is LogLevel {
   return typeof value === 'string' && Object.hasOwn(LOG_LEVELS, value);
@@ -59,10 +67,9 @@ const normalizeErrors = winston.format((info) => {
 });
 
 const addRequestContext = winston.format((info) => {
-  if (info.requestId === undefined) {
-    const requestId = getRequestId();
-    if (requestId) info.requestId = requestId;
-  }
+  const context = getRequestContext();
+  if (info.requestId === undefined && context?.requestId) info.requestId = context.requestId;
+  if (info.userId === undefined && context?.userId) info.userId = context.userId;
   return info;
 });
 

@@ -11,7 +11,8 @@ relevant sections before planning a phase. README.md documents setup and archite
   approval. After it: `npm run check` and `npm run build` must pass, then summarize and commit.
 - Before installing anything, check current versions with `npm view` and read the current docs
   (Next.js ships version-matched docs in `node_modules/next/dist/docs/`).
-- Phase status: 1–6 done. Next: Phase 7 (Better Auth, couple dashboard, uploads, BullMQ worker).
+- Phase status: 1–6 done. Phase 7: 7a (logins, dashboard, editor, live preview) done; 7b (storage,
+  presigned uploads, BullMQ worker with sharp, media tab) in progress.
 
 ## Commands
 
@@ -151,6 +152,35 @@ section" "--click=button[aria-label='Abrir o convite']" --wait=3000`. Demo links
   (`src/lib/validation/rsvp.ts`) uses `zod/mini` because it ships to guests: keep it that way.
 - A WhatsApp tap never overwrites a form answer (`recordWhatsappIntent`).
 
+## Logins and dashboard (README → Couple dashboard)
+
+- Better Auth instance: `getAuth()` (`src/server/auth/auth.ts`, lazy like `getPrisma`). Its HTTP
+  handler is not mounted: logins go through `signIn`/`signOut` Server Actions
+  (`src/features/auth/actions.ts`, our rate limits and logs). Mount it only with an allowlist of
+  paths, keeping `disabledPaths`.
+- Who is signed in: `getSessionUser()` / `requireUser()` (`src/server/auth/session.ts`). Event access:
+  `requireEditableEvent(id)` in pages, `authorizeEventAction(id)` in Server Actions
+  (`src/server/events/access.ts`): owner or admin; everyone else gets "not found". `proxy.ts` only
+  checks that a session cookie exists (`isSignedInArea`); never rely on it.
+- Redirects after login go through `safeReturnPath` (only `/painel…` and `/admin…`).
+- The editor's single source of truth is `src/lib/validation/event-editor.ts`: field schemas, the
+  cross-field rules (`eventEditorSchema`), `toEditorData` (form → database), placeholders
+  (`{pessoas}`/`{local}`/`{hora}` ↔ `{seats}`/`{venue}`/`{time}`) and the preview's lenient
+  `parseEditorDraft`. `src/server/events/editor.ts` maps the database row both ways and saves in
+  one transaction (+ `invalidateInvitationEvent`). A new editable field touches both files, the
+  form tab and the pt-AO `editor` texts.
+- Dates in forms: `src/lib/luanda-time.ts` (Luanda is UTC+1 all year; times before 06:00 are the
+  night after the wedding day, `onWeddingDay`).
+- Live preview: drafts in Redis (`convites:draft:<eventId>:<userId>`, 2 h), rendered by
+  `/previsualizar/<id>` with `InvitationView preview` (sample guest; `SectionProps.preview` makes
+  RSVP, WhatsApp and calendar buttons inert). The editor and the iframe exchange versioned
+  messages (`preview-messages.ts`): keep that handshake when changing either side.
+- Dashboard look: `src/components/dashboard/` (`buttonClasses`, `inputClasses`, `Field`), stone
+  tones and the system font; never the invitation theme tokens.
+- Icon keys live in `src/components/icons/keys.ts` (plain data); pickers offer `CONTENT_ICON_KEYS`.
+- React Hook Form drops the values of `disabled` inputs: show locked values without a disabled
+  control. Anything that appears on validation (badges) must not shift clickable elements.
+
 ## Redis (README → Caching, rate limits and views)
 
 - On request paths use `withRedis(...)` / `getReadyRedis()` from `src/server/redis.ts`, never raw
@@ -168,6 +198,9 @@ section" "--click=button[aria-label='Abrir o convite']" --wait=3000`. Demo links
 ## Local environment notes
 
 - Postgres is on host port 5433 (a native PostgreSQL service may own 5432).
+- Manual browser tests of the dashboard hit the login limit (8 per e-mail per 15 min): sign in
+  once and reuse Playwright's `storageState`, or delete `convites:rl:*` in the dev Redis. The e2e
+  dashboard test edits the Champanhe demo event (the other specs read the Praia Rosa one).
 - The containerized dev server (`--profile app`) runs `next dev --webpack` with `WATCHPACK_POLLING`:
   Turbopack's watcher misses host edits through the bind mount. Host `npm run dev` uses Turbopack.
   After dependency changes start it with `--build --renew-anon-volumes`: its `node_modules` lives in

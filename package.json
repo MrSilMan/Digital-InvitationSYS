@@ -38,7 +38,7 @@
     "@sentry/core": "^11.0.0",
     "@sentry/nextjs": "^11.0.0",
     "@tabler/icons-react": "^3.48.0",
-    "better-auth": "^1.7.5",
+    "better-auth": "^1.7.6",
     "embla-carousel-react": "^8.6.0",
     "ioredis": "^6.0.0",
     "motion": "^13.4.2",

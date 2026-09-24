@@ -29,6 +29,7 @@ import {
   WeddingDressIcon,
   WeddingRingsIcon,
 } from './custom';
+import { type IconKey, isIconKey } from './keys';
 
 /**
  * The invitation icon set, by key. Keys are stored in the database (timeline items, guest rules),
@@ -62,15 +63,9 @@ export const ICONS = {
   music: IconMusic,
   volume: IconVolume,
   'volume-off': IconVolumeOff,
-} as const;
+} as const satisfies Record<IconKey, unknown>;
 
-export type IconKey = keyof typeof ICONS;
-
-export const ICON_KEYS = Object.keys(ICONS) as IconKey[];
-
-export function isIconKey(value: unknown): value is IconKey {
-  return typeof value === 'string' && Object.hasOwn(ICONS, value);
-}
+export { ICON_KEYS, isIconKey, type IconKey } from './keys';
 
 export interface IconProps {
   /** Icon key; unknown keys (e.g. from old data) fall back to a heart. */

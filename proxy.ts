@@ -1,5 +1,7 @@
+import { getSessionCookie } from 'better-auth/cookies';
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { AUTH_COOKIE_PREFIX, isSignedInArea } from '@/lib/auth/cookies';
 import { isBotUserAgent } from '@/lib/bots';
 import { clientIp } from '@/lib/client-ip';
 import { REQUEST_ID_HEADER, resolveRequestId } from '@/lib/request-id';
@@ -15,12 +17,27 @@ import { rateLimit } from '@/server/rate-limit/sliding-window';
  *   normally assigned earlier, at the HTTP layer (`src/lib/observability/http-hooks.ts`), which also
  *   opens the AsyncLocalStorage context; this is the fallback when that hook is not active.
  * - Rate-limits guest invitation pages per IP (link-preview bots exempt; allowed without Redis).
+ * - Sends visitors without a session cookie from the signed-in areas to the login page.
  * - Sets the Content-Security-Policy with a fresh nonce for every page render.
  *
- * Authorization is never decided only here: every Server Action and Route Handler re-checks it.
+ * Authorization is never decided only here: the cookie is not validated (that would cost a
+ * database query per request), so every page, Server Action and Route Handler re-checks the session
+ * (src/server/auth/session.ts).
  */
 export async function proxy(request: NextRequest) {
   const requestId = resolveRequestId(request.headers.get(REQUEST_ID_HEADER));
+  const { pathname, search } = request.nextUrl;
+
+  if (
+    isSignedInArea(pathname) &&
+    !getSessionCookie(request, { cookiePrefix: AUTH_COOKIE_PREFIX })
+  ) {
+    const login = new URL('/entrar', request.url);
+    login.searchParams.set('voltar', `${pathname}${search}`);
+    const response = NextResponse.redirect(login);
+    response.headers.set(REQUEST_ID_HEADER, requestId);
+    return response;
+  }
 
   if (
     request.nextUrl.pathname.startsWith('/c/') &&

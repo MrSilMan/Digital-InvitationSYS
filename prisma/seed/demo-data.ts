@@ -44,7 +44,7 @@ export const DEMO_EVENT = {
   dressCodeColors: ['#A8C5D6', '#E7B7C3', '#857D45', '#F3E9DC'],
   giftText:
     'A vossa presença é o nosso maior presente. Se desejarem contribuir para a nossa nova etapa, deixamos o IBAN abaixo.',
-  giftIban: 'AO06 0000 0000 0000 0000 0000 0',
+  giftIban: 'AO33 0000 0000 0000 0000 0000 0',
   giftAccountHolder: 'Braúlio Santos',
   rsvpMode: 'BOTH',
   rsvpDeadline: luanda('2026-12-31T23:59'),

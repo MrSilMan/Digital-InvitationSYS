@@ -49,6 +49,8 @@ interface RsvpFormProps {
   /** Past the deadline: the answer is shown, not editable. */
   closed: boolean;
   labels: RsvpFormLabels;
+  /** The dashboard's preview: the form is shown but cannot be sent, with this notice. */
+  previewNotice?: string;
 }
 
 function toFormValues(rsvp: GuestRsvp | null, seats: number): RsvpFormValues {
@@ -102,6 +104,7 @@ export function RsvpForm({
   initial,
   closed,
   labels,
+  previewNotice,
 }: RsvpFormProps) {
   const seats = Math.max(1, seatsAllowed);
   const schema = useMemo(() => rsvpAnswerSchema(seats), [seats]);
@@ -139,6 +142,7 @@ export function RsvpForm({
     `${count} ${count === 1 ? labels.peopleForms.one : labels.peopleForms.other}`;
 
   const onSubmit = handleSubmit(() => {
+    if (previewNotice) return;
     setFormError(null);
     // The raw values: the server parses them again with the same schema.
     const answer = getValues();
@@ -299,12 +303,15 @@ export function RsvpForm({
 
       <button
         type="submit"
-        disabled={!ready || pending}
+        disabled={!ready || pending || Boolean(previewNotice)}
         className={pillButtonClasses('pill', 'self-center')}
       >
         <IconCircleCheckFilled size={PILL_ICON_SIZE.pill} aria-hidden="true" />
         <span>{pending ? labels.sending : labels.submit}</span>
       </button>
+      {previewNotice ? (
+        <p className="text-center font-body text-base text-muted">{previewNotice}</p>
+      ) : null}
     </form>
   );
 }
