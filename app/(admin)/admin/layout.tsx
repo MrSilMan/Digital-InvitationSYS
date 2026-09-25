@@ -56,7 +56,10 @@ export default async function AdminLayout({ children }: LayoutProps<'/admin'>) {
         </div>
       </header>
       <SentryUser id={user.id} role={user.role} />
-      <div id="conteudo">{children}</div>
+      {/* Focusable so the skip link moves focus here (screen readers then read on from it). */}
+      <div id="conteudo" tabIndex={-1} className="outline-none">
+        {children}
+      </div>
     </div>
   );
 }

@@ -8,10 +8,11 @@ import { DEFAULT_THEME_ID, isThemeId, type ThemeId } from '.';
  * small-caps fonts; the body font is shared. Chosen by comparing candidates on /design
  * (`src/features/design-preview/candidate-fonts.ts`).
  *
- * Preloading: Next.js preloads every font that a route's modules import, whatever the theme of the
- * page, so preloaded theme fonts would be downloaded by every guest. Only the shared body font is
- * preloaded; the script and caps fonts load when the page first uses them, while the guest looks
- * at the envelope (`display: swap` shows a fallback until they arrive).
+ * Preloading: none. Next.js preloads every font that a route's modules import, whatever the theme
+ * of the page, so preloaded theme fonts would be downloaded by every guest. The body font is not
+ * preloaded either: the envelope (the first screen) uses only the script and caps fonts, and a
+ * preload would compete with its florals, the page's largest paint. Every font loads when the page
+ * first uses it (`display: swap` shows a fallback until it arrives).
  */
 
 /** Body text of every theme: sturdy, readable on small screens. */
@@ -19,6 +20,7 @@ const bodyFont = EB_Garamond({
   weight: ['400', '500'],
   subsets: ['latin'],
   display: 'swap',
+  preload: false,
   variable: '--font-theme-body',
 });
 

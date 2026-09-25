@@ -177,7 +177,7 @@ function LinkSection({
           <IconRefresh size={16} stroke={1.75} aria-hidden="true" />
           {t.link.renew}
         </button>
-        <p className="text-xs text-stone-500">{t.link.renewHint}</p>
+        <p className="text-xs text-stone-600">{t.link.renewHint}</p>
       </div>
       <p
         role="status"

@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import { type ComponentType, Suspense } from 'react';
 
 import { ThemeRoot } from '@/components/theme/theme-root';
 import { CornerDecorations } from '@/components/ui/corner-decorations';
@@ -6,7 +6,7 @@ import { invitation } from '@/i18n/pt-AO';
 import type { SectionId } from '@/lib/validation/sections';
 import type { ThemeDefinition } from '@/themes';
 
-import { openedStorageKey } from './opening/constants';
+import { BEHIND_ENVELOPE_ATTRIBUTE, openedStorageKey } from './opening/constants';
 import { OpeningBootScript } from './opening/opening-boot-script';
 import { OpeningScreen } from './opening/opening-screen';
 import { sectionsToShow } from './sections';
@@ -76,6 +76,7 @@ export function InvitationView({
   const { event, guest } = data;
   const couple = coupleNames(event);
   const storageKey = openedStorageKey(event.slug);
+  const showEnvelope = preview ? preview.showEnvelope : true;
   const props: SectionProps = {
     event,
     guest,
@@ -85,8 +86,8 @@ export function InvitationView({
     guestToken,
     basePath,
     preview: preview !== undefined,
+    behindEnvelope: showEnvelope,
   };
-  const showEnvelope = preview ? preview.showEnvelope : true;
 
   return (
     <ThemeRoot
@@ -104,13 +105,19 @@ export function InvitationView({
           couple={couple}
           guestName={guest.displayName}
           music={event.music}
-          decorations={<CornerDecorations theme={theme} area="opening" eager />}
+          decorations={
+            <CornerDecorations theme={theme} area="opening" eager fetchPriority="high" />
+          }
           contentId={CONTENT_ID}
           headingId={HEADING_ID}
           labels={{ ...invitation.opening, ...invitation.music }}
         />
       ) : null}
-      <main id={CONTENT_ID} className="@container mx-auto w-full max-w-120">
+      <main
+        id={CONTENT_ID}
+        {...(showEnvelope ? { [BEHIND_ENVELOPE_ATTRIBUTE]: '' } : {})}
+        className="@container mx-auto w-full max-w-120"
+      >
         <h1 id={HEADING_ID} tabIndex={-1} className="sr-only">
           {fillTemplate(invitation.pageHeading, { couple })}
         </h1>
@@ -119,7 +126,14 @@ export function InvitationView({
         ) : (
           sectionsToShow(event).map((id) => {
             const Section = SECTION_COMPONENTS[id];
-            return <Section key={id} {...props} />;
+            // A boundary per section: nothing here waits, but the browser then hydrates the page
+            // section by section, with pauses in between, instead of in one long task that
+            // blocks taps on a slow phone.
+            return (
+              <Suspense key={id}>
+                <Section {...props} />
+              </Suspense>
+            );
           })
         )}
       </main>

@@ -117,8 +117,10 @@ export function RsvpForm({
   const [pending, startTransition] = useTransition();
   // After saving, the confirmation takes the focus (screen readers announce it).
   const [focusSummary, setFocusSummary] = useState(false);
-  // Until React is ready the submit button stays disabled: a plain browser submission would put
-  // the answers in the URL instead of calling the Server Action.
+  // Until React is ready (the form's code loads as the guest nears it, see lazy-rsvp-form.tsx) the
+  // answer buttons and the submit button stay disabled: React Hook Form would undo a choice made
+  // before it registers the fields, and a plain browser submission would put the answers in the
+  // URL instead of calling the Server Action.
   const ready = useSyncExternalStore(
     noSubscription,
     () => true,
@@ -189,6 +191,7 @@ export function RsvpForm({
         {closed ? null : (
           <button
             type="button"
+            disabled={!ready}
             onClick={() => {
               setFocusSummary(false);
               setEditing(true);
@@ -214,7 +217,13 @@ export function RsvpForm({
               key={value}
               className="flex min-h-14 cursor-pointer items-center justify-center rounded-2xl border border-accent px-3 py-3 text-center font-caps text-[clamp(0.95rem,4.4cqi,1.1rem)] leading-tight tracking-wide text-ink transition-colors has-checked:bg-accent has-checked:text-accent-contrast has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
             >
-              <input type="radio" value={value} className="sr-only" {...register('attending')} />
+              <input
+                type="radio"
+                value={value}
+                className="sr-only"
+                {...register('attending')}
+                disabled={!ready}
+              />
               {value === 'sim' ? labels.yes : labels.no}
             </label>
           ))}

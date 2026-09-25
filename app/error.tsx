@@ -1,9 +1,9 @@
 'use client';
 
-import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 
-import { errors } from '@/i18n/pt-AO';
+import { errors } from '@/i18n/pt-AO/errors';
+import { browserSentry } from '@/lib/sentry/browser';
 
 export default function ErrorPage({
   error,
@@ -13,7 +13,7 @@ export default function ErrorPage({
   retry: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    browserSentry.captureException(error);
   }, [error]);
 
   return (

@@ -29,6 +29,12 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   images: {
+    // AVIF where the browser takes it (theme artwork is a third smaller), WebP otherwise. Uploads
+    // do not go through the optimizer: the worker makes their WebP sizes.
+    formats: ['image/avif', 'image/webp'],
+    // Phone-first widths (the defaults start at 640): a 360 px phone at 1.5x needs 540 px, and
+    // uploads are picked from their own ladders (src/lib/media/ladder.ts) by the nearest width.
+    deviceSizes: [360, 540, 720, 828, 1080, 1440, 1920],
     // Only our own asset folders can go through the image optimizer, without query strings.
     localPatterns: [
       { pathname: '/themes/**', search: '' },

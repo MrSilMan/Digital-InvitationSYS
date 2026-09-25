@@ -21,12 +21,19 @@
   gap: 1.75rem;
   margin-inline: auto;
   padding: 2rem 1.5rem;
-  container-type: inline-size;
+  /*
+   * 1% of the panel's content width, what `cqi` would give: the overlay is fixed to the viewport,
+   * so it follows from the viewport (30rem panel, 1.5rem padding each side). Deliberately not a
+   * size container: with container queries, every web font that arrives re-runs style and layout
+   * for all of it, which made this first screen ~4x slower to lay out on slow phones. Size the
+   * envelope's text with `calc(N*var(--panel-cqi))`, not `cqi`.
+   */
+  --panel-cqi: calc((min(100vw, 30rem) - 3rem) / 100);
 }
 
 .envelope {
   position: relative;
-  width: min(86cqi, 24rem);
+  width: min(calc(86 * var(--panel-cqi)), 24rem);
   aspect-ratio: 1.42;
   padding: 0;
   border: 0;

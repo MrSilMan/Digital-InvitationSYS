@@ -43,7 +43,7 @@ export default async function DashboardHomePage() {
                   {event.groomName} &amp; {event.brideName}
                 </h2>
                 <p className="mt-1 text-sm text-stone-600">{formatLongDate(event.startsAt)}</p>
-                <p className="text-sm text-stone-500">
+                <p className="text-sm text-stone-600">
                   {fillTemplate(t.theme, { theme: getTheme(event.themeId).name })} ·{' '}
                   {formatCount(event._count.guests, t.guestCount)}
                 </p>

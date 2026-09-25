@@ -127,7 +127,7 @@ export function GeneralTab() {
                   <label htmlFor={id} className="text-sm font-medium text-stone-800">
                     {t.colors[role]}
                   </label>
-                  <span className="font-mono text-xs text-stone-500">
+                  <span className="font-mono text-xs text-stone-600">
                     {override || `${t.colors.themeColor} (${theme.colors[role]})`}
                   </span>
                 </div>
@@ -172,7 +172,7 @@ export function GeneralTab() {
                       className="text-stone-400"
                     />
                     <span className="text-stone-900">{name}</span>
-                    <span className="text-xs text-stone-500">{t.sections.alwaysVisible}</span>
+                    <span className="text-xs text-stone-600">{t.sections.alwaysVisible}</span>
                   </div>
                 ) : (
                   <label className="flex flex-1 items-center gap-3 text-sm">

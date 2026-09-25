@@ -1,27 +1,14 @@
-import * as Sentry from '@sentry/nextjs';
+import { browserSentry, loadAfterPage } from '@/lib/sentry/browser';
+import { disableZodEval } from '@/lib/validation/zod-settings';
 
-import { publicEnv } from '@/env.public';
-import {
-  SENTRY_DATA_COLLECTION,
-  scrubBreadcrumb,
-  scrubEvent,
-  scrubSpan,
-} from '@/lib/sentry/options';
+// Before any form code runs: Zod without its `eval` probe, which our CSP reports as a violation.
+disableZodEval();
 
-// ID of the request that served this page (rendered by the root layout), to correlate with server logs.
-const requestId = document.documentElement.dataset.requestId;
+// The browser SDK loads after the page (see src/lib/sentry/browser.ts); nothing at all without a
+// DSN. Uncaught errors from before then are still reported.
+browserSentry.watchEarlyErrors(window);
+loadAfterPage(browserSentry, window);
 
-// Deliberately lean for low-end phones: no Session Replay, no feedback widget.
-Sentry.init({
-  dsn: publicEnv.sentryDsn,
-  enabled: Boolean(publicEnv.sentryDsn),
-  environment: publicEnv.appEnv,
-  tracesSampleRate: publicEnv.sentryTracesSampleRate,
-  dataCollection: SENTRY_DATA_COLLECTION,
-  initialScope: requestId ? { tags: { request_id: requestId } } : undefined,
-  beforeSend: scrubEvent,
-  beforeBreadcrumb: scrubBreadcrumb,
-  beforeSendSpan: scrubSpan,
-});
-
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+export function onRouterTransitionStart(href: string, navigationType: string): void {
+  browserSentry.captureRouterTransitionStart(href, navigationType);
+}

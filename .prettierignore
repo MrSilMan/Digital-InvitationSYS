@@ -8,6 +8,7 @@ prisma/migrations
 coverage
 playwright-report
 test-results
+.lighthouse
 package-lock.json
 next-env.d.ts
 public

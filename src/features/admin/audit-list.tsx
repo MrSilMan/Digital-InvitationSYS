@@ -63,7 +63,7 @@ export function AuditList({ entries }: { entries: AuditEntryView[] }) {
               {entry.target.name ? (
                 <>
                   {' · '}
-                  <span className="text-stone-500">{t.targets[entry.target.type]}</span>{' '}
+                  <span className="text-stone-600">{t.targets[entry.target.type]}</span>{' '}
                   {href ? (
                     <Link href={href} className="font-medium underline-offset-2 hover:underline">
                       {entry.target.name}

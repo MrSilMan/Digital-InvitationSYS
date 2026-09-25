@@ -93,6 +93,8 @@ export function GuestForm({
             autoComplete="off"
             maxLength={GUEST_LIMITS.name}
             className={inputClasses}
+            // The dialog opens on the name: adding guests is typing.
+            data-autofocus=""
           />
         )}
       </Field>

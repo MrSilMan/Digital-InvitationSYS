@@ -351,7 +351,7 @@ export function NewEventForm({ owners, preselectedOwnerId, appUrl, loginUrl }: N
           {isSubmitting ? t.submitting : t.submit}
         </button>
         <Notice notice={notice} />
-        <p className="text-xs text-stone-500">{editor.general.phase.SAVE_THE_DATEHint}</p>
+        <p className="text-xs text-stone-600">{editor.general.phase.SAVE_THE_DATEHint}</p>
       </div>
     </form>
   );

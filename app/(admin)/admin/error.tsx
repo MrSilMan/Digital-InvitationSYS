@@ -1,10 +1,10 @@
 'use client';
 
-import * as Sentry from '@sentry/nextjs';
 import { useEffect } from 'react';
 
 import { buttonClasses, cardClasses } from '@/components/dashboard/styles';
-import { errors } from '@/i18n/pt-AO';
+import { errors } from '@/i18n/pt-AO/errors';
+import { browserSentry } from '@/lib/sentry/browser';
 
 /** Errors inside the admin area keep the header (the menu and sign out stay reachable). */
 export default function AdminError({
@@ -15,7 +15,7 @@ export default function AdminError({
   retry: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    browserSentry.captureException(error);
   }, [error]);
 
   return (
@@ -27,7 +27,7 @@ export default function AdminError({
           {errors.generic.retry}
         </button>
         {error.digest ? (
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-stone-600">
             {errors.reference}: {error.digest}
           </p>
         ) : null}

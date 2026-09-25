@@ -17,4 +17,10 @@ export interface SectionProps {
   basePath: string;
   /** The dashboard's preview: a sample guest, and nothing a guest could send or record. */
   preview?: boolean;
+  /**
+   * The envelope covers the page at first, so no section is the first screen: their images all
+   * load lazily. Once the envelope is tapped, the first section's are on screen and load at once,
+   * while it opens. Otherwise (the preview without the envelope) the first section loads eagerly.
+   */
+  behindEnvelope?: boolean;
 }

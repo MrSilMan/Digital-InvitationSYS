@@ -11,9 +11,9 @@ relevant sections before planning a phase. README.md documents setup and archite
   approval. After it: `npm run check` and `npm run build` must pass, then summarize and commit.
 - Before installing anything, check current versions with `npm view` and read the current docs
   (Next.js ships version-matched docs in `node_modules/next/dist/docs/`).
-- Phase status: 1–9 and 10a (E2E in CI, Dependabot) done. Next: Phase 11 (polish). Phase 10b
-  (production Docker/Caddy, backups, deploy workflow) waits for a server and a domain, and must be
-  done before the first real couple.
+- Phase status: 1–9, 10a (E2E in CI, Dependabot) and 11 (performance, accessibility) done. Left:
+  Phase 10b (production Docker/Caddy, backups, deploy workflow), which waits for a server and a
+  domain and must be done before the first real couple.
 
 ## Commands
 
@@ -25,6 +25,7 @@ npm run check               # format check + lint + typecheck + unit tests
 npm run test:integration    # tests against Postgres (convites_test), Redis db 15, MinIO
 npm run test:e2e            # Playwright, phone-sized Chromium (+ a worker); needs `npm run db:seed`
 E2E_BUILD=1 npm run test:e2e   # same against the production build (`npm run build` first), like CI
+npm run lighthouse -- --base=http://localhost:3000   # Lighthouse medians of the key pages (app running)
 npm run build && npm start  # production build, run like the Docker image
 npm run db:migrate -- --name what-changed   # after editing prisma/schema.prisma
 npm run db:seed             # demo data (idempotent)
@@ -70,7 +71,7 @@ npx vitest run path/to/file.test.ts
   `npx auth@1.7.5 generate --config <file> --adapter prisma --dialect postgresql --output <file>`
 - Guest tokens: `createGuestToken()` (22 chars, 128 bits); check with `isGuestToken()` before any
   lookup. Phones: `angolanPhoneSchema` (stored as +2449XXXXXXXX). Section order/visibility:
-  `parseSectionConfig()`. Default texts and rules: `src/i18n/pt-AO.ts` / `src/lib/event-defaults.ts`.
+  `parseSectionConfig()`. Default texts and rules: `src/i18n/pt-AO/` / `src/lib/event-defaults.ts`.
 - The integration test database name must end in `_test`; the suite empties it on every run.
 
 ## Conventions
@@ -87,16 +88,21 @@ npx vitest run path/to/file.test.ts
   a safety net, not permission.
 - Process-wide singletons (logger, ALS storage, Redis, DB pools) live on `globalThis` under
   `Symbol.for('convites.*')`, because Next.js bundles instrumentation and routes separately.
-- UI text only in `src/i18n/pt-AO.ts` (pt-AO spelling). Client Components import single sections
-  (`import { errors } from '@/i18n/pt-AO'`) to keep bundles small.
+- UI text only in `src/i18n/pt-AO/` (pt-AO spelling). In the browser, importing any section from
+  `@/i18n/pt-AO` ships the whole dictionary (the bundler keeps every export some page uses). Code
+  that reaches guest pages imports its own module (`@/i18n/pt-AO/errors`, `/validation`) or gets
+  labels as props; dashboard Client Components may import from `@/i18n/pt-AO`.
 - Validate every input with Zod (forms, Server Actions, Route Handlers, env, CSV) and re-check
   authorization inside every Server Action and Route Handler; never rely on `proxy.ts` alone.
 - CSP: nonce-based, built in `src/lib/security/csp.ts`. No inline `<script>` without the nonce; add
   external origins through the builder options. Styles may be inline.
 - Sentry privacy lives in `src/lib/sentry/options.ts`: never loosen `dataCollection`, never add
   Session Replay, never send guest names, phones, IBANs or tokens.
+- Browser code reports through `browserSentry` (`src/lib/sentry/browser.ts`), never by importing
+  `@sentry/nextjs` (ESLint refuses it outside `src/server/`): the SDK loads 3 s after the page, and
+  `src/lib/sentry/browser-init.ts` imports only what it uses (a whole-namespace import triples it).
 - Guest pages must stay light (low-end Android): Server Components by default, small Client
-  Components, no heavy client libraries.
+  Components, no heavy client libraries. See "Guest-page performance" below.
 - Tests: Vitest, `*.test.ts(x)` next to the code; root-level files are tested in `tests/unit/`;
   database tests are `tests/integration/*.int.test.ts`. Components: render with
   `renderToStaticMarkup` from `react-dom/server` (no DOM environment needed).
@@ -107,15 +113,18 @@ npx vitest run path/to/file.test.ts
   per theme in `src/themes/fonts.ts`, applied by `ThemeRoot` with the `--theme-*` variables.
 - A theme needs entries in `THEMES`, `src/themes/fonts.ts` and `OG_FONTS` (og-image.tsx, `.woff`
   files in `assets/fonts/`), plus artwork in `public/themes/<id>/` (README → Adding a theme).
-  Theme fonts use `preload: false`: next/font preloads per route, not per theme, so a preloaded
-  theme font is downloaded by every guest. Only the shared body font is preloaded.
+  Fonts use `preload: false`: next/font preloads per route, not per theme, so a preloaded theme
+  font is downloaded by every guest, and the envelope needs only the script and caps fonts (keep
+  its text in those: body-font text there downloads the body font too).
 - Set the caps font only with the `font-caps` class: it also applies the theme's `capsSizeAdjust`
   (Champanhe's Cinzel runs ~20% larger). Never `font-family: var(--theme-font-caps)` in plain CSS.
 - Main actions take `theme.buttonShape` (`PillButton shape`, `RsvpDialog shape`); WhatsApp RSVP
   buttons are always circles, buttons inside a form or box always pills.
 - Invitation components use the Tailwind tokens (`text-script`, `bg-accent`, `text-ink`,
   `font-caps`…), never hex colours, so theme overrides just work. Size invitation text with `cqi`
-  (`text-[clamp(1rem,5cqi,1.5rem)]`), never `vw`: it also renders in the dashboard's phone preview.
+  (`text-[clamp(1rem,5cqi,1.5rem)]`), never `vw`: sections also render inline on `/design`. The
+  one exception is the envelope (fixed to the viewport): `calc(N*var(--panel-cqi))`, no size
+  container, see opening.module.css.
 - Plain CSS (CSS modules, `@utility`) must use `var(--theme-*)` directly, never `var(--color-*)` /
   `var(--font-*)`: those resolve on `:root`, above the theme root, and silently give the fallbacks.
 - `cn()` does not merge conflicting Tailwind classes: never pass a class that overrides one the
@@ -148,7 +157,7 @@ npx vitest run path/to/file.test.ts
 - Read the time with `serverNow()` (`src/lib/clock.ts`) in server code; client countdowns get the
   server time as a prop.
 - Visual checks of a guest page: `node scripts/screenshot.mjs <url> <outDir> "--selector=main >
-section" "--click=button[aria-label='Abrir o convite']" --wait=3000`. Demo links per theme:
+section" "--click=[data-opening-envelope]" --wait=3000`. Demo links per theme:
   `/c/braulio-e-nanda/demo-familia-silva-001` (Praia Rosa),
   `/c/braulio-e-nanda-champanhe/demo-champanhe-silva-01` (Champanhe). To see a Save the Date in
   another theme, change the demo event's `phase` in the local database, delete its cached read
@@ -158,6 +167,29 @@ section" "--click=button[aria-label='Abrir o convite']" --wait=3000`. Demo links
   Action `submitRsvp`, WhatsApp route); the browser only mirrors them. The form schema
   (`src/lib/validation/rsvp.ts`) uses `zod/mini` because it ships to guests: keep it that way.
 - A WhatsApp tap never overwrites a form answer (`recordWhatsappIntent`).
+
+## Guest-page performance and accessibility (README → Performance, Accessibility)
+
+- Measure with `npm run build && npm start`, then `npm run lighthouse` (medians; single runs vary
+  by 5+ points; in Git Bash prefix `--page=/c/...` runs with `MSYS_NO_PATHCONV=1`). Targets: 90+
+  performance and accessibility on every key page. `tests/e2e/performance.spec.ts` (build only)
+  guards the budget: keep it green, raise its limit only with a reason.
+- Nothing behind the closed envelope renders (`data-behind-envelope`, globals.css) until the tap;
+  sections get `behindEnvelope` and keep their images lazy then. Only the envelope's florals are
+  `fetchPriority="high"`.
+- Client Components that measure layout (Embla) start only near the screen: measuring at hydration
+  forces a layout of the whole page. Each section is its own Suspense boundary (hydrates in short
+  tasks). Keep client code that ships to guests free of big libraries: the RSVP form (React Hook
+  Form + Zod) loads through `LazyRsvpForm` as the guest nears it or presses a key; its controls
+  stay disabled until then (e2e: `scrollToRsvp`, then wait for them to be enabled). Pages that
+  refresh (the dashboard preview) pass `loadNow`: a refresh waits for every lazy piece in it.
+- Rejected on purpose: `experimental.inlineCss` (Next.js copies the CSS into the page data, ~45 KB
+  more per page), preloading fonts, size containers on the envelope (every font swap re-ran layout).
+- `tests/e2e/accessibility.spec.ts` runs axe (WCAG 2.2 A/AA) on every main page and state, plus the
+  keyboard paths: a new page or dialog gets a check there. Dashboard dialogs focus an element
+  marked `data-autofocus` when they open (React's `autoFocus` runs before `showModal`).
+- Dashboard secondary text is `text-stone-600`: `stone-500` fails 4.5:1 on the `stone-100` page
+  background (disabled inputs keep it).
 
 ## Logins and dashboard (README → Couple dashboard)
 

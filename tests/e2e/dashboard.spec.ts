@@ -1,6 +1,8 @@
 import { expect, type Page, test } from '@playwright/test';
 import sharp from 'sharp';
 
+import { scrollToRsvp } from './helpers';
+
 /** Demo login (npm run db:seed; passwords from SEED_* or the defaults). */
 const COUPLE = {
   email: 'noivos@convites.test',
@@ -96,6 +98,8 @@ test.describe('couple dashboard', () => {
     await guest.goto(new URL(link ?? '').pathname);
     await guest.getByRole('button', { name: 'Abrir o convite' }).click();
     const content = guest.locator('main#convite');
+    await scrollToRsvp(content);
+    await expect(content.getByRole('radio', { name: 'Sim, estarei presente' })).toBeEnabled();
     await content.getByText('Sim, estarei presente').click();
     await content.getByLabel('Quantas pessoas vão?').selectOption('2');
     const note = `Contem connosco! ${Date.now()}`;

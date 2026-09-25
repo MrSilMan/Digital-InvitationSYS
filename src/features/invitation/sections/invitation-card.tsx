@@ -36,16 +36,16 @@ function Parents({ groom, bride }: { groom: string[]; bride: string[] }) {
 }
 
 /** The invitation card (reference "4 de 14"): the personalised page, with the guest's name. */
-export function InvitationCardSection({ event, guest, theme }: SectionProps) {
+export function InvitationCardSection({ event, guest, theme, behindEnvelope }: SectionProps) {
   return (
     <SectionPage
       theme={theme}
       area="invitation"
       labelledBy={HEADING_ID}
-      eager
+      eager={!behindEnvelope}
       padded={false}
       contentClassName="gap-5 px-5 pt-16 pb-6"
-      footer={<HeroIllustration theme={theme} image={event.hero} eager />}
+      footer={<HeroIllustration theme={theme} image={event.hero} eager={!behindEnvelope} />}
     >
       <h2 id={HEADING_ID} className="sr-only">
         {invitation.sections.invitation.heading}

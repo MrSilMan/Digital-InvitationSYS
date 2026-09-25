@@ -15,7 +15,7 @@ type RuleIcon = EventEditorValues['rules'][number]['icon'];
 
 function LimitNote({ max }: { max: number }) {
   return (
-    <p className="font-sans text-sm text-stone-500">
+    <p className="font-sans text-sm text-stone-600">
       {fillTemplate(editor.list.limit, { max: String(max) })}
     </p>
   );

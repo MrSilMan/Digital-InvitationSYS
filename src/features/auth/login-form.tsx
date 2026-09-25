@@ -73,7 +73,7 @@ export function LoginForm({ returnTo }: { returnTo: string | null }) {
               onClick={() => setShowPassword((shown) => !shown)}
               aria-pressed={showPassword}
               aria-label={showPassword ? t.hidePassword : t.showPassword}
-              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-stone-500 hover:text-stone-800 focus-visible:outline-2 focus-visible:outline-stone-900"
+              className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-stone-600 hover:text-stone-800 focus-visible:outline-2 focus-visible:outline-stone-900"
             >
               {showPassword ? (
                 <IconEyeOff size={20} stroke={1.75} aria-hidden="true" />

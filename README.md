@@ -25,7 +25,7 @@ and a domain, and must be done before the first real couple uses the platform.
 | 8     | Guest management, CSV, WhatsApp                                                   | Done    |
 | 9     | Admin area and audit log                                                          | Done    |
 | 10a   | CI: end-to-end tests against the production build, Dependabot                     | Done    |
-| 11    | Performance, accessibility, final docs                                            | Next    |
+| 11    | Performance, accessibility, final docs                                            | Done    |
 | 10b   | Production Docker/Caddy, backups, deploy workflow with staging and rollback       | Planned |
 
 ## Stack
@@ -152,6 +152,7 @@ one image can be promoted from staging to production. `.env.example` documents e
 | `npm test`                    | Vitest unit tests (fast, no services needed)                       |
 | `npm run test:integration`    | Integration tests against Postgres (needs `docker compose up`)     |
 | `npm run test:e2e`            | Playwright end-to-end tests in a phone-sized Chromium (seeded DB)  |
+| `npm run lighthouse`          | Lighthouse medians of the key pages (see "Performance")            |
 | `npm run check`               | Format check, lint, type-check and unit tests                      |
 | `npm run db:migrate`          | Create and apply a migration after editing the schema (dev)        |
 | `npm run db:deploy`           | Apply pending migrations (CI, staging, production)                 |
@@ -185,7 +186,8 @@ prisma.config.ts        Prisma 7 configuration (database URL, seed command)
 public/themes/<id>/     Theme artwork (placeholders until the licensed artwork replaces them)
 public/demo/            Demo event media: placeholder photos and music (npm run demo:media)
 src/env.ts              Zod-validated server environment; src/env.public.ts for browser values
-src/i18n/               pt-AO.ts: every user-facing string (Portuguese, Angola); date and plural formatting
+src/i18n/               pt-AO/: every user-facing string (Portuguese, Angola; the sections guest-page scripts
+                        need are their own modules); date and plural formatting
 src/components/         Shared UI: invitation building blocks (ui/), dashboard styles (dashboard/), icons, theme root
 src/features/           Feature code by area: invitation/ (guest pages), auth/, account/ (A minha conta),
                         dashboard/, admin/, design-preview/
@@ -297,6 +299,14 @@ logs. Browser events are tunnelled through `/monitoring` on our own origin. Sour
 generated when `SENTRY_AUTH_TOKEN` is set (CI), uploaded, then deleted, so they are never public.
 No Session Replay or feedback widget, to keep the JavaScript light on low-end phones.
 
+The browser SDK is not part of any page's first JavaScript
+([src/lib/sentry/browser.ts](src/lib/sentry/browser.ts)): it loads 3 seconds after the page has
+loaded, when the browser is idle, or at once when an error happens first, and never without a DSN.
+Until it runs, a small listener catches uncaught errors and a short queue keeps what the error
+pages and the signed-in user tag send. Browser code reports through `browserSentry`; ESLint refuses
+`@sentry/nextjs` imports outside `src/server/`. Checked once with a placeholder DSN and the tunnel
+intercepted: errors from before and after the SDK loads both arrive, without guest names or tokens.
+
 ### Security headers
 
 - `next.config.ts`: HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`,
@@ -340,7 +350,8 @@ the server in the event's theme.
   while the guest is in another app. The envelope shows once per browser tab (an inline script with
   the CSP nonce hides it before the first paint on a reload), and without JavaScript the invitation
   is simply readable. The same script remembers a tap made while the page's JavaScript is still
-  loading (slow phones), and the envelope opens as soon as it is ready.
+  loading (slow phones), and the envelope opens as soon as it is ready. While the envelope is
+  closed, the invitation behind it is not rendered at all (see "Performance").
 - **Phases:** in the Save the Date phase the guest sees only that page, whose "Confirmar presença"
   opens the RSVP options in a dialog. In the invitation phase the sections follow the couple's order
   and visibility (`Event.sectionConfig`), one full screen each with gentle scroll snap; optional
@@ -356,11 +367,9 @@ the server in the event's theme.
   metadata blocking to it). The image, `opengraph-image.tsx`, is drawn with `next/og` in the theme's
   style and fonts (files in [assets/fonts/](assets/fonts/)) and re-encoded as a JPEG of about
   50 KB, because WhatsApp skips large previews. It shows the event only, never the guest.
-- **Performance:** everything is server-rendered; the client pieces (envelope and music, countdown,
-  gallery, copy button, RSVP dialog) add about 25 KB of gzipped JavaScript to the shared
-  framework bundle (about 240 KB, mostly React, Next.js and the Sentry browser SDK). The first
-  screen's images are preloaded, the rest load lazily. Guest links send `Referrer-Policy:
-no-referrer` and `X-Robots-Tag: noindex`.
+- **Performance:** everything is server-rendered, with about 160 KB of gzipped JavaScript before
+  the first tap; see "Performance" below. Guest links send `Referrer-Policy: no-referrer` and
+  `X-Robots-Tag: noindex`.
 
 ### RSVP
 
@@ -374,8 +383,11 @@ same options in a dialog.
   light); the `submitRsvp` Server Action trusts nothing from the browser: it checks the link, the
   event (active, form mode), the deadline and the rate limits, and validates the answer again
   against the guest's seats from the database. A saved answer is shown with "Alterar a resposta"
-  until the deadline, read-only after it. The form needs JavaScript (its submit button stays
-  disabled until the page is interactive); its code only loads on pages that show it.
+  until the deadline, read-only after it. The form needs JavaScript: its code (React Hook Form and
+  the schema) loads when the form comes within about two screens, its dialog opens or the guest
+  presses a key ([lazy-rsvp-form.tsx](src/features/invitation/rsvp/lazy-rsvp-form.tsx)), and its
+  answer and submit buttons stay disabled until then (a choice made earlier would be undone, and a
+  plain browser submission would put the answers in the URL).
 - **WHATSAPP** (and BOTH): round buttons for the groom and the bride. They open
   `/c/<slug>/<token>/whatsapp/<noivo|noiva>`, which records the tap as a confirmation intent (after
   the response; never overwriting a form answer; not after the deadline) and forwards to `wa.me`
@@ -683,7 +695,7 @@ every origin by default):
 ]
 ```
 
-The worker runs the TypeScript source with `tsx` for now; Phase 10 builds its production image.
+The worker runs the TypeScript source with `tsx` for now; Phase 10b builds its production image.
 
 ## Themes
 
@@ -709,7 +721,9 @@ An invitation's look is its **theme** (`Event.themeId`) plus the couple's colour
   modules, `@utility`) must read `var(--theme-accent)` and friends directly: `--color-*` and
   `--font-*` are resolved on `:root`, above the theme, and would always give the fallbacks.
 - **Container units:** invitation text is sized in `cqi` (a share of the invitation's own width),
-  not `vw`, so it scales the same on a phone and in the dashboard's phone-frame preview.
+  not `vw`, so it scales the same on a phone and on `/design`. The envelope is the exception: it
+  is fixed to the viewport, so its text uses `--panel-cqi`, the same share computed from the
+  viewport, without a size container (see "Performance").
 - **Button shape** (`buttonShape`): the main actions ("Confirmar presença" on the Save the Date,
   "Google Maps", "Adicionar ao calendário") are pills in Praia Rosa and circles in Champanhe. The
   WhatsApp RSVP buttons are always round; buttons inside a form or box ("Enviar resposta",
@@ -735,10 +749,11 @@ Rosa's against the reference):
 | Body text (message, rules, timeline) | EB Garamond: sturdy serif, readable on small screens              | EB Garamond                                                |
 | Buttons                              | System sans: clean labels like the reference, nothing to download | System sans                                                |
 
-- **Preloading:** Next.js preloads every font a route imports, whatever the page's theme, so only
-  the shared body font is preloaded. The script and caps fonts (`preload: false`) load when the
-  page first uses them, while the guest looks at the envelope; `display: swap` shows a fallback
-  sized like the font until then. A new theme's fonts need `preload: false` too.
+- **Preloading:** none. Next.js preloads every font a route imports, whatever the page's theme,
+  so preloaded theme fonts would reach every guest; and the envelope, the first screen, uses only
+  the theme's script and caps fonts, which load as soon as it needs them (a preloaded body font
+  competed with its florals). `display: swap` shows a fallback sized like the font until then. A
+  new theme's fonts need `preload: false` too, and the envelope's text must stay in those two.
 - **Size adjustment:** the invitation's caps sizes were set for Cormorant SC. Cinzel runs about 20%
   larger, so Champanhe sets `fonts.capsSizeAdjust` (CSS `font-size-adjust`, which the `font-caps`
   class applies to the web font and its fallback alike) and its lines break like Praia Rosa's.
@@ -826,8 +841,76 @@ invitation's envelope:
 
 ```bash
 node scripts/screenshot.mjs http://localhost:3000/c/braulio-e-nanda/demo-familia-silva-001 shots \
-  "--selector=main > section" "--click=button[aria-label='Abrir o convite']" --wait=3000
+  "--selector=main > section" "--click=[data-opening-envelope]" --wait=3000
 ```
+
+## Performance
+
+Guests open their invitation on low-end Android phones over mobile data, so the guest pages have a
+budget. Lighthouse 13.5, mobile profile (simulated slow 4G, 4x slower CPU), production build,
+median of 5 runs, measured locally on 2026-09-25:
+
+| Page                   | Performance | Accessibility | LCP   | TBT    | Before Phase 11 |
+| ---------------------- | ----------- | ------------- | ----- | ------ | --------------- |
+| Invitation, Praia Rosa | 92          | 100           | 3.2 s | 71 ms  | 79              |
+| Invitation, Champanhe  | 91          | 100           | 3.3 s | 74 ms  | 81              |
+| Save the Date          | 93          | 100           | 3.0 s | 81 ms  | 87              |
+| Login                  | 93          | 100           | 2.9 s | 152 ms | 92              |
+
+With a Sentry DSN set (the browser SDK then loads 3 s after the page), the two invitations scored
+91–92. SEO shows 60 on guest links by design: they are `noindex`. These are lab numbers from one
+machine; check a real phone on mobile data after the first deploy.
+
+Measure it yourself: `npm run build && npm start`, then `npm run lighthouse` (every key page, 3
+runs, medians; `--runs=5`, `--page=/entrar`, `--base=http://localhost:3100`, `--min=90`; reports
+in `.lighthouse/`). Single runs vary by 5 points or more: compare medians.
+
+What keeps the first screen fast (about 160 KB of gzipped JavaScript, down from about 290 KB):
+
+- **Nothing behind the envelope renders** until the guest taps it (`content-visibility: hidden` on
+  the invitation): no layout, and no fonts or pictures downloaded for it. The first section's
+  pictures are lazy behind the envelope and load while it opens. Only the envelope's florals, the
+  largest paint, are fetched with high priority; no font is preloaded (the envelope needs only
+  the theme's script and caps fonts).
+- **Late JavaScript:** the Sentry browser SDK (see "Sentry"), the RSVP form's code (see "RSVP")
+  and the gallery carousel, which starts only near the screen (starting it measures the page,
+  which forced a layout of everything). Code that reaches guest pages never imports the pt-AO
+  dictionary: the bundler would ship all of it ([src/i18n/pt-AO/index.ts](src/i18n/pt-AO/index.ts)).
+- **Short tasks:** each section is its own Suspense boundary, so React hydrates the page section
+  by section. The envelope's text is sized from the viewport rather than a size container:
+  container queries made every web font that arrived re-run layout, four times slower there.
+- **Images:** AVIF for theme artwork, phone-first widths (from 360 px), uploads from their own
+  WebP ladders.
+- **Tried and rejected:** `experimental.inlineCss` (Next.js also copies the CSS into the page
+  data: about 45 KB more per page).
+
+[tests/e2e/performance.spec.ts](tests/e2e/performance.spec.ts) guards these facts on the build,
+not the scores: at most 180 KB of JavaScript before the first tap, no Sentry SDK, dictionary or
+form library in it, the florals at high priority, and nothing behind the envelope rendered or
+downloaded until it opens.
+
+## Accessibility
+
+- **Automated:** [tests/e2e/accessibility.spec.ts](tests/e2e/accessibility.spec.ts) runs axe-core
+  (WCAG 2.2 A and AA rules) on every main page and state: the envelope and the open invitation with
+  its RSVP form, both themes, the lightbox, the Save the Date and its RSVP dialog, the not-found
+  page, the login; the couple's events, overview, guest list with its add (also with errors),
+  import and send dialogs, every editor tab and the account page; the admin lists, forms, audit
+  log, an event and an account. Every scan must be clean. Lighthouse scores 100 on the key pages.
+- **Keyboard**, tested in the same spec: the envelope is the first stop and opens with Enter,
+  focus moving to the invitation's heading; Tab reaches the RSVP form; the lightbox and dialogs
+  keep focus inside, close with Escape and give focus back; the dashboard's skip link moves focus
+  to the content; the editor's tabs follow the ARIA tabs pattern (arrows, Home, End); form dialogs
+  open on their first field (`data-autofocus`). Every focused control shows a focus ring (checked
+  by walking the pages with the keyboard).
+- **Fixed in Phase 11:** the envelope button's name now contains its visible text (WCAG 2.5.3);
+  the dashboard's secondary text is `stone-600` (`stone-500` was below 4.5:1 on the page
+  background).
+- **Already in place:** `lang="pt-AO"`, reduced motion, theme colours checked for contrast by unit
+  tests, labels and error messages tied to their fields, live regions for status messages, and
+  the invitation inert behind the envelope.
+- **Still to do by hand before launch:** a pass with a real screen reader (TalkBack on Android,
+  VoiceOver on iPhone).
 
 ## Testing and CI
 
@@ -855,8 +938,9 @@ Vitest runs two projects, Playwright a third suite:
   sending the link by WhatsApp, the guest answering, and the answer in the list and the
   overview, and a CSV import through the worker with a row in error; an admin creating an event
   with a new couple account, deactivating it and finding it in the audit log, then the couple
-  signing in with the temporary password and choosing their own; and couples never reaching
-  `/admin`. Its global setup re-seeds the demo data and clears the rate-limit counters, so runs are
+  signing in with the temporary password and choosing their own; couples never reaching `/admin`;
+  the accessibility checks and keyboard paths (see "Accessibility"); and the performance budget of
+  a guest's first screen (production build only, skipped on `next dev`). Its global setup re-seeds the demo data and clears the rate-limit counters, so runs are
   repeatable (`E2E_SKIP_RESET=1` skips that for a server that does not use the local database and
   Redis). It starts `next dev` on port 3100 and a worker, with 4 browsers at most (one dev server
   compiling on demand falls behind with more), or tests a running app given in `E2E_BASE_URL`.
@@ -869,7 +953,9 @@ Vitest runs two projects, Playwright a third suite:
   ```
 
   Tests that open the same event's editor as the same couple run one after the other: opening the
-  editor clears that couple's preview draft.
+  editor clears that couple's preview draft. Tests of the RSVP form scroll to it first
+  (`scrollToRsvp` in [tests/e2e/helpers.ts](tests/e2e/helpers.ts)) and wait for its buttons to be
+  enabled: its code loads as the guest nears it.
 
 - `npm run test:integration`: `tests/integration/*.int.test.ts` against a real Postgres and Redis:
   the migrations, the demo seed (twice), guest lookup by token (including that no other guest's
@@ -921,3 +1007,12 @@ Tailwind, Vitest) share one pull request, the other minor and patch updates anot
 come one by one. New releases wait 5 days first (supply-chain safety). The version pins above are
 ignore rules there: change both together. Security alerts and security updates are switched on in
 the repository settings (Code security), not in this file.
+
+## Deployment
+
+Not built yet. Phase 10b adds the production Docker images and Compose file with Caddy (automatic
+HTTPS), daily PostgreSQL backups, and the deploy workflow (staging from `develop`, production from
+`main` after approval, automatic rollback when `/api/health` fails), with every GitHub secret it
+needs documented here. It waits until there is a server and a domain, and must be done before the
+first real couple uses the platform. Until then, `npm run build && npm start` runs the production
+build the way the image will (see "Running the production build locally").

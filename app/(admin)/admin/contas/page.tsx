@@ -73,7 +73,7 @@ export default async function AccountsPage({ searchParams }: PageProps<'/admin/c
                     {account.id === user.id ? <StatusBadge>{admin.common.you}</StatusBadge> : null}
                   </div>
                   <p className="text-sm break-all text-stone-600">{account.email}</p>
-                  <p className="text-sm text-stone-500">
+                  <p className="text-sm text-stone-600">
                     {formatCount(account.eventCount, t.events)} ·{' '}
                     {fillTemplate(t.created, { date: formatShortDate(account.createdAt) })}
                   </p>

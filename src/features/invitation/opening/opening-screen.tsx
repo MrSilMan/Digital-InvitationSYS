@@ -15,7 +15,7 @@ import {
 import { Monogram } from '@/components/ui/monogram';
 import { cn } from '@/lib/cn';
 
-import { EARLY_TAP_FLAG, OPENED_ATTRIBUTE } from './constants';
+import { EARLY_TAP_FLAG, OPENED_ATTRIBUTE, REVEALED_ATTRIBUTE } from './constants';
 import styles from './opening.module.css';
 
 interface OpeningScreenProps {
@@ -109,7 +109,6 @@ export function OpeningScreen({
   const wantsMusic = useRef(false);
   const [playing, setPlaying] = useState(false);
   const gradientId = useId();
-  const addresseeId = useId();
 
   // While the envelope is closed: no scrolling, and the invitation behind it is inert.
   useEffect(() => {
@@ -170,6 +169,9 @@ export function OpeningScreen({
     if (phase !== 'closed') return;
     setPhase('opening');
     if (remember) rememberOpened(storageKey);
+    // The invitation renders now, under the envelope: its fonts and pictures load while the
+    // envelope opens (it stays inert until the animation ends).
+    document.getElementById(contentId)?.setAttribute(REVEALED_ATTRIBUTE, '');
     // Must start inside the tap: browsers block audio that starts later on its own.
     playMusic();
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -215,22 +217,27 @@ export function OpeningScreen({
         <div ref={scope} data-opening-screen="" className={cn(styles.overlay, 'theme-surface')}>
           {decorations}
           <div className={styles.panel}>
-            <p className="text-center font-script text-[clamp(2.8rem,14cqi,3.8rem)] leading-tight text-script">
+            <p className="text-center font-script text-[clamp(2.8rem,calc(14*var(--panel-cqi)),3.8rem)] leading-tight text-script">
               {couple}
             </p>
+            {/* Named by its content, so the name includes the visible text (WCAG 2.5.3): "Abrir o
+                convite de" (for screen readers), the couple's names, then the addressee. */}
             <button
               type="button"
               data-opening-envelope=""
               className={styles.envelope}
               onClick={open}
-              aria-label={labels.openButton}
-              aria-describedby={addresseeId}
               disabled={phase !== 'closed'}
             >
+              {/* font-caps: the envelope's own font; the body font is not needed on this screen. */}
+              <span className="sr-only font-caps">{labels.openButton}</span>
               <div className={styles.back} />
               <div ref={letterRef} className={styles.letter}>
-                <Monogram initials={monogram} className="text-[clamp(1.8rem,9cqi,2.4rem)]" />
-                <span className="font-script text-[clamp(1.6rem,8cqi,2.2rem)] leading-tight text-script">
+                <Monogram
+                  initials={monogram}
+                  className="text-[clamp(1.8rem,calc(9*var(--panel-cqi)),2.4rem)]"
+                />
+                <span className="font-script text-[clamp(1.6rem,calc(8*var(--panel-cqi)),2.2rem)] leading-tight text-script">
                   {couple}
                 </span>
               </div>
@@ -244,11 +251,11 @@ export function OpeningScreen({
                 <path className={cn(styles.fold, styles.foldSide)} d="M142 0 L76 55 L142 100 Z" />
                 <path className={styles.fold} d="M0 100 L71 45 L142 100 Z" />
               </svg>
-              <p id={addresseeId} className={cn(styles.address, 'font-caps')}>
-                <span className="block text-[clamp(0.7rem,3.4cqi,0.9rem)] tracking-[0.16em] text-muted">
+              <p className={cn(styles.address, 'font-caps')}>
+                <span className="block text-[clamp(0.7rem,calc(3.4*var(--panel-cqi)),0.9rem)] tracking-[0.16em] text-muted">
                   {labels.addressedTo}
                 </span>
-                <span className="block text-[clamp(0.95rem,4.6cqi,1.2rem)] font-bold tracking-[0.04em] text-balance text-ink uppercase">
+                <span className="block text-[clamp(0.95rem,calc(4.6*var(--panel-cqi)),1.2rem)] font-bold tracking-[0.04em] text-balance text-ink uppercase">
                   {guestName}
                 </span>
               </p>
@@ -291,14 +298,17 @@ export function OpeningScreen({
                 </svg>
                 <Monogram
                   initials={monogram}
-                  className="relative text-[clamp(1.4rem,7.5cqi,2rem)]"
+                  className="relative text-[clamp(1.4rem,calc(7.5*var(--panel-cqi)),2rem)]"
                   style={{ color: 'var(--theme-seal-ink)' }}
                 />
               </div>
             </button>
             <p
               aria-hidden="true"
-              className={cn(styles.tap, 'font-caps text-[clamp(1rem,4.8cqi,1.25rem)]')}
+              className={cn(
+                styles.tap,
+                'font-caps text-[clamp(1rem,calc(4.8*var(--panel-cqi)),1.25rem)]',
+              )}
             >
               {labels.tapToOpen}
             </p>

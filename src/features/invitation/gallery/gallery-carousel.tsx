@@ -48,9 +48,16 @@ function coverflow(distance: number): { transform: string; zIndex: number } {
   };
 }
 
+/** Embla starts once the gallery is this close to the screen. */
+const START_MARGIN = '100% 0px';
+
 /**
  * Coverflow carousel (Embla): swipe between photos, tap the centre photo for the full-screen
  * lightbox. The first frame is laid out on the server (no jump when the script arrives).
+ *
+ * Embla measures the page when it starts, which makes the browser lay out everything around it
+ * at once (hundreds of milliseconds on a slow phone, while the page loads). So it only starts
+ * when the gallery comes near the screen; until then a tap opens the lightbox directly.
  */
 export function GalleryCarousel({
   photos,
@@ -60,13 +67,29 @@ export function GalleryCarousel({
   labels: GalleryLabels;
 }) {
   const startIndex = photos.length >= 3 ? 1 : 0;
-  const [viewportRef, emblaApi] = useEmblaCarousel({
+  const [emblaRef, emblaApi] = useEmblaCarousel({
     align: 'center',
     containScroll: false,
     startIndex,
   });
+  const viewport = useRef<HTMLDivElement>(null);
   const frames = useRef<(HTMLButtonElement | null)[]>([]);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    const element = viewport.current;
+    if (!element) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        emblaRef(element);
+      },
+      { rootMargin: START_MARGIN },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [emblaRef]);
 
   const applyCoverflow = useCallback((api: EmblaApi) => {
     const progress = api.scrollProgress();
@@ -103,7 +126,7 @@ export function GalleryCarousel({
 
   return (
     <>
-      <div className={styles.viewport} ref={viewportRef}>
+      <div className={styles.viewport} ref={viewport}>
         <div
           className={styles.container}
           style={{ transform: `translate3d(${initialOffset}%, 0, 0)` }}

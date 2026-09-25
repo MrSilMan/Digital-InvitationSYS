@@ -1,6 +1,7 @@
 import * as z from 'zod/mini';
 
-import { validation } from '@/i18n/pt-AO';
+// Its own module, not the dictionary: this file ships to guests (see src/i18n/pt-AO/index.ts).
+import { validation } from '@/i18n/pt-AO/validation';
 import { fillTemplate } from '@/lib/template';
 
 /**

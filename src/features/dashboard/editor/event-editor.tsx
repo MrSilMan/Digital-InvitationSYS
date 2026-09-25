@@ -236,12 +236,22 @@ export function EventEditor({ eventId, initialValues, initialMedia }: EventEdito
     refreshPreview();
   };
 
+  // The ARIA tabs pattern: arrows move between tabs (wrapping around), Home and End to the ends.
   const onTabKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
-    if (!step) return;
-    event.preventDefault();
     const index = TABS.findIndex((candidate) => candidate.id === tab);
-    const next = TABS[(index + step + TABS.length) % TABS.length];
+    const target =
+      event.key === 'ArrowRight'
+        ? (index + 1) % TABS.length
+        : event.key === 'ArrowLeft'
+          ? (index - 1 + TABS.length) % TABS.length
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? TABS.length - 1
+              : null;
+    if (target === null) return;
+    event.preventDefault();
+    const next = TABS[target];
     if (!next) return;
     setTab(next.id);
     document.getElementById(`separador-${next.id}`)?.focus();

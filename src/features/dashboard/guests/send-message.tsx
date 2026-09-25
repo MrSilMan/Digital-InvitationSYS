@@ -42,7 +42,7 @@ export function SendMessage({
         <label htmlFor={`${id}-message`} className="text-sm font-medium text-stone-800">
           {t.message}
         </label>
-        <p id={`${id}-hint`} className="text-xs text-stone-500">
+        <p id={`${id}-hint`} className="text-xs text-stone-600">
           {t.hint}
         </p>
         <textarea

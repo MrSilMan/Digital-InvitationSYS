@@ -62,6 +62,15 @@ describe('invitation card', () => {
     // React adds preload hints for the eager florals and the hero illustration.
     expect(html.match(/<link rel="preload" as="image"/g)).toHaveLength(2);
   });
+
+  it('loads its images lazily behind the envelope: they must not compete with it', () => {
+    const behind = renderToStaticMarkup(
+      <InvitationCardSection {...props({ behindEnvelope: true })} />,
+    );
+    expect(behind).not.toContain('rel="preload"');
+    expect(behind.match(/<img /g)?.length).toBeGreaterThan(0);
+    expect(behind.match(/<img /g)?.length).toBe(behind.match(/loading="lazy"/g)?.length);
+  });
 });
 
 describe('RSVP', () => {

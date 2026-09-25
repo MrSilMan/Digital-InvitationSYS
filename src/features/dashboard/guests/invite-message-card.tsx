@@ -81,7 +81,7 @@ export function InviteMessageCard({
           onChange={(event) => setText(event.target.value)}
           className={cn(inputClasses, 'resize-y')}
         />
-        <p className="text-right text-xs text-stone-500" aria-live="polite">
+        <p className="text-right text-xs text-stone-600" aria-live="polite">
           {fillTemplate(t.counter, { count: String(text.length), max: String(max) })}
         </p>
         <div className="flex flex-wrap items-center gap-2">

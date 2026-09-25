@@ -3,7 +3,6 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { after } from 'next/server';
 
-import { getServerEnv } from '@/env';
 import { InvitationView } from '@/features/invitation/invitation-view';
 import { invitationDescription, invitationTitle } from '@/features/invitation/metadata';
 import { acceptsForm } from '@/features/invitation/rsvp/rules';
@@ -27,7 +26,10 @@ async function load(params: Props['params']): Promise<Invitation | null> {
   return parsed.success ? getInvitation(parsed.data.eventSlug, parsed.data.guestToken) : null;
 }
 
-/** WhatsApp link preview. The image comes from ./opengraph-image.tsx. Never indexed. */
+/**
+ * WhatsApp link preview. The image comes from ./opengraph-image.tsx (its base URL from
+ * ./layout.tsx). Never indexed.
+ */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = await load(params);
   const robots = { index: false, follow: false };
@@ -36,7 +38,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = invitationTitle(data.event);
   const description = invitationDescription(data.event);
   return {
-    metadataBase: new URL(getServerEnv().APP_URL),
     title: { absolute: title },
     description,
     robots,

@@ -22,20 +22,20 @@ export default async function AccountPage() {
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2">
           <div>
-            <dt className="text-xs font-medium tracking-wide text-stone-500 uppercase">
+            <dt className="text-xs font-medium tracking-wide text-stone-600 uppercase">
               {t.details.name}
             </dt>
             <dd className="text-sm text-stone-900">{user.name}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium tracking-wide text-stone-500 uppercase">
+            <dt className="text-xs font-medium tracking-wide text-stone-600 uppercase">
               {t.details.email}
             </dt>
             <dd className="text-sm break-all text-stone-900">{user.email}</dd>
           </div>
         </dl>
         {user.role === 'admin' ? (
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-stone-600">
             {t.details.adminHint}{' '}
             <Link
               href={`/admin/contas/${user.id}`}
@@ -46,7 +46,7 @@ export default async function AccountPage() {
             .
           </p>
         ) : (
-          <p className="text-xs text-stone-500">{t.details.hint}</p>
+          <p className="text-xs text-stone-600">{t.details.hint}</p>
         )}
       </section>
       <section

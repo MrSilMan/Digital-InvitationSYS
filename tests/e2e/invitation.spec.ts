@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { scrollToRsvp } from './helpers';
+
 /** Demo links (npm run db:seed). */
 const INVITATION = '/c/braulio-e-nanda/demo-familia-silva-001';
 const SAVE_THE_DATE = '/c/braulio-e-nanda-save-the-date/demo-std-familia-silva1';
@@ -102,11 +104,13 @@ test.describe('RSVP', () => {
     await page.goto(GUEST);
     await page.getByRole('button', { name: 'Abrir o convite' }).click();
     const content = page.locator('main#convite');
+    await scrollToRsvp(content);
 
     // Earlier runs may have left an answer: start from the form either way.
     const change = content.getByRole('button', { name: 'Alterar a resposta' });
     if (await change.isVisible()) await change.click();
 
+    await expect(content.getByRole('radio', { name: 'Sim, estarei presente' })).toBeEnabled();
     await content.getByText('Sim, estarei presente').click();
     await content.getByLabel('Quantas pessoas vão?').selectOption('2');
     await content.getByLabel('Acompanhante 1').fill('Rui Cassule');
@@ -137,6 +141,7 @@ test.describe('RSVP', () => {
     await page.goto('/c/braulio-e-nanda/demo-familia-domingos9');
     await page.getByRole('button', { name: 'Abrir o convite' }).click();
     const content = page.locator('main#convite');
+    await scrollToRsvp(content);
     const change = content.getByRole('button', { name: 'Alterar a resposta' });
     if (await change.isVisible()) await change.click();
     await content.getByRole('button', { name: 'Enviar resposta' }).click();

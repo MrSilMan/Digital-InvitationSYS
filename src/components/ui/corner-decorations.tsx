@@ -8,6 +8,8 @@ interface CornerDecorationsProps {
   area: ThemeArea;
   /** Load immediately (first screen); otherwise images load lazily as the guest scrolls. */
   eager?: boolean;
+  /** Ahead of everything else: the envelope's florals, the first thing a guest sees (LCP). */
+  fetchPriority?: 'high';
 }
 
 /** Artwork is drawn for the top-left corner / top edge; other positions mirror it. */
@@ -41,7 +43,12 @@ export function decorationSizes(decoration: Decoration): string {
  * Watercolour florals tucked into a section's corners, as configured by the theme for that area.
  * Place inside a `relative` section; purely decorative (hidden from screen readers).
  */
-export function CornerDecorations({ theme, area, eager = false }: CornerDecorationsProps) {
+export function CornerDecorations({
+  theme,
+  area,
+  eager = false,
+  fetchPriority,
+}: CornerDecorationsProps) {
   const decorations = decorationsFor(theme, area);
   if (decorations.length === 0) return null;
   return (
@@ -60,6 +67,7 @@ export function CornerDecorations({ theme, area, eager = false }: CornerDecorati
             height={image.height}
             alt=""
             loading={eager ? 'eager' : 'lazy'}
+            fetchPriority={fetchPriority}
             sizes={decorationSizes(decoration)}
             className="absolute h-auto max-w-none"
             style={decorationStyle(decoration)}

@@ -35,7 +35,7 @@ function Card({ title, id, children }: { title: string; id: string; children: Re
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <dt className="text-xs font-medium tracking-wide text-stone-500 uppercase">{label}</dt>
+      <dt className="text-xs font-medium tracking-wide text-stone-600 uppercase">{label}</dt>
       <dd className="text-sm text-stone-900">{children}</dd>
     </div>
   );
@@ -111,7 +111,7 @@ export default async function AdminEventPage({ params }: PageProps<'/admin/event
           </Fact>
           <Fact label={t.people}>{event.confirmedPeople}</Fact>
         </dl>
-        <p className="mt-4 text-xs text-stone-500">
+        <p className="mt-4 text-xs text-stone-600">
           {fillTemplate(t.created, { date: formatShortDate(event.createdAt) })}
         </p>
       </section>

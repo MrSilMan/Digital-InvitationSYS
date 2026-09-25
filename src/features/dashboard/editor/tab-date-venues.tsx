@@ -206,7 +206,7 @@ export function DateVenuesTab() {
             {t.add}
           </button>
         ) : (
-          <p className="font-sans text-sm text-stone-500">
+          <p className="font-sans text-sm text-stone-600">
             {fillTemplate(editor.list.limit, { max: String(EDITOR_LIMITS.venues) })}
           </p>
         )}

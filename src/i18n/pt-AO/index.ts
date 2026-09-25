@@ -1,9 +1,17 @@
 /**
  * Portuguese (Angola) dictionary — every user-facing string lives here.
  *
- * Sections are separate named exports so Client Components can import only what they render
- * (`import { errors } from '@/i18n/pt-AO'`) instead of shipping the whole dictionary to the browser.
+ * Sections are separate named exports. In the browser, though, importing any section from this
+ * file ships all of it: the bundler keeps every export that some page uses, and the dashboard
+ * uses them all. So the few sections that guest pages need in the browser live in their own
+ * modules (`import { errors } from '@/i18n/pt-AO/errors'`), and guest-page Client Components
+ * otherwise get their texts as props. Dashboard Client Components may import from here.
  */
+
+import { errors } from './errors';
+import { validation } from './validation';
+
+export { errors, validation };
 
 export const app = {
   name: 'Convites Digitais',
@@ -16,39 +24,6 @@ export const landing = {
   subtitle:
     'Convites elegantes e personalizados, enviados pelo WhatsApp, com confirmação de presença.',
   comingSoon: 'Em breve',
-} as const;
-
-export const errors = {
-  generic: {
-    title: 'Algo correu mal',
-    description: 'Ocorreu um erro inesperado. Por favor, tente novamente dentro de instantes.',
-    retry: 'Tentar novamente',
-  },
-  notFound: {
-    title: 'Página não encontrada',
-    description: 'A página que procura não existe ou já não está disponível.',
-    backHome: 'Voltar ao início',
-  },
-  reference: 'Referência do erro',
-  tooManyRequests: {
-    title: 'Demasiados pedidos',
-    description: 'Recebemos muitos pedidos da sua ligação. Tente novamente daqui a pouco.',
-  },
-} as const;
-
-export const validation = {
-  phone: {
-    invalid: 'Introduza um número de telemóvel angolano válido (ex.: 923 456 789).',
-    invalidGuest:
-      'Introduza um telemóvel angolano (ex.: 923 456 789) ou um número estrangeiro com o indicativo (ex.: +351 912 345 678).',
-  },
-  rsvp: {
-    attendingRequired: 'Indique se vai estar presente.',
-    /** {max} = the guest's seats. */
-    peopleRange: 'Escolha entre 1 e {max} pessoas.',
-    nameTooLong: 'Use no máximo 80 caracteres.',
-    messageTooLong: 'A mensagem pode ter até 500 caracteres.',
-  },
 } as const;
 
 /** Login and logout (couples and admins). */
@@ -1109,7 +1084,8 @@ export const invitation = {
   opening: {
     addressedTo: 'Convite para',
     tapToOpen: 'Toque para abrir',
-    openButton: 'Abrir o convite',
+    /** Read before the envelope's visible text (the couple's names, the addressee). */
+    openButton: 'Abrir o convite de',
   },
   music: { play: 'Ligar a música', pause: 'Desligar a música' },
   saveTheDate: {

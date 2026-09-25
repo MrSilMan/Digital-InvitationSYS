@@ -18,15 +18,15 @@ const { buttons } = invitation;
 
 /** The only page guests see before the invitation phase (reference "1 de 14"). */
 export function SaveTheDatePage(props: SectionProps) {
-  const { event, theme } = props;
+  const { event, theme, behindEnvelope } = props;
   return (
     <SectionPage
       theme={theme}
       area="saveTheDate"
       labelledBy={HEADING_ID}
-      eager
+      eager={!behindEnvelope}
       contentClassName="gap-6 pt-16 pb-8"
-      footer={<HeroIllustration theme={theme} image={event.hero} eager />}
+      footer={<HeroIllustration theme={theme} image={event.hero} eager={!behindEnvelope} />}
     >
       <CoupleMark event={event} className="text-[clamp(4.5rem,22cqi,6rem)]" />
       <div>

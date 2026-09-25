@@ -32,7 +32,8 @@
     "admin:create": "tsx scripts/create-admin.ts",
     "themes:placeholders": "tsx scripts/generate-theme-placeholders.ts",
     "demo:media": "tsx scripts/generate-demo-media.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "lighthouse": "node scripts/lighthouse.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1140.0",
@@ -61,6 +62,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@next/env": "^16.3.6",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.3.3",

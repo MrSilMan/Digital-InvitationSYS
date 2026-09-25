@@ -17,6 +17,10 @@ interface DialogProps {
 /**
  * A modal dialog on the native <dialog> element: the browser traps focus, closes it on Esc and
  * returns focus to where it was. The content mounts only while open, so forms start fresh.
+ *
+ * Focus starts on the close button (the browser's choice: the first control), or on an element
+ * marked `data-autofocus`, e.g. a form's first field. React's `autoFocus` does not work here: the
+ * content mounts before the dialog is shown.
  */
 export function Dialog({ open, onClose, title, closeLabel, children }: DialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -25,7 +29,10 @@ export function Dialog({ open, onClose, title, closeLabel, children }: DialogPro
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
+    if (open && !dialog.open) {
+      dialog.showModal();
+      dialog.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+    }
     if (!open && dialog.open) dialog.close();
   }, [open]);
 

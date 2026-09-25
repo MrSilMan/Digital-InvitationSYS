@@ -29,7 +29,7 @@ export default async function LoginPage({ searchParams }: PageProps<'/entrar'>) 
         <h1 className="mt-6 text-xl font-semibold">{auth.login.heading}</h1>
         <p className="mt-1 mb-6 text-sm text-stone-600">{auth.login.intro}</p>
         <LoginForm returnTo={returnTo} />
-        <p className="mt-6 text-center text-xs text-stone-500">{auth.login.noAccount}</p>
+        <p className="mt-6 text-center text-xs text-stone-600">{auth.login.noAccount}</p>
       </div>
     </main>
   );

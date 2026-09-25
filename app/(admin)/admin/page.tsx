@@ -78,7 +78,7 @@ export default async function AdminEventsPage({ searchParams }: PageProps<'/admi
                     <p className="truncate text-sm text-stone-600">
                       {event.owner.name} · {event.owner.email}
                     </p>
-                    <p className="text-sm text-stone-500 tabular-nums">
+                    <p className="text-sm text-stone-600 tabular-nums">
                       {fillTemplate(t.guests, {
                         count: String(event._count.guests),
                         limit: String(event.guestLimit),

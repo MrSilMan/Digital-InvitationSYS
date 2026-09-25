@@ -111,7 +111,7 @@ export function TextAreaField({
             className={cn(inputClasses, 'resize-y')}
           />
           {counter ? (
-            <p className="text-right font-sans text-xs text-stone-500" aria-live="polite">
+            <p className="text-right font-sans text-xs text-stone-600" aria-live="polite">
               {editor.message.counter
                 .replace('{count}', String(length))
                 .replace('{max}', String(maxLength))}
@@ -139,7 +139,7 @@ export function FieldGroup({
     <fieldset className={cn('flex flex-col gap-4', className)}>
       <legend className="mb-1 font-sans text-base font-semibold text-stone-900">{legend}</legend>
       {/* A fieldset's legend is not a flex item: no gap to cancel above the hint. */}
-      {hint ? <p className="font-sans text-sm text-stone-500">{hint}</p> : null}
+      {hint ? <p className="font-sans text-sm text-stone-600">{hint}</p> : null}
       {children}
     </fieldset>
   );

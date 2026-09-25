@@ -30,7 +30,7 @@ export function Field({ id, label, hint, error, className, children }: FieldProp
         {label}
       </label>
       {hint ? (
-        <p id={hintId} className="font-sans text-xs text-stone-500">
+        <p id={hintId} className="font-sans text-xs text-stone-600">
           {hint}
         </p>
       ) : null}

@@ -144,7 +144,7 @@ export function PreviewPanel({ eventId, version, stale }: PreviewPanelProps) {
   );
 
   const status = (
-    <p className="min-h-5 font-sans text-xs text-stone-500" aria-live="polite">
+    <p className="min-h-5 font-sans text-xs text-stone-600" aria-live="polite">
       {stale ? t.stale : updating ? t.updating : null}
     </p>
   );
@@ -154,7 +154,7 @@ export function PreviewPanel({ eventId, version, stale }: PreviewPanelProps) {
       <section aria-label={t.title} className="flex flex-col gap-3">
         <div>
           <h2 className="font-sans text-sm font-semibold text-stone-900">{t.title}</h2>
-          <p className="font-sans text-xs text-stone-500">{t.hint}</p>
+          <p className="font-sans text-xs text-stone-600">{t.hint}</p>
         </div>
         {controls}
         <PreviewFrame src={src} version={version} onUpdating={setUpdating} scaled />

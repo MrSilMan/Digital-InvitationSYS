@@ -138,7 +138,7 @@ function ImportResult({ eventId, view }: { eventId: string; view: GuestImportVie
             <IconDownload size={16} stroke={1.75} aria-hidden="true" />
             {t.downloadErrors}
           </a>
-          <p className="text-xs text-stone-500">{t.downloadErrorsHint}</p>
+          <p className="text-xs text-stone-600">{t.downloadErrorsHint}</p>
         </div>
       ) : null}
     </div>
@@ -237,7 +237,7 @@ export function GuestImport({ eventId, onImported }: { eventId: string; onImport
         <label htmlFor={`${id}-file`} className="text-sm font-medium text-stone-800">
           {t.file}
         </label>
-        <p id={`${id}-hint`} className="text-xs text-stone-500">
+        <p id={`${id}-hint`} className="text-xs text-stone-600">
           {fillTemplate(t.fileHint, { max: String(IMPORT_LIMITS.maxRows) })}
         </p>
         <input

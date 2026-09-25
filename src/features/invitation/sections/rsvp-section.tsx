@@ -55,6 +55,7 @@ export function RsvpContent({
       ) : null}
       {withForm ? (
         <LazyRsvpForm
+          loadNow={preview}
           eventSlug={event.slug}
           guestToken={guestToken}
           guestName={guest.displayName}

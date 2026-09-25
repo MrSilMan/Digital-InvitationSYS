@@ -111,7 +111,7 @@ export default async function OverviewPage({
                 >
                   {card.value}
                 </span>
-                {card.detail ? <span className="text-xs text-stone-500">{card.detail}</span> : null}
+                {card.detail ? <span className="text-xs text-stone-600">{card.detail}</span> : null}
               </Link>
             </li>
           ))}

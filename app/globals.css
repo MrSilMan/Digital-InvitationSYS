@@ -52,6 +52,16 @@
   html[data-convite-aberto] [data-opening-screen] {
     display: none;
   }
+
+  /*
+   * While the envelope is closed, the invitation behind it is not rendered: no layout, and no
+   * fonts or lazy pictures downloaded for it, so a slow phone spends the first seconds on the
+   * envelope alone. A tap reveals it (data-revealed). Without JavaScript, the <noscript> style in
+   * opening-boot-script.tsx shows it instead of the envelope.
+   */
+  html:not([data-convite-aberto]) [data-behind-envelope]:not([data-revealed]) {
+    content-visibility: hidden;
+  }
 }
 
 /*
