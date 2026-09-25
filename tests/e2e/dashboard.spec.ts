@@ -110,6 +110,45 @@ test.describe('couple dashboard', () => {
     await expect(page.getByText(note)).toBeVisible({ timeout: 30_000 });
   });
 
+  test('a couple imports guests from a CSV file, through the worker', async ({ page }) => {
+    test.setTimeout(120_000);
+    await openChampanheEvent(page);
+    await openEventPage(page, 'Convidados');
+    await expect(page.getByRole('heading', { name: 'Convidados', level: 1 })).toBeVisible({
+      timeout: 30_000,
+    });
+
+    const run = Date.now();
+    const csv = [
+      'nome;telefone;lugares;grupo',
+      `Primos ${run};900 000 777;3;Primos`,
+      `Vizinha ${run};;;Vizinhos`,
+      ';12345;0;',
+    ].join('\r\n');
+    await page.getByRole('button', { name: 'Importar lista (CSV)' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Importar convidados' });
+    await dialog
+      .getByLabel('Ficheiro CSV')
+      .setInputFiles({ name: 'convidados.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) });
+    await dialog.getByRole('button', { name: 'Importar', exact: true }).click();
+
+    await expect(dialog.getByRole('status')).toContainText('2 convidado(s) importado(s).', {
+      timeout: 30_000,
+    });
+    await expect(dialog.getByRole('status')).toContainText('1 linha(s) com erros');
+    await expect(dialog.getByRole('cell', { name: '4', exact: true })).toBeVisible();
+    await expect(
+      dialog.getByRole('link', { name: 'Descarregar as linhas com erros (CSV)' }),
+    ).toBeVisible();
+    await dialog.getByRole('button', { name: 'Fechar' }).click();
+
+    await page.getByLabel('Procurar').fill(String(run));
+    await expect(page.getByRole('listitem').filter({ hasText: String(run) })).toHaveCount(2);
+    await expect(page.getByRole('listitem').filter({ hasText: `Primos ${run}` })).toContainText(
+      'Primos · 3 lugares',
+    );
+  });
+
   test('sends visitors without a session to the login page', async ({ page }) => {
     await page.goto('/painel/eventos/00000000-0000-7000-8000-000000000000');
     await expect(page).toHaveURL(/\/entrar\?voltar=%2Fpainel%2Feventos%2F/);

@@ -1,12 +1,12 @@
 import 'server-only';
 
-import Papa from 'papaparse';
-
 import type { GuestListItem } from '@/features/dashboard/guests/types';
 import { formatShortDateTime } from '@/i18n/format';
 import { guests } from '@/i18n/pt-AO';
 import { confirmedPeople, guestStatus } from '@/lib/guests/status';
 import { isAngolanPhone } from '@/lib/validation/phone';
+
+import { writeCsv } from './csv';
 
 /**
  * The guest list as CSV, for Excel with Portuguese settings: ";" between columns, UTF-8 with a
@@ -15,10 +15,9 @@ import { isAngolanPhone } from '@/lib/validation/phone';
  *
  * Guests write some of these cells (messages, companions): any text starting like a formula
  * (= + - @, tab, carriage return) gets a leading apostrophe so spreadsheets show it instead of
- * running it. Papa Parse's own pattern misses values with line breaks, hence ours.
+ * running it (`writeCsv`; Papa Parse's own pattern misses values with line breaks).
  */
 
-const FORMULA_START = /^[=+\-@\t\r]/;
 const c = guests.export.columns;
 const a = guests.answer;
 
@@ -53,7 +52,7 @@ export function guestsToCsv(list: readonly GuestListItem[]): string {
     c.views,
     c.lastOpenedAt,
   ];
-  const data = list.map((guest) => {
+  const data = list.map((guest): (string | number)[] => {
     const status = guestStatus(guest);
     const answered = guest.rsvp !== null && guest.rsvp.attending !== null;
     return [
@@ -73,9 +72,5 @@ export function guestsToCsv(list: readonly GuestListItem[]): string {
       when(guest.lastOpenedAt),
     ];
   });
-  const csv = Papa.unparse(
-    { fields, data },
-    { delimiter: ';', newline: '\r\n', escapeFormulae: FORMULA_START },
-  );
-  return `${Papa.BYTE_ORDER_MARK}${csv}\r\n`;
+  return writeCsv(fields, data);
 }

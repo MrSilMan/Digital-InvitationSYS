@@ -22,9 +22,9 @@ interface EventRef {
 
 /**
  * Locks the event's row until the transaction ends: two requests adding guests at the same time
- * count and insert one after the other, so neither can pass the guest limit.
+ * (the form, an import) count and insert one after the other, so neither can pass the limit.
  */
-async function lockEvent(tx: Tx, eventId: string): Promise<{ guestLimit: number } | null> {
+export async function lockEvent(tx: Tx, eventId: string): Promise<{ guestLimit: number } | null> {
   const rows = await tx.$queryRaw<{ guestLimit: number }[]>`
     SELECT "guestLimit" FROM "event" WHERE "id" = ${eventId}::uuid FOR UPDATE`;
   return rows[0] ?? null;

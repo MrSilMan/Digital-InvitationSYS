@@ -5,6 +5,7 @@ const TABLES = [
   'invitation_view',
   'rsvp',
   'guest',
+  'guest_import',
   'media',
   'guest_rule',
   'timeline_item',

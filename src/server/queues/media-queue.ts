@@ -1,9 +1,8 @@
 import 'server-only';
 
-import { type JobsOptions, Queue } from 'bullmq';
+import type { JobsOptions, Queue } from 'bullmq';
 
-import { getServerEnv } from '@/env';
-import { logger } from '@/lib/logger';
+import { addJob, producerQueue, requeueJob } from './producer';
 
 /**
  * The "media" job queue (BullMQ on Redis), processed by the worker (worker/index.ts):
@@ -35,65 +34,17 @@ export const MEDIA_JOB_OPTIONS = {
 export const processJobId = (mediaId: string) => `process-${mediaId}`;
 
 const QUEUE_KEY = Symbol.for('convites.mediaQueue');
-type GlobalWithQueue = typeof globalThis & { [QUEUE_KEY]?: Queue };
 
-const ERROR_LOG_INTERVAL_MS = 60_000;
-let lastErrorLogAt = 0;
-
-/**
- * The producer side of the queue, on a connection of its own (BullMQ owns it). The connection
- * keeps retrying in the background while Redis is down; commands then fail fast instead of
- * piling up.
- */
 export function getMediaQueue(): Queue {
-  const g = globalThis as GlobalWithQueue;
-  if (!g[QUEUE_KEY]) {
-    const env = getServerEnv();
-    const queue = new Queue(MEDIA_QUEUE, {
-      connection: {
-        url: env.REDIS_URL,
-        connectTimeout: 2_000,
-        enableOfflineQueue: false,
-        maxRetriesPerRequest: 1,
-        connectionName: `convites-${env.SERVICE_NAME}-queue`,
-      },
-      defaultJobOptions: MEDIA_JOB_OPTIONS,
-    });
-    // Reconnection attempts report every failure: log them once a minute at most.
-    queue.on('error', (err) => {
-      const now = Date.now();
-      if (now - lastErrorLogAt < ERROR_LOG_INTERVAL_MS) return;
-      lastErrorLogAt = now;
-      logger.warn('Media queue connection error', { err });
-    });
-    g[QUEUE_KEY] = queue;
-  }
-  return g[QUEUE_KEY];
+  return producerQueue(MEDIA_QUEUE, QUEUE_KEY, MEDIA_JOB_OPTIONS);
 }
 
-const ENQUEUE_TIMEOUT_MS = 2_000;
-
-async function enqueue<N extends MediaJobName>(
+function enqueue<N extends MediaJobName>(
   name: N,
   data: MediaJobData[N],
   options: JobsOptions = {},
 ): Promise<boolean> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const queue = getMediaQueue();
-    await Promise.race([
-      queue.add(name, data, options),
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error('Queue timeout')), ENQUEUE_TIMEOUT_MS);
-      }),
-    ]);
-    return true;
-  } catch (err) {
-    logger.warn('Could not queue a media job', { job: name, err });
-    return false;
-  } finally {
-    clearTimeout(timer);
-  }
+  return addJob(getMediaQueue, name, data, options);
 }
 
 /**
@@ -113,18 +64,7 @@ export function enqueueFileDeletion(files: MediaJobData['delete-files']) {
   return enqueue('delete-files', files);
 }
 
-/**
- * For the sweep (worker): queues the processing again, unless its job is still waiting or
- * running. A finished job with the same ID would make the new one a no-op, so it is removed.
- */
-export async function requeueMediaProcessing(mediaId: string): Promise<void> {
-  const queue = getMediaQueue();
-  const jobId = processJobId(mediaId);
-  const existing = await queue.getJob(jobId);
-  if (existing) {
-    const state = await existing.getState();
-    if (state !== 'completed' && state !== 'failed' && state !== 'unknown') return;
-    await existing.remove();
-  }
-  await queue.add('process-media', { mediaId }, { jobId });
+/** For the sweep (worker): queues the processing again, unless its job is still waiting or running. */
+export function requeueMediaProcessing(mediaId: string): Promise<void> {
+  return requeueJob(getMediaQueue(), 'process-media', { mediaId }, processJobId(mediaId));
 }

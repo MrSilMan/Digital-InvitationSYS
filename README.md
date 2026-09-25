@@ -20,7 +20,7 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 | 5     | RSVP, Redis cache, rate limiting, view tracking                                   | Done    |
 | 6     | "Champanhe" theme                                                                 | Done    |
 | 7     | Auth, couple dashboard, uploads, BullMQ worker                                    | Done    |
-| 8     | Guest management, CSV, WhatsApp (8a: guests, WhatsApp, overview, export)          | 8a done |
+| 8     | Guest management, CSV, WhatsApp                                                   | Done    |
 | 9     | Admin area and audit log                                                          | Planned |
 | 10    | Production Docker/Caddy, backups, full CI/CD with staging and rollback            | Planned |
 | 11    | Performance, accessibility, final docs                                            | Planned |
@@ -402,6 +402,7 @@ reconnect) and gives up after 250 ms, logging a warning at most every 30 s.
   | Other media changes per user    | 300 per 10 min | Confirm, delete, reorder, describe, retry   |
   | Guest-list changes per user     | 600 per 10 min | Add, edit, delete, answers, "sent", message |
   | Guest-list CSV exports per user | 30 per 10 min  | `…/convidados/exportar` → 429               |
+  | CSV imports per user            | 20 per 10 min  | `startGuestImport`                          |
 
   The per-IP limits are generous because Angolan mobile carriers put many phones behind one IP.
   The client IP is the right-most `X-Forwarded-For` entry (set by Caddy in production).
@@ -498,6 +499,23 @@ are created by the admin: there is no sign-up.
   columns (nome, telefone, lugares, grupo) are the import's. Cells starting like a formula (`=`, `+`,
   `-`, `@`, tab, CR) get a leading apostrophe; guests write some of these cells. Phones are written
   as text a spreadsheet keeps (`923 456 789`, `00 351912345678`).
+- **CSV import** ("Importar lista (CSV)", [src/server/guests/](src/server/guests/)):
+  - The file (up to 512 KB and 2,000 rows) goes to the `startGuestImport` Server Action, is decoded
+    (UTF-8, or Windows-1252 when it is not valid UTF-8: Excel's plain "CSV" on Windows) and stored
+    as text in a PENDING `GuestImport`, then queued on the `guests` queue. When Redis is down the
+    action imports it at once (a small file, the same code). The dialog asks for news every 1.5 s.
+  - Columns are found by their header, in any order, case or accents (`nome`, `telefone`/
+    `telemóvel`, `lugares`/`pessoas`, `grupo`, and English names); only `nome` is required, an
+    empty `lugares` counts 1. The delimiter (`;`, `,` or tab) is read from the header line. Our
+    export's first columns import as they are.
+  - Every row goes through the guest schema. Valid rows are added in one transaction; rows already
+    on the list or earlier in the file (same name ignoring case/accents/spaces, and same phone) are
+    skipped, so importing a file again is safe. If the new guests do not fit in the guest limit,
+    nothing is imported. The report lists the rows not imported (row numbers as a spreadsheet shows
+    them), and "Descarregar as linhas com erros" gives them back as CSV with an `erro` column to fix
+    and import again. A blank template: `/painel/modelo-convidados.csv`.
+  - The file holds names and phones: it is deleted (`content` null, a CHECK constraint) once the
+    import finishes, and an event keeps only its last 5 imports (with their reports).
 
 ## Uploads and the worker
 
@@ -513,10 +531,18 @@ are created by the admin: there is no sign-up.
   new hero, logo or song replaces the current one only once it is ready.
 - **Limits:** JPEG, PNG or WebP up to 15 MB (logo 5 MB), MP3 up to 5 MB, 12 gallery photos;
   checked in the browser, when the URL is issued, by the signature, and again by the worker.
-- **Worker** ([worker/index.ts](worker/index.ts), `npm run worker`): BullMQ 6 on Redis, queue
-  `media` ([src/server/queues/media-queue.ts](src/server/queues/media-queue.ts)), 2 jobs at a time,
-  5 attempts with exponential backoff (10 s, 20 s, 40 s…), a request ID per job in the logs
-  (`service: worker`), Sentry with the web app's privacy settings. Stops gracefully on SIGTERM.
+- **Worker** ([worker/index.ts](worker/index.ts), `npm run worker`): BullMQ 6 on Redis, two queues
+  with a BullMQ worker each, so an import never waits behind image processing: `media`
+  ([src/server/queues/media-queue.ts](src/server/queues/media-queue.ts)), 2 jobs at a time, 5
+  attempts with exponential backoff (10 s, 20 s, 40 s…), and `guests`
+  ([src/server/queues/guest-queue.ts](src/server/queues/guest-queue.ts), CSV imports), 2 at a time,
+  3 attempts (5 s, 10 s). A request ID per job in the logs (`service: worker`), Sentry with the
+  web app's privacy settings. Stops gracefully on SIGTERM. The web app only adds jobs, through
+  [src/server/queues/producer.ts](src/server/queues/producer.ts) (fail fast when Redis is down).
+  - `import-guests` ([src/server/guests/import.ts](src/server/guests/import.ts)): see "CSV import";
+    idempotent (the import is claimed inside the transaction that adds its guests). After the last
+    attempt it is marked failed; `sweep-imports` (every 5 minutes) queues imports still waiting
+    after 2 minutes again and gives up those older than a day.
   - `process-media` ([src/server/media/processing.ts](src/server/media/processing.ts)): images are
     turned upright (EXIF orientation), stripped of all metadata (GPS, camera, date), converted to
     sRGB and written as WebP (first frame of an animation) at these widths, never enlarged:
@@ -731,7 +757,9 @@ Vitest runs two projects, Playwright a third suite:
   resolver, safe return paths, upload rules, image sizes and storage keys, the MP3 check, image
   processing (EXIF rotation and GPS removal, transparency, broken and oversized files), the image
   loader, guest phones (Angolan and abroad), the guest schema, statuses and overview counts, list
-  filters, the WhatsApp message and the CSV export (formula escaping), and one test that serves
+  filters, the WhatsApp message, the CSV export (formula escaping) and CSV reading (encodings,
+  delimiters, header names, row numbers, row checks, duplicates, the template and error files),
+  and one test that serves
   real HTTP requests through the request hooks. No services needed.
 - `npm run test:e2e`: `tests/e2e/*.spec.ts` in a phone-sized Chromium: opening the envelope, the
   reload, reduced motion, the gallery lightbox, the calendar file, the 404 page, the Champanhe
@@ -740,7 +768,7 @@ Vitest runs two projects, Playwright a third suite:
   preview (guests see the change only once saved), a gallery photo going from the browser to
   MinIO, through the worker, to the guest page, and removed again, and a couple adding a guest,
   sending the link by WhatsApp, the guest answering, and the answer in the list and the
-  overview. Its global setup re-seeds the
+  overview, and a CSV import through the worker with a row in error. Its global setup re-seeds the
   demo data and clears the rate-limit counters, so runs are repeatable (`E2E_SKIP_RESET=1` skips
   that for a server that does not use the local database and Redis). It starts `next dev` on port
   3100 and a worker, or tests a running app given in `E2E_BASE_URL`. Runs locally for now; CI gets
@@ -754,7 +782,9 @@ Vitest runs two projects, Playwright a third suite:
   through the editor, and per-user preview drafts; the guest list: adding (with the guest limit
   under simultaneous adds), editing with the cache refresh, seats against confirmed people,
   answers recorded by the couple, "sent" marks, new links, deletion, the sending message, the CSV
-  export route and the overview's counts; and uploads: presigned URLs (type and size
+  export route and the overview's counts; CSV imports: queued and run by the worker's code,
+  re-run without effect, the same file again, over the guest limit, Windows-1252, refusals, the
+  error and template downloads, the "last 5" rule and the sweep; and uploads: presigned URLs (type and size
   enforced), processing, the guest read model, `/m/…` with byte ranges, the limits and access
   rules, replacing the hero, MP3s, deletion of files and the sweep, against MinIO (bucket
   `convites-media-test`, created by the tests; `TEST_S3_ENDPOINT`). It uses the `convites_test`

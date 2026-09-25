@@ -70,6 +70,14 @@ enum MediaStatus {
   @@map("media_status")
 }
 
+enum GuestImportStatus {
+  PENDING
+  DONE
+  FAILED
+
+  @@map("guest_import_status")
+}
+
 // ───────────────────────── Better Auth ─────────────────────────
 
 model User {
@@ -86,10 +94,11 @@ model User {
   banReason     String?
   banExpires    DateTime? @db.Timestamptz(3)
 
-  sessions  Session[]
-  accounts  Account[]
-  events    Event[]
-  auditLogs AuditLog[]
+  sessions     Session[]
+  accounts     Account[]
+  events       Event[]
+  auditLogs    AuditLog[]
+  guestImports GuestImport[]
 
   @@unique([email])
   @@map("user")
@@ -220,6 +229,7 @@ model Event {
   guestRules    GuestRule[]
   media         Media[]
   guests        Guest[]
+  guestImports  GuestImport[]
 
   @@index([ownerId])
   @@map("event")
@@ -345,6 +355,35 @@ model Rsvp {
   updatedAt            DateTime        @updatedAt @db.Timestamptz(3)
 
   @@map("rsvp")
+}
+
+/// A CSV file of guests, imported by the worker (src/server/guests/import.ts). The event keeps
+/// its last few imports; the file itself is dropped once processed.
+model GuestImport {
+  id             String            @id @default(uuid(7)) @db.Uuid
+  eventId        String            @db.Uuid
+  event          Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  /// Who uploaded it (kept, set to null, when the user is deleted).
+  createdById    String?
+  createdBy      User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  status         GuestImportStatus @default(PENDING)
+  fileName       String
+  /// The file as text (decoded on upload). Holds names and phones: null once processed.
+  content        String?
+  /// Data rows read (header excluded), guests created, rows skipped as already on the list.
+  totalRows      Int?
+  importedCount  Int?
+  duplicateCount Int?
+  /// Why nothing was imported (IMPORT_FAILURES in src/lib/guests/import.ts).
+  failure        String?
+  /// Rows not imported and why: { problems: [...], room? } (validated when read).
+  report         Json?
+  createdAt      DateTime          @default(now()) @db.Timestamptz(3)
+  finishedAt     DateTime?         @db.Timestamptz(3)
+
+  @@index([eventId, createdAt])
+  @@index([status, createdAt])
+  @@map("guest_import")
 }
 
 /// One row per guest per hour at most (de-duplicated in Redis, Phase 5). No IP or device data.

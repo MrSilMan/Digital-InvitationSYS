@@ -1,4 +1,5 @@
 import type { FilterableGuest } from '@/lib/guests/filters';
+import type { ImportFailure, ImportProblem } from '@/lib/guests/import';
 
 /** A guest's answer as the dashboard shows it. */
 export interface GuestAnswer {
@@ -28,6 +29,26 @@ export interface GuestListItem extends FilterableGuest {
   lastOpenedAt: string | null;
   rsvp: GuestAnswer | null;
   createdAt: string;
+}
+
+/** A CSV import as the import dialog shows it. */
+export interface GuestImportView {
+  id: string;
+  status: 'PENDING' | 'DONE' | 'FAILED';
+  fileName: string;
+  /** Data rows in the file (null until read). */
+  totalRows: number | null;
+  imported: number;
+  duplicates: number;
+  invalid: number;
+  failure: ImportFailure | null;
+  /** Failure "limit": new guests in the file and room left in the plan. */
+  wanted: number | null;
+  room: number | null;
+  /** The first rows not imported (invalid or already on the list), by row number. */
+  problems: ImportProblem[];
+  /** Rows not imported beyond `problems`. */
+  moreProblems: number;
 }
 
 export type GuestErrorCode =

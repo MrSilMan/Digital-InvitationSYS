@@ -11,8 +11,7 @@ relevant sections before planning a phase. README.md documents setup and archite
   approval. After it: `npm run check` and `npm run build` must pass, then summarize and commit.
 - Before installing anything, check current versions with `npm view` and read the current docs
   (Next.js ships version-matched docs in `node_modules/next/dist/docs/`).
-- Phase status: 1–7 and 8a (guest list, WhatsApp sending, overview, CSV export) done. Next: 8b
-  (CSV import through the queue), then Phase 9 (admin area and audit log).
+- Phase status: 1–8 done. Next: Phase 9 (admin area and audit log).
 
 ## Commands
 
@@ -206,6 +205,17 @@ section" "--click=button[aria-label='Abrir o convite']" --wait=3000`. Demo links
   default misses values with line breaks). `Response.text()` drops the BOM: test the bytes.
 - In the editor, links out of the page are guarded while the form is dirty (a capture-phase click
   listener): keep it when adding links around the editor.
+- CSV import: reading in `src/server/guests/csv.ts` (no database), the job in `import.ts`
+  (`runGuestImport` must stay idempotent: claim the PENDING import inside the transaction that adds
+  the guests; all-or-nothing against `guestLimit`), shapes shared with the dialog in
+  `src/lib/guests/import.ts`. `GuestImport.content` holds guest data: null once finished (CHECK
+  constraint); an event keeps its last 5 imports.
+- Queues: new queues use `producerQueue`/`addJob`/`requeueJob` (`src/server/queues/producer.ts`)
+  and get their own BullMQ `Worker` in `worker/index.ts` (validate job data with Zod, mark the item
+  failed after the last attempt, add a sweep for lost jobs). Integration tests run jobs directly and
+  can fake an outage with `vi.spyOn(queueModule, 'enqueue…').mockResolvedValue(false)`.
+- The file-writing tool turns `\u` escapes into literal characters: write a BOM as
+  `Papa.BYTE_ORDER_MARK`, never as an escape in source.
 
 ## Uploads and the worker (README → Uploads and the worker)
 

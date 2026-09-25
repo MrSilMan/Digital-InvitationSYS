@@ -303,6 +303,66 @@ export const guests = {
     /** {people} */
     seats: 'Este convidado já confirmou {people}: altere primeiro a resposta.',
   },
+  import: {
+    open: 'Importar lista (CSV)',
+    title: 'Importar convidados',
+    intro:
+      'Um ficheiro CSV com um convidado por linha e, na primeira linha, os nomes das colunas: nome, telefone, lugares e grupo. Só o nome é obrigatório; sem lugares, conta 1.',
+    excel:
+      'No Excel: Ficheiro › Guardar como › «CSV UTF-8». No Google Sheets: Ficheiro › Transferir › CSV.',
+    template: 'Descarregar um modelo',
+    file: 'Ficheiro CSV',
+    /** {max} */
+    fileHint:
+      'Até {max} convidados por ficheiro. Quem já está na lista (mesmo nome e telemóvel) é ignorado, por isso pode importar o mesmo ficheiro de novo.',
+    submit: 'Importar',
+    uploading: 'A enviar o ficheiro…',
+    processing: 'A importar…',
+    another: 'Importar outro ficheiro',
+    /** {count} */
+    imported: '{count} convidado(s) importado(s).',
+    /** {count} */
+    duplicates: '{count} já estava(m) na lista.',
+    /** {count} */
+    invalid: '{count} linha(s) com erros não foram importadas.',
+    nothingNew: 'Nenhum convidado novo.',
+    problems: {
+      title: 'Linhas não importadas',
+      row: 'Linha',
+      name: 'Nome',
+      problem: 'Problema',
+      duplicate: 'Já está na lista.',
+      /** {count} */
+      more: '… e mais {count}.',
+    },
+    downloadErrors: 'Descarregar as linhas com erros (CSV)',
+    downloadErrorsHint: 'Corrija-as no ficheiro descarregado e importe-o de novo.',
+    failures: {
+      empty: 'O ficheiro não tem convidados.',
+      'no-name-column':
+        'Não encontrámos a coluna «nome». A primeira linha do ficheiro deve ter os nomes das colunas: nome, telefone, lugares e grupo.',
+      /** {max} */
+      'too-many-rows': 'O ficheiro tem mais de {max} linhas. Divida-o em ficheiros mais pequenos.',
+      /** {count}, {room} */
+      limit:
+        'O ficheiro tem {count} convidado(s) novo(s), mas o seu plano só tem lugar para mais {room}. Nada foi importado.',
+      error: 'Não foi possível importar o ficheiro. Tente de novo.',
+    },
+    errors: {
+      type: 'Escolha um ficheiro CSV.',
+      /** {max} */
+      size: 'O ficheiro é demasiado grande (máximo {max} KB).',
+      empty: 'O ficheiro está vazio.',
+    },
+    errorColumns: { row: 'linha', error: 'erro' },
+    templateFileName: 'modelo-convidados.csv',
+    /** {date} */
+    errorsFileName: 'convidados-com-erros-{date}.csv',
+    templateRows: [
+      ['Família Silva', '900 000 101', '4', 'Família da noiva'],
+      ['Ana e Pedro', '', '2', 'Amigos'],
+    ],
+  },
   export: {
     /** {slug}, {date} (file name, ASCII only) */
     fileName: 'convidados-{slug}-{date}.csv',

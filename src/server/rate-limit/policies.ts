@@ -27,6 +27,8 @@ export const RATE_LIMITS = {
    * Sending 150 invitations one by one marks 150 guests as sent.
    */
   guestChangesPerUser: { name: 'guest-change-user', limit: 600, windowMs: 10 * MINUTE },
+  /** CSV files of guests uploaded for import, per user. */
+  guestImportsPerUser: { name: 'guest-import-user', limit: 20, windowMs: 10 * MINUTE },
   /** CSV exports of the guest list per user. */
   guestExportsPerUser: { name: 'guest-export-user', limit: 30, windowMs: 10 * MINUTE },
   /** Guest pages (/c/…) per IP; link-preview bots are exempt (see proxy.ts). */

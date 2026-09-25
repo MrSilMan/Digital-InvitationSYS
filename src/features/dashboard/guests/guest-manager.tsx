@@ -1,6 +1,6 @@
 'use client';
 
-import { IconDownload, IconUserPlus } from '@tabler/icons-react';
+import { IconDownload, IconFileImport, IconUserPlus } from '@tabler/icons-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Dialog } from '@/components/dashboard/dialog';
@@ -28,7 +28,9 @@ import {
 import { GuestDetails, type GuestDetailsActions } from './guest-details';
 import { GuestFiltersBar } from './guest-filters';
 import { GuestForm } from './guest-form';
+import { GuestImport } from './guest-import';
 import { GuestRow } from './guest-row';
+import { listEventGuests } from './import-actions';
 import { InviteMessageCard } from './invite-message-card';
 import { SendMessage } from './send-message';
 import type { GuestActionResult, GuestListItem } from './types';
@@ -36,12 +38,17 @@ import { toGuestFormValues } from './ui-helpers';
 
 const t = guests;
 
-type Open = { kind: 'add' } | { kind: 'details'; id: string } | { kind: 'send'; id: string } | null;
+type Open =
+  | { kind: 'add' }
+  | { kind: 'import' }
+  | { kind: 'details'; id: string }
+  | { kind: 'send'; id: string }
+  | null;
 
 /**
- * The guest list: filters (kept in the URL), adding and editing guests, sending each personal
- * link by WhatsApp. Changes are saved at once by Server Actions; the list updates from what the
- * server returns.
+ * The guest list: filters (kept in the URL), adding, importing and editing guests, sending each
+ * personal link by WhatsApp. Changes are saved at once by Server Actions; the list updates from
+ * what the server returns.
  */
 export function GuestManager({
   eventId,
@@ -68,7 +75,10 @@ export function GuestManager({
     () => list.filter((guest) => matchesGuestFilters(guest, filters)).sort(compareGuestNames),
     [list, filters],
   );
-  const current = open && open.kind !== 'add' ? list.find((guest) => guest.id === open.id) : null;
+  const current =
+    open?.kind === 'details' || open?.kind === 'send'
+      ? list.find((guest) => guest.id === open.id)
+      : null;
   const full = list.length >= guestLimit;
   const filterQuery = guestFilterQuery(filters);
 
@@ -142,6 +152,15 @@ export function GuestManager({
     void applying(markGuestSent(eventId, guest.id, true)).catch(() => undefined);
   };
 
+  /** After an import added guests: the whole list again (the dialog stays open on its report). */
+  const reloadList = useCallback(() => {
+    listEventGuests(eventId)
+      .then((result) => {
+        if (result.ok) setList(result.guests);
+      })
+      .catch(() => undefined);
+  }, [eventId]);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -160,6 +179,15 @@ export function GuestManager({
           >
             <IconUserPlus size={18} stroke={1.75} aria-hidden="true" />
             {t.add}
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen({ kind: 'import' })}
+            disabled={full}
+            className={buttonClasses('secondary')}
+          >
+            <IconFileImport size={18} stroke={1.75} aria-hidden="true" />
+            {t.import.open}
           </button>
           <a
             href={`/painel/eventos/${eventId}/convidados/exportar${filterQuery}`}
@@ -232,6 +260,14 @@ export function GuestManager({
           onSubmit={add}
           onCancel={() => setOpen(null)}
         />
+      </Dialog>
+      <Dialog
+        open={open?.kind === 'import'}
+        onClose={() => setOpen(null)}
+        title={t.import.title}
+        closeLabel={t.details.close}
+      >
+        <GuestImport eventId={eventId} onImported={reloadList} />
       </Dialog>
       <Dialog
         open={open?.kind === 'details' && Boolean(current)}
