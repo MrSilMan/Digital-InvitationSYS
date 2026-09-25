@@ -9,7 +9,9 @@ The full product brief lives in [docs/SPEC.md](docs/SPEC.md); the design referen
 
 ## Status
 
-The platform is built in 11 phases (see the brief). This README grows with each phase.
+The platform is built in 11 phases (see the brief). This README grows with each phase. Phase 10
+is split: the CI part is done, while the production deployment (10b) waits until there is a server
+and a domain, and must be done before the first real couple uses the platform.
 
 | Phase | Scope                                                                             | Status  |
 | ----- | --------------------------------------------------------------------------------- | ------- |
@@ -22,8 +24,9 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 | 7     | Auth, couple dashboard, uploads, BullMQ worker                                    | Done    |
 | 8     | Guest management, CSV, WhatsApp                                                   | Done    |
 | 9     | Admin area and audit log                                                          | Done    |
-| 10    | Production Docker/Caddy, backups, full CI/CD with staging and rollback            | Planned |
-| 11    | Performance, accessibility, final docs                                            | Planned |
+| 10a   | CI: end-to-end tests against the production build, Dependabot                     | Done    |
+| 11    | Performance, accessibility, final docs                                            | Next    |
+| 10b   | Production Docker/Caddy, backups, deploy workflow with staging and rollback       | Planned |
 
 ## Stack
 
@@ -857,8 +860,17 @@ Vitest runs two projects, Playwright a third suite:
   repeatable (`E2E_SKIP_RESET=1` skips that for a server that does not use the local database and
   Redis). It starts `next dev` on port 3100 and a worker, with 4 browsers at most (one dev server
   compiling on demand falls behind with more), or tests a running app given in `E2E_BASE_URL`.
+  With `E2E_BUILD=1` it starts the production build instead (`npm start`, so run `npm run build`
+  first), the way CI runs it; that is also much faster than `next dev`:
+
+  ```bash
+  npm run build
+  E2E_BUILD=1 npm run test:e2e          # PowerShell: $env:E2E_BUILD=1; npm run test:e2e
+  ```
+
   Tests that open the same event's editor as the same couple run one after the other: opening the
-  editor clears that couple's preview draft. Runs locally for now; CI gets it in Phase 10.
+  editor clears that couple's preview draft.
+
 - `npm run test:integration`: `tests/integration/*.int.test.ts` against a real Postgres and Redis:
   the migrations, the demo seed (twice), guest lookup by token (including that no other guest's
   data leaks), the cache and its invalidation, the rate limiter (exact under concurrency), RSVP
@@ -885,9 +897,27 @@ Vitest runs two projects, Playwright a third suite:
   whose name does not end in `_test`. If a migration was edited after the test database applied
   it, drop it: `docker compose exec postgres dropdb -U convites convites_test`.
 
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request, with a
-Postgres service container: Prisma schema validation, format check, lint, type-check, unit tests,
-migrations applied to an empty database, a check that fails if the schema changed without a
-migration, integration tests (with a Redis service container and a MinIO container too), and the
-production build.
-Playwright E2E and the deploy workflow arrive in Phase 10.
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request, in two
+parallel jobs:
+
+- **Checks and tests** (Postgres and Redis service containers, a MinIO container): Prisma schema
+  validation, format check, lint, type-check, unit tests, migrations applied to an empty database,
+  a check that fails if the schema changed without a migration, integration tests, and the
+  production build.
+- **End-to-end tests**: the production build with its own Postgres, Redis and MinIO (bucket
+  `convites-media`), migrations applied, then `npm run test:e2e` with `E2E_BUILD=1` (the global
+  setup seeds the demo data). A failed test is retried once; on failure the HTML report and the
+  traces are uploaded as the `playwright-report` artifact (download and unzip it, then
+  `npx playwright show-report playwright-report`). The Chromium headless shell is cached per
+  Playwright version.
+
+MinIO is started by a small local action ([.github/actions/start-minio](.github/actions/start-minio/action.yml)),
+because a service container cannot take its `server /data` command. Actions are pinned to commit
+SHAs. The deploy workflow comes with Phase 10b.
+
+[Dependabot](.github/dependabot.yml) opens grouped pull requests every Monday for npm packages and
+GitHub Actions. Packages that must move together (Next.js, React, Prisma, Sentry, AWS SDK,
+Tailwind, Vitest) share one pull request, the other minor and patch updates another one; majors
+come one by one. New releases wait 5 days first (supply-chain safety). The version pins above are
+ignore rules there: change both together. Security alerts and security updates are switched on in
+the repository settings (Code security), not in this file.

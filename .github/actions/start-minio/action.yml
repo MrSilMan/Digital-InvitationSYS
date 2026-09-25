@@ -1,0 +1,35 @@
+name: Start MinIO
+description: >-
+  Starts MinIO on localhost:9000 with the local development credentials and waits until it is
+  healthy. A service container cannot take MinIO's `server /data` command, so it runs here.
+inputs:
+  bucket:
+    description: Bucket to create once MinIO is up (the integration tests create their own).
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Start MinIO
+      shell: bash
+      run: |
+        docker run -d --name minio -p 9000:9000 \
+          -e MINIO_ROOT_USER=convites -e MINIO_ROOT_PASSWORD=convites-dev-secret \
+          cgr.dev/chainguard/minio:latest server /data
+        for attempt in $(seq 1 30); do
+          if curl -fsS http://localhost:9000/minio/health/live > /dev/null; then exit 0; fi
+          sleep 2
+        done
+        docker logs minio
+        exit 1
+
+    - name: Create the bucket
+      if: inputs.bucket != ''
+      shell: bash
+      env:
+        BUCKET: ${{ inputs.bucket }}
+      run: |
+        docker run --rm --network host \
+          -e MC_HOST_local=http://convites:convites-dev-secret@localhost:9000 \
+          cgr.dev/chainguard/minio-client:latest mb --ignore-existing "local/$BUCKET"

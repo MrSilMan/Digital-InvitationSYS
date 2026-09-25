@@ -1,5 +1,6 @@
-# Quality gate for every push and pull request.
-# Phase 10 extends it with Playwright E2E and the deploy workflow.
+# Quality gate for every push and pull request: checks, unit and integration tests, and the
+# Playwright end-to-end tests against the production build. The deploy workflow comes later
+# (Phase 10b), when there is a server to deploy to.
 name: CI
 
 on:
@@ -82,18 +83,7 @@ jobs:
       - name: Fail if the schema changed without a migration
         run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
 
-      # A service container cannot take MinIO's `server /data` command, so it is started here.
-      - name: Start MinIO
-        run: |
-          docker run -d --name minio -p 9000:9000 \
-            -e MINIO_ROOT_USER=convites -e MINIO_ROOT_PASSWORD=convites-dev-secret \
-            cgr.dev/chainguard/minio:latest server /data
-          for attempt in $(seq 1 30); do
-            if curl -fsS http://localhost:9000/minio/health/live > /dev/null; then exit 0; fi
-            sleep 2
-          done
-          docker logs minio
-          exit 1
+      - uses: ./.github/actions/start-minio
 
       - run: npm run test:integration
 
@@ -107,3 +97,109 @@ jobs:
 
       # No runtime secrets needed: the environment is validated when the server starts, not at build.
       - run: npm run build
+
+  e2e:
+    name: End-to-end tests (production build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: convites
+          POSTGRES_PASSWORD: convites
+          POSTGRES_DB: convites
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U convites -d convites"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      # A throwaway stack with the local development credentials (see .env.example).
+      APP_ENV: test
+      APP_URL: http://localhost:3100
+      DATABASE_URL: postgresql://convites:convites@localhost:5432/convites
+      REDIS_URL: redis://localhost:6379
+      BETTER_AUTH_SECRET: ci-only-secret-for-throwaway-sessions-0123456789
+      S3_ENDPOINT: http://localhost:9000
+      S3_BUCKET: convites-media
+      S3_ACCESS_KEY_ID: convites
+      S3_SECRET_ACCESS_KEY: convites-dev-secret
+      S3_FORCE_PATH_STYLE: 'true'
+      # Playwright starts the standalone server (`npm start`) and a worker, not `next dev`.
+      E2E_BUILD: 1
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # The dashboard tests upload to this bucket straight from the browser.
+      - uses: ./.github/actions/start-minio
+        with:
+          bucket: convites-media
+
+      - name: Apply the migrations
+        run: npx prisma migrate deploy
+
+      # Browsers are cached per Playwright version; the system libraries are installed every time.
+      - name: Read the Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Playwright browser
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+
+      - name: Install the Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps --only-shell chromium
+
+      - name: Install the browser's system libraries
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium-headless-shell
+
+      - name: Restore Next.js build cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ hashFiles('app/**', 'src/**', '*.ts') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+
+      - run: npm run build
+
+      # The global setup seeds the demo data and clears the rate-limit counters first.
+      - run: npm run test:e2e
+
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14

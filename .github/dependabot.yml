@@ -1,0 +1,67 @@
+# Weekly dependency updates, grouped to keep the number of pull requests small. CI runs on each
+# one; merge when it is green. Docker images join in Phase 10b (the production Dockerfile).
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Africa/Luanda
+    # Supply-chain safety: new releases wait a few days (compromised versions are usually pulled
+    # within hours). Security updates are not delayed.
+    cooldown:
+      default-days: 5
+    open-pull-requests-limit: 5
+    # A dependency goes into the first group it matches: families that must move together first.
+    groups:
+      next:
+        patterns: ['next', '@next/*', 'eslint-config-next']
+      react:
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
+      # Keep the three Prisma packages on the same exact version (CLAUDE.md → Version pins).
+      prisma:
+        patterns: ['prisma', '@prisma/*']
+      sentry:
+        patterns: ['@sentry/*']
+      aws-sdk:
+        patterns: ['@aws-sdk/*']
+      tailwind:
+        patterns: ['tailwindcss', '@tailwindcss/*']
+      vitest:
+        patterns: ['vitest', 'vite']
+      minor-and-patch:
+        patterns: ['*']
+        update-types: [minor, patch]
+    # The version pins in CLAUDE.md: newer releases are blocked by peer dependencies.
+    ignore:
+      # typescript-eslint (via eslint-config-next) supports TypeScript < 6.1.
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
+      # The react/import/jsx-a11y plugins in eslint-config-next stop at ESLint 9.
+      - dependency-name: eslint
+        update-types: ['version-update:semver-major']
+      # Matches the Node.js 24 LTS runtime.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+      # Better Auth supports Prisma up to 7.
+      - dependency-name: prisma
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@prisma/*'
+        update-types: ['version-update:semver-major']
+
+  # Actions are pinned to commit SHAs; Dependabot updates the SHA and its version comment.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Africa/Luanda
+    cooldown:
+      default-days: 5
+    groups:
+      actions:
+        patterns: ['*']

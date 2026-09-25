@@ -11,7 +11,9 @@ relevant sections before planning a phase. README.md documents setup and archite
   approval. After it: `npm run check` and `npm run build` must pass, then summarize and commit.
 - Before installing anything, check current versions with `npm view` and read the current docs
   (Next.js ships version-matched docs in `node_modules/next/dist/docs/`).
-- Phase status: 1–9 done. Next: Phase 10 (production Docker/Caddy, backups, CI/CD, deploys).
+- Phase status: 1–9 and 10a (E2E in CI, Dependabot) done. Next: Phase 11 (polish). Phase 10b
+  (production Docker/Caddy, backups, deploy workflow) waits for a server and a domain, and must be
+  done before the first real couple.
 
 ## Commands
 
@@ -22,6 +24,7 @@ npm run worker:dev          # background worker (uploads), restarts on changes
 npm run check               # format check + lint + typecheck + unit tests
 npm run test:integration    # tests against Postgres (convites_test), Redis db 15, MinIO
 npm run test:e2e            # Playwright, phone-sized Chromium (+ a worker); needs `npm run db:seed`
+E2E_BUILD=1 npm run test:e2e   # same against the production build (`npm run build` first), like CI
 npm run build && npm start  # production build, run like the Docker image
 npm run db:migrate -- --name what-changed   # after editing prisma/schema.prisma
 npm run db:seed             # demo data (idempotent)
@@ -36,6 +39,8 @@ npx vitest run path/to/file.test.ts
 - `@types/node ^24`: the runtime is Node 24 LTS.
 - `prisma`, `@prisma/client`, `@prisma/adapter-pg` pinned to the same exact 7.x version: the
   `latest` npm tag points at an 8.0 RC, and Better Auth supports Prisma <=7. Bump all three together.
+- These pins are also ignore rules in `.github/dependabot.yml`: change both together. Package
+  families that must share a version (Next.js, React, Prisma, Sentry…) are Dependabot groups.
 
 ## Next.js 16 specifics that matter here
 
