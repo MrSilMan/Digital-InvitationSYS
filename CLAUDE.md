@@ -11,7 +11,8 @@ relevant sections before planning a phase. README.md documents setup and archite
   approval. After it: `npm run check` and `npm run build` must pass, then summarize and commit.
 - Before installing anything, check current versions with `npm view` and read the current docs
   (Next.js ships version-matched docs in `node_modules/next/dist/docs/`).
-- Phase status: 1–7 done. Next: Phase 8 (guest management, CSV import, WhatsApp sending).
+- Phase status: 1–7 and 8a (guest list, WhatsApp sending, overview, CSV export) done. Next: 8b
+  (CSV import through the queue), then Phase 9 (admin area and audit log).
 
 ## Commands
 
@@ -183,6 +184,28 @@ section" "--click=button[aria-label='Abrir o convite']" --wait=3000`. Demo links
   control. Anything that appears on validation (badges) must not shift clickable elements.
 - The editor is one `<form>`: buttons inside tabs need `type="button"`, and Enter in a text input
   that is not a form field must be caught (the media descriptions blur instead of submitting).
+
+## Guests (README → Guests and WhatsApp)
+
+- Event pages share `app/(dashboard)/painel/eventos/[eventId]/layout.tsx` (names + menu): Resumo is
+  the event's root page, the editor is `/editar`, the guest list `/convidados`. The layout does not
+  protect its pages: each page still calls `requireEditableEvent` (cached per request).
+- One guest schema (`src/lib/validation/guest.ts`) for the form, the Server Actions and CSV rows:
+  string inputs, `GuestData` out. Guest phones use `normalizeGuestPhone` (Angolan or `+`/`00` with a
+  country code); the couple's own WhatsApp numbers stay `angolanPhoneSchema`.
+- Guest changes go through `src/server/guests/service.ts`, always scoped `{ id, eventId }`. Adding
+  guests must lock the event row (`lockEvent`) before counting against `guestLimit`; anything that
+  changes a name, seats or the token calls `invalidateInvitationGuest(oldToken)`.
+- Statuses and counts only from `src/lib/guests/status.ts` (list, overview and export agree);
+  filters and their Portuguese URL params from `src/lib/guests/filters.ts`.
+- Personal links: `guestLink(slug, token)` (from `APP_URL`); never build `/c/…` URLs by hand.
+- `Event.inviteMessage` keeps the Portuguese placeholders as typed (dashboard only, never mapped to
+  English ones); null = the phase's suggested text; the link is appended if missing.
+- Couple-entered answers are `Rsvp.source = COUPLE`; they keep the guest's message and WhatsApp tap.
+- CSV exports: `guestsToCsv` (`;`, BOM, CRLF, formula escaping with our own pattern: Papa Parse's
+  default misses values with line breaks). `Response.text()` drops the BOM: test the bytes.
+- In the editor, links out of the page are guarded while the form is dirty (a capture-phase click
+  listener): keep it when adding links around the editor.
 
 ## Uploads and the worker (README → Uploads and the worker)
 

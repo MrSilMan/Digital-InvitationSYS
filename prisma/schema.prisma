@@ -40,6 +40,8 @@ enum RsvpMode {
 enum RsvpSource {
   FORM
   WHATSAPP_CLICK
+  /// Entered by the couple in the dashboard (an answer received by WhatsApp or phone).
+  COUPLE
 
   @@map("rsvp_source")
 }
@@ -203,6 +205,10 @@ model Event {
   groomWhatsapp String?
   brideWhatsapp String?
 
+  /// The message sent with each personal link ({convidado}, {noivos}, {data}, {link}).
+  /// null = the default text for the phase (dashboard only; guests never see it).
+  inviteMessage String?
+
   /// Order and visibility of the invitation sections (src/lib/validation/sections.ts).
   sectionConfig Json @default("[]")
 
@@ -304,12 +310,14 @@ model Guest {
   token        String   @unique
   /// Shown on the invitation, e.g. "Família Silva".
   displayName  String
-  /// E.164 (+244…).
-  phone        String?
-  seatsAllowed Int      @default(1)
-  groupTag     String?
-  createdAt    DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+  /// E.164: Angolan mobiles (+2449…) or numbers abroad (src/lib/validation/phone.ts).
+  phone            String?
+  seatsAllowed     Int       @default(1)
+  groupTag         String?
+  /// Last time the couple sent (or marked as sent) the personal link. Cleared by a new link.
+  invitationSentAt DateTime? @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime  @updatedAt @db.Timestamptz(3)
 
   rsvp  Rsvp?
   views InvitationView[]

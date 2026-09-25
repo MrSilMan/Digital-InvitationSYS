@@ -39,6 +39,8 @@ export const errors = {
 export const validation = {
   phone: {
     invalid: 'Introduza um número de telemóvel angolano válido (ex.: 923 456 789).',
+    invalidGuest:
+      'Introduza um telemóvel angolano (ex.: 923 456 789) ou um número estrangeiro com o indicativo (ex.: +351 912 345 678).',
   },
   rsvp: {
     attendingRequired: 'Indique se vai estar presente.',
@@ -80,20 +82,258 @@ export const dashboard = {
   events: {
     title: 'Os meus convites',
     titleAdmin: 'Todos os convites',
-    edit: 'Editar',
+    open: 'Abrir',
     empty: 'Ainda não tem convites. A nossa equipa cria o seu convite: contacte-nos.',
     phase: { SAVE_THE_DATE: 'Save the Date', INVITATION: 'Convite' },
     inactive: 'Desativado',
     /** {theme} */
     theme: 'Tema {theme}',
+    guestCount: { one: 'convidado', other: 'convidados' },
   },
   skipToContent: 'Saltar para o conteúdo',
+} as const;
+
+/** The menu shared by an event's dashboard pages. */
+export const eventNav = {
+  label: 'Páginas do convite',
+  back: 'Os meus convites',
+  overview: 'Resumo',
+  guests: 'Convidados',
+  editor: 'Editar convite',
+  inactive: 'Desativado: os convidados veem «Convite não encontrado».',
+} as const;
+
+/** The event's overview ("Resumo"): answers at a glance and the guests' messages. */
+export const overview = {
+  title: 'Resumo',
+  group: 'Grupo',
+  allGroups: 'Todos os grupos',
+  cards: {
+    invited: 'Convidados',
+    /** {limit} */
+    invitedOf: 'de {limit} do plano',
+    sent: 'Convites enviados',
+    opened: 'Abriram o convite',
+    confirmed: 'Confirmados',
+    declined: 'Não vão',
+    whatsapp: 'WhatsApp, por confirmar',
+    whatsappHint: 'Tocaram em «Confirmar presença». Confirme na conversa e registe a resposta.',
+    pending: 'Sem resposta',
+    people: 'Pessoas confirmadas',
+    /** {seats} */
+    peopleOf: 'de {seats} lugares',
+  },
+  empty: 'Ainda não há convidados.',
+  addGuests: 'Adicionar convidados',
+  messages: {
+    title: 'Mensagens dos convidados',
+    empty: 'Ainda não há mensagens.',
+    /** {date} */
+    at: 'a {date}',
+  },
+} as const;
+
+/** The guest list: adding, editing, sending by WhatsApp. Templates: {convidado}, {noivos}… */
+export const guests = {
+  title: 'Convidados',
+  /** {count}, {limit} */
+  count: '{count} de {limit} convidados',
+  /** {limit} */
+  limitReached:
+    'Chegou ao limite de {limit} convidados do seu plano. Para convidar mais pessoas, contacte-nos.',
+  add: 'Adicionar convidado',
+  exportCsv: 'Exportar lista (CSV)',
+  empty: 'Ainda não há convidados. Adicione o primeiro.',
+  seats: { one: 'lugar', other: 'lugares' },
+  people: { one: 'pessoa', other: 'pessoas' },
+  noPhone: 'Sem telemóvel',
+  filters: {
+    label: 'Filtrar convidados',
+    search: 'Procurar',
+    searchPlaceholder: 'Nome ou telemóvel',
+    answer: 'Resposta',
+    invite: 'Convite',
+    group: 'Grupo',
+    all: 'Todos',
+    answers: {
+      confirmed: 'Confirmados',
+      declined: 'Não vão',
+      whatsapp: 'WhatsApp, por confirmar',
+      pending: 'Sem resposta',
+    },
+    invites: {
+      'not-sent': 'Por enviar',
+      sent: 'Enviados',
+      opened: 'Abriram',
+      'not-opened': 'Não abriram',
+    },
+    /** {count}, {total} */
+    showing: 'A mostrar {count} de {total}',
+    clear: 'Limpar filtros',
+    noMatches: 'Nenhum convidado corresponde aos filtros.',
+  },
+  status: {
+    confirmed: 'Confirmado',
+    declined: 'Não vai',
+    whatsapp: 'WhatsApp, por confirmar',
+    opened: 'Abriu, sem resposta',
+    'not-opened': 'Ainda não abriu',
+  },
+  row: {
+    /** {date} */
+    sent: 'Enviado a {date}',
+    notSent: 'Por enviar',
+    send: 'Enviar',
+    sendLabel: 'Enviar pelo WhatsApp a {name}',
+    copyLink: 'Copiar link',
+    copyLinkLabel: 'Copiar o link de {name}',
+    details: 'Detalhes',
+    detailsLabel: 'Detalhes de {name}',
+    copied: 'Link copiado!',
+    copyFailed: 'Não foi possível copiar.',
+  },
+  form: {
+    addTitle: 'Novo convidado',
+    displayName: 'Nome no convite',
+    displayNameHint: 'Como aparece no convite, por exemplo «Família Silva» ou «Ana e Pedro».',
+    phone: 'Telemóvel (opcional)',
+    phoneHint:
+      'Para enviar pelo WhatsApp. Números de fora de Angola com o indicativo, por exemplo +351 912 345 678.',
+    seats: 'Lugares',
+    seatsHint: 'Quantas pessoas o convite inclui.',
+    group: 'Grupo (opcional)',
+    groupHint: 'Por exemplo «Família da noiva» ou «Amigos», para filtrar a lista.',
+    add: 'Adicionar',
+    save: 'Guardar',
+    saving: 'A guardar…',
+    saved: 'Guardado.',
+    cancel: 'Cancelar',
+    /** {name} */
+    added: '«{name}» está na lista.',
+  },
+  details: {
+    close: 'Fechar',
+    link: {
+      legend: 'Link do convite',
+      hint: 'Pessoal: mostra o nome deste convidado e guarda a resposta dele.',
+      /** {count}, {date} */
+      opened: 'Abriu o convite {count} vez(es), a última a {date}.',
+      notOpened: 'Ainda não abriu o convite.',
+      copy: 'Copiar link',
+      copied: 'Link copiado!',
+      open: 'Abrir o convite',
+      sent: 'Enviado a {date}.',
+      notSent: 'Ainda não foi enviado.',
+      markSent: 'Marcar como enviado',
+      markNotSent: 'Marcar como por enviar',
+      renew: 'Gerar novo link',
+      renewHint: 'Se o link foi reencaminhado a quem não devia: o link atual deixa de funcionar.',
+      /** {name} */
+      renewConfirm: 'O link atual de {name} deixa de funcionar. Gerar um novo link?',
+      renewed: 'Novo link gerado. Envie-o de novo ao convidado.',
+    },
+    remove: {
+      legend: 'Apagar convidado',
+      hint: 'A resposta e o histórico deste convidado também são apagados.',
+      button: 'Apagar convidado',
+      /** {name} */
+      confirm: 'Apagar {name} da lista? Não é possível desfazer.',
+    },
+  },
+  answer: {
+    legend: 'Resposta',
+    hint: 'Registe uma resposta que recebeu pelo WhatsApp ou por telefone. Se o convidado responder no convite, essa resposta substitui a sua.',
+    attending: 'Vai estar presente?',
+    none: 'Sem resposta',
+    yes: 'Vai',
+    no: 'Não vai',
+    people: 'Quantas pessoas vão?',
+    save: 'Guardar resposta',
+    saved: 'Resposta guardada.',
+    source: {
+      FORM: 'Respondeu no convite',
+      WHATSAPP_CLICK: 'Tocou no WhatsApp',
+      COUPLE: 'Registada no painel',
+    },
+    /** {source}, {date} */
+    updated: '{source} a {date}.',
+    /** {target}, {date} */
+    whatsappIntent:
+      'Tocou em «Confirmar presença ({target})» pelo WhatsApp a {date}. Confirme na conversa e registe aqui a resposta.',
+    targets: { GROOM: 'noivo', BRIDE: 'noiva' },
+    companions: 'Acompanhantes',
+    message: 'Mensagem para os noivos',
+  },
+  send: {
+    /** {name} */
+    title: 'Enviar a {name}',
+    message: 'Mensagem',
+    hint: 'Pode alterar a mensagem só para este convidado. O texto para todos está em «Mensagem de envio».',
+    noPhone: 'Este convidado não tem telemóvel: no WhatsApp, escolha o contacto a quem enviar.',
+    linkMissing: 'A mensagem tem de incluir o link do convite.',
+    open: 'Abrir o WhatsApp',
+    copy: 'Copiar mensagem',
+    copied: 'Mensagem copiada!',
+    copyFailed: 'Não foi possível copiar. Selecione o texto e copie-o manualmente.',
+    close: 'Fechar',
+  },
+  template: {
+    legend: 'Mensagem de envio',
+    hint: 'O texto que acompanha o link de cada convidado. {convidado}, {noivos}, {data} e {link} são substituídos; sem {link}, o link vai no fim.',
+    label: 'Texto da mensagem',
+    /** {count}, {max} */
+    counter: '{count} de {max} caracteres',
+    save: 'Guardar mensagem',
+    saved: 'Mensagem guardada.',
+    reset: 'Repor o texto sugerido',
+    defaults: {
+      INVITATION:
+        'Olá, {convidado}!\n\nÉ com muita alegria que vos convidamos para o nosso casamento, no dia {data}.\n\nAbra o seu convite e confirme a presença aqui:\n{link}\n\nCom carinho,\n{noivos}',
+      SAVE_THE_DATE:
+        'Olá, {convidado}!\n\nReserve a data: vamos casar no dia {data}! O convite oficial segue em breve.\n\nVeja aqui:\n{link}\n\nCom carinho,\n{noivos}',
+    },
+  },
+  errors: {
+    invalid: 'Verifique os campos assinalados.',
+    unauthenticated: 'A sua sessão terminou. Entre de novo para continuar.',
+    'not-found': 'Este convidado já não existe. Atualize a página.',
+    'rate-limited': 'Demasiados pedidos seguidos. Aguarde um pouco e tente de novo.',
+    unavailable: 'Não foi possível concluir agora. Tente de novo dentro de momentos.',
+    limit: 'Chegou ao limite de convidados do seu plano.',
+    /** {people} */
+    seats: 'Este convidado já confirmou {people}: altere primeiro a resposta.',
+  },
+  export: {
+    /** {slug}, {date} (file name, ASCII only) */
+    fileName: 'convidados-{slug}-{date}.csv',
+    columns: {
+      name: 'Nome',
+      phone: 'Telefone',
+      seats: 'Lugares',
+      group: 'Grupo',
+      link: 'Link',
+      status: 'Estado',
+      people: 'Pessoas confirmadas',
+      companions: 'Acompanhantes',
+      message: 'Mensagem',
+      answeredVia: 'Resposta',
+      answeredAt: 'Respondido em',
+      sentAt: 'Enviado em',
+      views: 'Aberturas',
+      lastOpenedAt: 'Última abertura',
+    },
+  },
+  validation: {
+    /** {max} */
+    seatsRange: 'Escolha entre 1 e {max} lugares.',
+    /** {max} */
+    peopleRange: 'Escolha entre 1 e {max} pessoas.',
+  },
 } as const;
 
 /** The event editor. Templates use Portuguese placeholders: {pessoas}, {local}, {hora}. */
 export const editor = {
   title: 'Editar convite',
-  back: 'Os meus convites',
   tabs: {
     general: 'Geral',
     couple: 'Noivos e família',
@@ -608,6 +848,9 @@ export const ptAO = {
   validation,
   auth,
   dashboard,
+  eventNav,
+  overview,
+  guests,
   editor,
   invitationDefaults,
   invitation,

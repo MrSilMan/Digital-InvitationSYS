@@ -20,7 +20,7 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 | 5     | RSVP, Redis cache, rate limiting, view tracking                                   | Done    |
 | 6     | "Champanhe" theme                                                                 | Done    |
 | 7     | Auth, couple dashboard, uploads, BullMQ worker                                    | Done    |
-| 8     | Guest management, CSV, WhatsApp                                                   | Planned |
+| 8     | Guest management, CSV, WhatsApp (8a: guests, WhatsApp, overview, export)          | 8a done |
 | 9     | Admin area and audit log                                                          | Planned |
 | 10    | Production Docker/Caddy, backups, full CI/CD with staging and rollback            | Planned |
 | 11    | Performance, accessibility, final docs                                            | Planned |
@@ -184,9 +184,11 @@ src/i18n/               pt-AO.ts: every user-facing string (Portuguese, Angola);
 src/components/         Shared UI: invitation building blocks (ui/), dashboard styles (dashboard/), icons, theme root
 src/features/           Feature code by area: invitation/ (guest pages), auth/, dashboard/, design-preview/
 src/themes/             Theme definitions (plain data), fonts, colour overrides, contrast maths
-src/lib/                Logger, redaction, request context, Sentry privacy, CSP, guest tokens, validation
-src/server/             Server-only code: Prisma/Redis clients, auth + sessions, events (editor, access), invitations,
-                        media (processing, dashboard), queues (BullMQ), storage (S3)
+src/lib/                Logger, redaction, request context, Sentry privacy, CSP, guest tokens, validation,
+                        guests/ (statuses and counts, list filters, the WhatsApp message)
+src/server/             Server-only code: Prisma/Redis clients, auth + sessions, events (editor, access), guests
+                        (list, changes, overview, CSV), invitations, media (processing, dashboard), queues
+                        (BullMQ), storage (S3)
 src/generated/prisma    Generated Prisma client (not committed)
 tests/unit/             Tests for root-level files (the rest live next to the code as *.test.ts)
 tests/integration/      Tests against a real Postgres (*.int.test.ts)
@@ -398,6 +400,8 @@ reconnect) and gives up after 250 ms, logging a warning at most every 30 s.
   | Google Maps short links, user   | 30 per 10 min  | `resolveMapsLink`                           |
   | Upload URLs per user            | 60 per 10 min  | `requestUpload`                             |
   | Other media changes per user    | 300 per 10 min | Confirm, delete, reorder, describe, retry   |
+  | Guest-list changes per user     | 600 per 10 min | Add, edit, delete, answers, "sent", message |
+  | Guest-list CSV exports per user | 30 per 10 min  | `…/convidados/exportar` → 429               |
 
   The per-IP limits are generous because Angolan mobile carriers put many phones behind one IP.
   The client IP is the right-most `X-Forwarded-For` entry (set by Caddy in production).
@@ -416,8 +420,10 @@ local bucket.
 
 ## Couple dashboard
 
-Couples sign in at `/entrar` and edit their invitation at `/painel`. Admins can open every event
-(their own area arrives in Phase 9). Accounts are created by the admin: there is no sign-up.
+Couples sign in at `/entrar` and find their events at `/painel`. Each event has three pages under
+one menu: **Resumo** (`/painel/eventos/<id>`), **Convidados** (`…/convidados`) and **Editar
+convite** (`…/editar`). Admins can open every event (their own area arrives in Phase 9). Accounts
+are created by the admin: there is no sign-up.
 
 - **Logins** ([src/server/auth/auth.ts](src/server/auth/auth.ts)): Better Auth with e-mail + password,
   database sessions for 30 days (refreshed daily) and the admin plugin's roles (`couple`, `admin`).
@@ -433,7 +439,7 @@ Couples sign in at `/entrar` and edit their invitation at `/painel`. Admins can 
   [src/server/events/access.ts](src/server/events/access.ts). A couple reaches only its own events;
   someone else's event and a missing one both answer "not found". Log lines and Sentry events of
   signed-in requests carry the user ID and role (never the e-mail or name).
-- **Editor** (`/painel/eventos/<id>`): every field of the invitation in tabs: phase, theme, colours
+- **Editor** (`/painel/eventos/<id>/editar`): every field of the invitation in tabs: phase, theme, colours
   (with WCAG warnings), sections (visibility and order), the couple and their parents, the card's
   texts, date and venues, timeline, message, dress code, guest rules, gifts and RSVP settings.
   One Zod schema ([src/lib/validation/event-editor.ts](src/lib/validation/event-editor.ts)) checks
@@ -454,7 +460,44 @@ Couples sign in at `/entrar` and edit their invitation at `/painel`. Admins can 
 - **Multimédia** tab: the hero illustration, the logo (replaces the monogram), up to 12 gallery
   photos (order, optional descriptions) and the music, with upload progress and processing status.
   The exception to "Guardar": files are saved as they are uploaded and reach guests once processed
-  (see below); the preview refreshes when they do.
+  (see below); the preview refreshes when they do. With unsaved changes, leaving the editor (the
+  event menu, "Os meus convites", closing the tab) asks first.
+
+### Guests and WhatsApp
+
+- **Guest list** (`/painel/eventos/<id>/convidados`): add, edit and delete guests (name shown on the
+  invitation, phone, seats 1–20, group). One Zod schema
+  ([src/lib/validation/guest.ts](src/lib/validation/guest.ts)) checks the form, the Server Actions
+  ([src/features/dashboard/guests/actions.ts](src/features/dashboard/guests/actions.ts)) and CSV rows.
+  Phones: Angolan mobiles as usual, or numbers abroad typed with their country code (`+351…`,
+  `00351…`); stored as E.164. A group typed differently ("amigos") takes the spelling in use.
+- **Guest limit**: adding a guest locks the event's row (`SELECT … FOR UPDATE`) while counting, so
+  simultaneous adds can never pass `Event.guestLimit` (the plan, set by the admin). Seats can't go
+  below the people a guest already confirmed.
+- **Statuses** ([src/lib/guests/status.ts](src/lib/guests/status.ts), shared by the list, the
+  overview and the export): Confirmado, Não vai, WhatsApp (tapped "Confirmar presença" but nothing
+  recorded), and without an answer Abriu / Ainda não abriu. "Enviado" is separate
+  (`Guest.invitationSentAt`).
+- **Filters** (answer, invitation sent/opened, group, name or phone search) live in the URL
+  (`?resposta=confirmados&convite=por-enviar&grupo=Amigos&q=silva`) and run in the browser: the list
+  is bounded by the guest limit. The overview's cards link to filtered lists.
+- **Sending**: "Enviar" opens the message with the guest's personal link, editable for that guest,
+  and "Abrir o WhatsApp" opens `wa.me/<phone>?text=…` (without a phone, WhatsApp asks for the
+  contact) and marks the guest as sent. The text for everyone is "Mensagem de envio"
+  (`Event.inviteMessage`, placeholders `{convidado}`, `{noivos}`, `{data}`, `{link}`; null = the
+  suggested text for the phase; the link is added at the end if the text drops it). Links are built
+  from `APP_URL`.
+- **Details**: the guest's answer, companions and message; an answer received by WhatsApp or phone
+  can be recorded (`Rsvp.source = COUPLE`; a later answer in the invitation replaces it). "Gerar novo
+  link" gives the guest a new token (the old link stops working at once, the guest goes back to "por
+  enviar"). Every change that touches a guest page clears the guest's cache entry.
+- **Resumo**: invited (of the plan), sent, opened, confirmed, declined, WhatsApp, no answer, people
+  attending (of the seats given out), for every guest or one group, and the guests' messages.
+- **CSV export** (`…/convidados/exportar`, the same filters as the list): `;`-separated UTF-8 with a
+  byte order mark and CRLF, so Excel with Portuguese settings opens it with its accents. The first
+  columns (nome, telefone, lugares, grupo) are the import's. Cells starting like a formula (`=`, `+`,
+  `-`, `@`, tab, CR) get a leading apostrophe; guests write some of these cells. Phones are written
+  as text a spreadsheet keeps (`923 456 789`, `00 351912345678`).
 
 ## Uploads and the worker
 
@@ -687,14 +730,17 @@ Vitest runs two projects, Playwright a third suite:
   Luanda times, IBANs, the live preview's lenient reading), Google Maps links and the short-link
   resolver, safe return paths, upload rules, image sizes and storage keys, the MP3 check, image
   processing (EXIF rotation and GPS removal, transparency, broken and oversized files), the image
-  loader, and one test that serves real HTTP requests through the request hooks. No services
-  needed.
+  loader, guest phones (Angolan and abroad), the guest schema, statuses and overview counts, list
+  filters, the WhatsApp message and the CSV export (formula escaping), and one test that serves
+  real HTTP requests through the request hooks. No services needed.
 - `npm run test:e2e`: `tests/e2e/*.spec.ts` in a phone-sized Chromium: opening the envelope, the
   reload, reduced motion, the gallery lightbox, the calendar file, the 404 page, the Champanhe
   invitation and its preview image, the Save the Date dialog, answering and changing the RSVP
   form, the WhatsApp link, the login redirect, a couple editing the invitation with the live
-  preview (guests see the change only once saved), and a gallery photo going from the browser to
-  MinIO, through the worker, to the guest page, and removed again. Its global setup re-seeds the
+  preview (guests see the change only once saved), a gallery photo going from the browser to
+  MinIO, through the worker, to the guest page, and removed again, and a couple adding a guest,
+  sending the link by WhatsApp, the guest answering, and the answer in the list and the
+  overview. Its global setup re-seeds the
   demo data and clears the rate-limit counters, so runs are repeatable (`E2E_SKIP_RESET=1` skips
   that for a server that does not use the local database and Redis). It starts `next dev` on port
   3100 and a worker, or tests a running app given in `E2E_BASE_URL`. Runs locally for now; CI gets
@@ -705,7 +751,10 @@ Vitest runs two projects, Playwright a third suite:
   storage and the Server Action's rules, view de-duplication (with and without Redis), the
   integrity rules and the delete behaviour, and the dashboard: login (redirect, wrong password,
   per-e-mail limit, sign-out), who may edit an event, saving and its cache refresh, a round trip
-  through the editor, and per-user preview drafts; and uploads: presigned URLs (type and size
+  through the editor, and per-user preview drafts; the guest list: adding (with the guest limit
+  under simultaneous adds), editing with the cache refresh, seats against confirmed people,
+  answers recorded by the couple, "sent" marks, new links, deletion, the sending message, the CSV
+  export route and the overview's counts; and uploads: presigned URLs (type and size
   enforced), processing, the guest read model, `/m/…` with byte ranges, the limits and access
   rules, replacing the hero, MP3s, deletion of files and the sweep, against MinIO (bucket
   `convites-media-test`, created by the tests; `TEST_S3_ENDPOINT`). It uses the `convites_test`

@@ -136,11 +136,16 @@ export interface DemoGuest {
   phone: string | null;
   seatsAllowed: number;
   groupTag: string;
+  /** When the couple sent the link (omitted: not sent yet). */
+  sentAt?: Date;
   views: Date[];
   rsvp: DemoRsvp | null;
 }
 
-/** Every dashboard state: confirmed, declined, WhatsApp tap only, opened only, not opened. */
+/**
+ * Every dashboard state: confirmed, declined, WhatsApp tap only, opened only, sent but not opened,
+ * not sent.
+ */
 export const DEMO_GUESTS: readonly DemoGuest[] = [
   {
     token: 'demo-familia-silva-001',
@@ -148,6 +153,7 @@ export const DEMO_GUESTS: readonly DemoGuest[] = [
     phone: '+244900000101',
     seatsAllowed: 4,
     groupTag: 'Família da noiva',
+    sentAt: new Date('2026-09-17T19:00:00Z'),
     views: [new Date('2026-09-18T09:12:00Z'), new Date('2026-09-20T18:40:00Z')],
     rsvp: {
       source: 'FORM',
@@ -163,6 +169,7 @@ export const DEMO_GUESTS: readonly DemoGuest[] = [
     phone: '+244900000102',
     seatsAllowed: 2,
     groupTag: 'Amigos',
+    sentAt: new Date('2026-09-17T19:02:00Z'),
     views: [new Date('2026-09-19T21:05:00Z')],
     rsvp: { source: 'FORM', attending: true, peopleCount: 2, companionNames: ['Pedro Gomes'] },
   },
@@ -172,6 +179,7 @@ export const DEMO_GUESTS: readonly DemoGuest[] = [
     phone: '+244900000103',
     seatsAllowed: 5,
     groupTag: 'Família do noivo',
+    sentAt: new Date('2026-09-17T19:04:00Z'),
     views: [new Date('2026-09-20T12:30:00Z')],
     rsvp: {
       source: 'WHATSAPP_CLICK',
@@ -185,6 +193,7 @@ export const DEMO_GUESTS: readonly DemoGuest[] = [
     phone: '+244900000104',
     seatsAllowed: 1,
     groupTag: 'Colegas',
+    sentAt: new Date('2026-09-20T09:30:00Z'),
     views: [new Date('2026-09-21T08:00:00Z')],
     rsvp: {
       source: 'FORM',
@@ -199,6 +208,7 @@ export const DEMO_GUESTS: readonly DemoGuest[] = [
     phone: '+244900000105',
     seatsAllowed: 1,
     groupTag: 'Amigos',
+    sentAt: new Date('2026-09-17T19:06:00Z'),
     views: [
       new Date('2026-09-18T19:20:00Z'),
       new Date('2026-09-21T13:45:00Z'),
@@ -212,6 +222,7 @@ export const DEMO_GUESTS: readonly DemoGuest[] = [
     phone: '+244900000106',
     seatsAllowed: 3,
     groupTag: 'Família da noiva',
+    sentAt: new Date('2026-09-22T20:15:00Z'),
     views: [],
     rsvp: null,
   },
@@ -221,6 +232,7 @@ export const DEMO_GUESTS: readonly DemoGuest[] = [
     phone: '+244900000107',
     seatsAllowed: 2,
     groupTag: 'Família do noivo',
+    sentAt: new Date('2026-09-21T18:00:00Z'),
     views: [new Date('2026-09-22T10:00:00Z')],
     rsvp: {
       source: 'FORM',
@@ -235,6 +247,7 @@ export const DEMO_GUESTS: readonly DemoGuest[] = [
     phone: '+244900000108',
     seatsAllowed: 1,
     groupTag: 'Colegas',
+    sentAt: new Date('2026-09-21T18:05:00Z'),
     views: [new Date('2026-09-22T14:15:00Z')],
     rsvp: {
       source: 'WHATSAPP_CLICK',
@@ -257,6 +270,7 @@ export const DEMO_GUESTS: readonly DemoGuest[] = [
     phone: '+244900000110',
     seatsAllowed: 1,
     groupTag: 'Amigos',
+    sentAt: new Date('2026-09-21T09:00:00Z'),
     views: [new Date('2026-09-21T17:30:00Z'), new Date('2026-09-23T07:50:00Z')],
     rsvp: {
       source: 'FORM',

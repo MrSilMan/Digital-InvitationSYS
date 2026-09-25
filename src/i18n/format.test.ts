@@ -5,6 +5,8 @@ import {
   formatInvitationDate,
   formatInvitationWeekdayTime,
   formatLongDate,
+  formatShortDate,
+  formatShortDateTime,
   formatTime,
   toLuandaIso,
 } from '@/i18n/format';
@@ -77,5 +79,10 @@ describe('pt-AO date formatting in Luanda time', () => {
     expect(formatLongDate(ceremony)).toBe('sexta-feira, 15 de janeiro de 2027');
     expect(toLuandaIso(ceremony)).toBe('2027-01-15T16:00+01:00');
     expect(toLuandaIso(new Date('2027-01-15T23:30:00Z'))).toBe('2027-01-16T00:30+01:00');
+  });
+
+  it('formats short dashboard dates, crossing midnight in Luanda', () => {
+    expect(formatShortDate(ceremony)).toBe('15/01/2027');
+    expect(formatShortDateTime(new Date('2026-09-05T23:30:00Z'))).toBe('06/09/2026, 00h30');
   });
 });

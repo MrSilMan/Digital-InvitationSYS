@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { cache } from 'react';
+
 import type { SessionUser } from '@/server/auth/session';
 import { getPrisma } from '@/server/db/prisma';
 
@@ -16,8 +18,17 @@ export async function listEditableEvents(user: SessionUser) {
       phase: true,
       themeId: true,
       isActive: true,
+      _count: { select: { guests: true } },
     },
   });
 }
 
 export type EditableEventSummary = Awaited<ReturnType<typeof listEditableEvents>>[number];
+
+/** The header of an event's dashboard pages. Callers have checked access. */
+export const loadEventHeader = cache(async (eventId: string) =>
+  getPrisma().event.findUnique({
+    where: { id: eventId },
+    select: { id: true, groomName: true, brideName: true, isActive: true, phase: true },
+  }),
+);

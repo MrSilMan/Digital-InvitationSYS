@@ -81,6 +81,25 @@ export function formatDate(date: Date): string {
   return `${day} de ${month} de ${year}`;
 }
 
+/** "20/09/2026" (dashboard lists and exports). */
+export function formatShortDate(date: Date): string {
+  const {
+    day = '',
+    month = '',
+    year = '',
+  } = partsOf(date, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  return `${day}/${month}/${year}`;
+}
+
+/** "20/09/2026, 14h05" */
+export function formatShortDateTime(date: Date): string {
+  return `${formatShortDate(date)}, ${formatTime(date)}`;
+}
+
 /** ISO 8601 with the Luanda offset, for `<time dateTime>`: "2027-01-15T16:00+01:00". */
 export function toLuandaIso(date: Date): string {
   const {

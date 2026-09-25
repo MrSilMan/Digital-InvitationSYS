@@ -22,6 +22,13 @@ export const RATE_LIMITS = {
   mediaUploadsPerUser: { name: 'media-upload-user', limit: 60, windowMs: 10 * MINUTE },
   /** Other media changes per user: confirm, delete, reorder, descriptions, retries. */
   mediaChangesPerUser: { name: 'media-change-user', limit: 300, windowMs: 10 * MINUTE },
+  /**
+   * Guest-list changes per user: add, edit, delete, answers, "sent" marks, new links, the message.
+   * Sending 150 invitations one by one marks 150 guests as sent.
+   */
+  guestChangesPerUser: { name: 'guest-change-user', limit: 600, windowMs: 10 * MINUTE },
+  /** CSV exports of the guest list per user. */
+  guestExportsPerUser: { name: 'guest-export-user', limit: 30, windowMs: 10 * MINUTE },
   /** Guest pages (/c/…) per IP; link-preview bots are exempt (see proxy.ts). */
   invitationPagesPerIp: { name: 'inv-page-ip', limit: 300, windowMs: 5 * MINUTE },
   /** RSVP form submissions per guest link (answers can be changed a few times). */

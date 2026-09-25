@@ -9,8 +9,8 @@ const COUPLE = {
 /** The Champanhe copy of the demo wedding: the other specs read the Praia Rosa one. */
 const GUEST_LINK = '/c/braulio-e-nanda-champanhe/demo-champanhe-silva-01';
 
-/** Signs in as the demo couple and opens the Champanhe event's editor. */
-async function openChampanheEditor(page: Page): Promise<void> {
+/** Signs in as the demo couple and opens the Champanhe event (its overview, "Resumo"). */
+async function openChampanheEvent(page: Page): Promise<void> {
   await page.goto('/painel');
   await page.getByLabel('E-mail').fill(COUPLE.email);
   await page.getByLabel('Palavra-passe', { exact: true }).fill(COUPLE.password);
@@ -22,11 +22,94 @@ async function openChampanheEditor(page: Page): Promise<void> {
   await page
     .getByRole('listitem')
     .filter({ hasText: 'Tema Champanhe' })
-    .getByRole('link', { name: 'Editar' })
+    .getByRole('link', { name: /^Abrir/ })
+    .click();
+  await expect(page.getByRole('heading', { name: 'Resumo', level: 1 })).toBeVisible({
+    timeout: 30_000,
+  });
+}
+
+/** A page of the event's menu (Resumo, Convidados, Editar convite). */
+async function openEventPage(page: Page, name: string): Promise<void> {
+  await page
+    .getByRole('navigation', { name: 'Páginas do convite' })
+    .getByRole('link', { name })
     .click();
 }
 
+/** …and its editor. */
+async function openChampanheEditor(page: Page): Promise<void> {
+  await openChampanheEvent(page);
+  await openEventPage(page, 'Editar convite');
+  await expect(page.getByRole('heading', { name: 'Editar convite', level: 1 })).toBeVisible({
+    timeout: 30_000,
+  });
+}
+
 test.describe('couple dashboard', () => {
+  test('a couple adds a guest, sends the link by WhatsApp, and sees the answer', async ({
+    page,
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    await openChampanheEvent(page);
+    await openEventPage(page, 'Convidados');
+    await expect(page.getByRole('heading', { name: 'Convidados', level: 1 })).toBeVisible({
+      timeout: 30_000,
+    });
+
+    const name = `Família Teste ${Date.now()}`;
+    await page.getByRole('button', { name: 'Adicionar convidado' }).click();
+    const add = page.getByRole('dialog', { name: 'Novo convidado' });
+    await add.getByLabel('Nome no convite').fill(name);
+    await add.getByLabel('Telemóvel (opcional)').fill('900 000 999');
+    await add.getByLabel('Lugares').selectOption('2');
+    await add.getByRole('button', { name: 'Adicionar', exact: true }).click();
+    await expect(add).toBeHidden();
+
+    await page.getByLabel('Procurar').fill(name);
+    const row = page.getByRole('listitem').filter({ hasText: name });
+    await expect(row).toContainText('Por enviar');
+
+    // The WhatsApp message carries the personal link; opening WhatsApp marks it as sent.
+    await page
+      .context()
+      .route('https://wa.me/**', (route) =>
+        route.fulfill({ contentType: 'text/plain', body: 'WhatsApp' }),
+      );
+    await row.getByRole('button', { name: `Enviar pelo WhatsApp a ${name}` }).click();
+    const whatsapp = page
+      .getByRole('dialog', { name: `Enviar a ${name}` })
+      .getByRole('link', { name: 'Abrir o WhatsApp' });
+    const href = (await whatsapp.getAttribute('href')) ?? '';
+    expect(href).toMatch(/^https:\/\/wa\.me\/244900000999\?text=/);
+    const message = decodeURIComponent(href.slice(href.indexOf('?text=') + 6));
+    const link = /https?:\/\/\S+\/c\/braulio-e-nanda-champanhe\/[\w-]{22}/.exec(message)?.[0];
+    expect(link).toBeTruthy();
+    const popup = page.waitForEvent('popup');
+    await whatsapp.click();
+    await (await popup).close();
+    await expect(row).toContainText('Enviado a');
+
+    // The guest opens their invitation and confirms.
+    const guest = await browser.newPage();
+    await guest.goto(new URL(link ?? '').pathname);
+    await guest.getByRole('button', { name: 'Abrir o convite' }).click();
+    const content = guest.locator('main#convite');
+    await content.getByText('Sim, estarei presente').click();
+    await content.getByLabel('Quantas pessoas vão?').selectOption('2');
+    const note = `Contem connosco! ${Date.now()}`;
+    await content.getByLabel('Mensagem para os noivos (opcional)').fill(note);
+    await content.getByRole('button', { name: 'Enviar resposta' }).click();
+    await expect(content.getByRole('status').filter({ hasText: 'confirmada' })).toContainText(name);
+
+    // The couple sees the answer in the list and the message in the overview.
+    await page.reload();
+    await expect(row).toContainText('Confirmado · 2 pessoas');
+    await openEventPage(page, 'Resumo');
+    await expect(page.getByText(note)).toBeVisible({ timeout: 30_000 });
+  });
+
   test('sends visitors without a session to the login page', async ({ page }) => {
     await page.goto('/painel/eventos/00000000-0000-7000-8000-000000000000');
     await expect(page).toHaveURL(/\/entrar\?voltar=%2Fpainel%2Feventos%2F/);
@@ -37,6 +120,8 @@ test.describe('couple dashboard', () => {
     page,
     browser,
   }) => {
+    // A dev server compiles each page on first use.
+    test.setTimeout(90_000);
     await openChampanheEditor(page);
     await page.getByRole('tab', { name: 'Mensagem' }).click();
     const message = `Mensagem de teste ${Date.now()}`;

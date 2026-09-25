@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import { z } from 'zod';
 
 import { logger } from '@/lib/logger';
@@ -25,18 +26,18 @@ export interface EditableEvent {
   ownerId: string;
 }
 
-export async function findEditableEvent(
-  user: SessionUser,
-  eventId: unknown,
-): Promise<EditableEvent | null> {
-  const id = eventIdSchema.safeParse(eventId);
-  if (!id.success) return null;
-  const event = await getPrisma().event.findUnique({
-    where: { id: id.data },
-    select: { id: true, slug: true, ownerId: true },
-  });
-  return event && canAccessEvent(user, event.ownerId) ? event : null;
-}
+/** Read once per request (React `cache`): an event's layout and page both check it. */
+export const findEditableEvent = cache(
+  async (user: SessionUser, eventId: unknown): Promise<EditableEvent | null> => {
+    const id = eventIdSchema.safeParse(eventId);
+    if (!id.success) return null;
+    const event = await getPrisma().event.findUnique({
+      where: { id: id.data },
+      select: { id: true, slug: true, ownerId: true },
+    });
+    return event && canAccessEvent(user, event.ownerId) ? event : null;
+  },
+);
 
 /** Pages: the signed-in user and the event, or the login page / "not found". */
 export async function requireEditableEvent(

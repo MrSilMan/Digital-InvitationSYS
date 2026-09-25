@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { buttonClasses, cardClasses } from '@/components/dashboard/styles';
 import { formatLongDate } from '@/i18n/format';
+import { formatCount } from '@/i18n/plural';
 import { dashboard } from '@/i18n/pt-AO';
 import { fillTemplate } from '@/lib/template';
 import { requireUser } from '@/server/auth/session';
@@ -43,14 +44,16 @@ export default async function DashboardHomePage() {
                 </h2>
                 <p className="mt-1 text-sm text-stone-600">{formatLongDate(event.startsAt)}</p>
                 <p className="text-sm text-stone-500">
-                  {fillTemplate(t.theme, { theme: getTheme(event.themeId).name })}
+                  {fillTemplate(t.theme, { theme: getTheme(event.themeId).name })} ·{' '}
+                  {formatCount(event._count.guests, t.guestCount)}
                 </p>
               </div>
               <Link
                 href={`/painel/eventos/${event.id}`}
                 className={buttonClasses('primary', 'md', 'self-start')}
+                aria-label={`${t.open}: ${event.groomName} & ${event.brideName}`}
               >
-                {t.edit}
+                {t.open}
               </Link>
             </li>
           ))}

@@ -1,7 +1,6 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { IconArrowLeft } from '@tabler/icons-react';
 import Link from 'next/link';
 import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useState } from 'react';
 import { type FieldErrors, FormProvider, type Path, useForm } from 'react-hook-form';
@@ -121,8 +120,6 @@ type Status =
 
 interface EventEditorProps {
   eventId: string;
-  /** "Braúlio & Nanda" */
-  title: string;
   initialValues: EventEditorValues;
   initialMedia: MediaItem[];
 }
@@ -132,7 +129,7 @@ interface EventEditorProps {
  * Nothing reaches guests until "Guardar alterações"; the preview shows unsaved changes. Media
  * are the exception: saved on upload, live once processed ("Multimédia").
  */
-export function EventEditor({ eventId, title, initialValues, initialMedia }: EventEditorProps) {
+export function EventEditor({ eventId, initialValues, initialMedia }: EventEditorProps) {
   const [saved, setSaved] = useState(initialValues);
   const form = useForm<EventEditorValues, unknown, EventEditorData>({
     resolver: zodResolver(eventEditorSchema),
@@ -164,12 +161,29 @@ export function EventEditor({ eventId, title, initialValues, initialMedia }: Eve
     onFailed: () => setPreviewStale(true),
   });
 
-  // The browser asks before leaving the page with unsaved changes.
+  // The browser asks before leaving the page with unsaved changes; links to other pages of the
+  // app (the event menu, "Os meus convites") navigate without unloading, so they ask here. The
+  // capture listener runs before Next.js' Link, and stopping the click keeps the page.
   useEffect(() => {
     if (!isDirty) return;
     const onBeforeUnload = (event: BeforeUnloadEvent) => event.preventDefault();
+    const onClick = (event: MouseEvent) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
+      const link = event.target instanceof Element ? event.target.closest('a[href]') : null;
+      if (!(link instanceof HTMLAnchorElement) || link.target === '_blank') return;
+      if (link.origin !== window.location.origin || link.pathname === window.location.pathname) {
+        return;
+      }
+      if (window.confirm(t.save.leaveWarning)) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
     window.addEventListener('beforeunload', onBeforeUnload);
-    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+    document.addEventListener('click', onClick, true);
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      document.removeEventListener('click', onClick, true);
+    };
   }, [isDirty]);
 
   const showFirstError = (formErrors: FieldErrors<EventEditorValues>) => {
@@ -253,18 +267,8 @@ export function EventEditor({ eventId, title, initialValues, initialMedia }: Eve
       >
         <div className="sticky top-0 z-30 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 bg-stone-100/95 px-4 py-3 backdrop-blur">
           <div className="flex min-w-0 items-center gap-3">
-            <Link
-              href="/painel"
-              onClick={(event) => {
-                if (isDirty && !window.confirm(t.save.leaveWarning)) event.preventDefault();
-              }}
-              className={buttonClasses('ghost', 'icon')}
-              aria-label={t.back}
-            >
-              <IconArrowLeft size={20} stroke={1.75} aria-hidden="true" />
-            </Link>
             <div className="min-w-0">
-              <h1 className="truncate font-serif text-xl text-stone-900">{title}</h1>
+              <h1 className="truncate font-sans text-lg font-semibold text-stone-900">{t.title}</h1>
               <p
                 role="status"
                 className={cn(
@@ -277,7 +281,7 @@ export function EventEditor({ eventId, title, initialValues, initialMedia }: Eve
                   <>
                     {' '}
                     <Link
-                      href={`/entrar?voltar=${encodeURIComponent(`/painel/eventos/${eventId}`)}`}
+                      href={`/entrar?voltar=${encodeURIComponent(`/painel/eventos/${eventId}/editar`)}`}
                       className="underline"
                     >
                       {auth.login.title}

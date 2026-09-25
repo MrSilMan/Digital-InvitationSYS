@@ -129,6 +129,7 @@ export async function seedDemo(
         rsvpDeadline: DEMO_EVENT.rsvpDeadline,
         groomWhatsapp: DEMO_EVENT.groomWhatsapp,
         brideWhatsapp: DEMO_EVENT.brideWhatsapp,
+        inviteMessage: null,
         // The demo shows every section, including the optional ones.
         sectionConfig: DEFAULT_SECTION_CONFIG.map((section) => ({ ...section, visible: true })),
       } satisfies Omit<Prisma.EventUncheckedCreateInput, 'slug'>;
@@ -191,7 +192,7 @@ export async function seedDemo(
   );
 }
 
-/** Rebuilds an event's lists: venues, timeline, guest rules and media. */
+/** Rebuilds an event's lists: venues, timeline, guest rules and media (guests: replaceGuests). */
 async function replaceEventContent(tx: Tx, eventId: string, media: MediaRow[]): Promise<void> {
   await tx.eventLocation.deleteMany({ where: { eventId } });
   await tx.eventLocation.createMany({
@@ -283,6 +284,7 @@ async function upsertGuest(tx: Tx, eventId: string, guest: DemoGuest): Promise<v
     phone,
     seatsAllowed: guest.seatsAllowed,
     groupTag: guest.groupTag,
+    invitationSentAt: guest.sentAt ?? null,
   };
   const saved = await tx.guest.upsert({
     where: { token: guest.token },
