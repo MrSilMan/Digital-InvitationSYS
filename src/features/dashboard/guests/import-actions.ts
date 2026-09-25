@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { IMPORT_LIMITS } from '@/lib/guests/import';
 import { logger } from '@/lib/logger';
+import { auditDashboardChange } from '@/server/audit/audit-log';
 import { authorizeEventAction } from '@/server/events/access';
 import { decodeCsvBytes } from '@/server/guests/csv';
 import { createGuestImport, loadGuestImport, runGuestImport } from '@/server/guests/import';
@@ -61,6 +62,7 @@ export async function startGuestImport(
       sizeBytes: file.size,
       queued,
     });
+    await auditDashboardChange(user, event, 'guest.import', { importId });
     if (!queued) await runGuestImport(importId);
     const view = await loadGuestImport(event, importId);
     return view ? { ok: true, import: view } : { ok: false, error: 'not-found' };

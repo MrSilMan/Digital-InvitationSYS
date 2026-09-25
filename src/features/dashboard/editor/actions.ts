@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { logger } from '@/lib/logger';
 import { type EventEditorValues, eventEditorSchema } from '@/lib/validation/event-editor';
+import { auditDashboardChange } from '@/server/audit/audit-log';
 import { getSessionUser } from '@/server/auth/session';
 import {
   deletePreviewDraft,
@@ -34,7 +35,8 @@ export type SaveEventResult =
 /**
  * Saves the editor. Nothing from the browser is trusted: the session, the event's owner, the rate
  * limit and every field are checked here. Returns the stored values (normalized: trimmed texts,
- * formatted phones and IBAN) so the form matches the database.
+ * formatted phones and IBAN) so the form matches the database. An admin's save of a couple's event
+ * is recorded in the audit log.
  */
 export async function saveEvent(eventId: unknown, input: unknown): Promise<SaveEventResult> {
   const auth = await authorizeEventAction(eventId);
@@ -62,6 +64,7 @@ export async function saveEvent(eventId: unknown, input: unknown): Promise<SaveE
 
   try {
     await saveEventEditorData(event, parsed.data);
+    await auditDashboardChange(user, event, 'event.edit');
     await deletePreviewDraft(event.id, user.id);
     const row = await loadEventRow(event.id);
     if (!row) return { ok: false, error: 'not-found' };

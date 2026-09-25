@@ -4,6 +4,7 @@ import { errors, guests } from '@/i18n/pt-AO';
 import { serverNow } from '@/lib/clock';
 import { toLuandaDateInput } from '@/lib/luanda-time';
 import { fillTemplate } from '@/lib/template';
+import { auditDashboardChange } from '@/server/audit/audit-log';
 import { getSessionUser } from '@/server/auth/session';
 import { findEditableEvent } from '@/server/events/access';
 import { importErrorsCsv } from '@/server/guests/csv';
@@ -20,7 +21,7 @@ function notFound(): Response {
 
 /**
  * The rows an import could not take, as CSV (the import's columns, then "linha" and "erro"), to
- * fix and import again. The event's couple or an admin only.
+ * fix and import again. The event's couple or an admin only (recorded in the audit log).
  */
 export async function GET(
   request: Request,
@@ -38,6 +39,10 @@ export async function GET(
   if (!event || !id.success) return notFound();
   const problems = await loadImportProblems(event, id.data);
   if (!problems) return notFound();
+  await auditDashboardChange(user, event, 'guest.export', {
+    file: 'import-errors',
+    importId: id.data,
+  });
 
   const fileName = fillTemplate(guests.import.errorsFileName, {
     date: toLuandaDateInput(serverNow()),

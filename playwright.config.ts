@@ -13,6 +13,9 @@ export default defineConfig({
   testDir: 'tests/e2e',
   globalSetup: './tests/e2e/global-setup.ts',
   fullyParallel: true,
+  // One `next dev` compiles routes on demand: more than 4 phone browsers at once slow it down
+  // past the tests' timeouts. A built app (E2E_BASE_URL) takes Playwright's default.
+  workers: process.env.E2E_BASE_URL ? undefined : 4,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',

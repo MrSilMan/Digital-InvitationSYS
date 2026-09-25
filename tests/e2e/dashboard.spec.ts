@@ -154,6 +154,12 @@ test.describe('couple dashboard', () => {
     await expect(page).toHaveURL(/\/entrar\?voltar=%2Fpainel%2Feventos%2F/);
     await expect(page.getByRole('heading', { name: 'Entrar no painel' })).toBeVisible();
   });
+});
+
+// Both open the Champanhe editor as the demo couple. Opening the editor clears that couple's
+// preview draft, so run in parallel one could wipe the other's unsaved text: one after the other.
+test.describe('couple dashboard: the editor', () => {
+  test.describe.configure({ mode: 'default' });
 
   test('a couple edits the invitation, previews it, and guests see it once saved', async ({
     page,

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { isSignedInArea } from './cookies';
-import { DEFAULT_RETURN_PATH, safeReturnPath } from './return-path';
+import {
+  DEFAULT_RETURN_PATH,
+  defaultReturnPath,
+  parseReturnPath,
+  safeReturnPath,
+} from './return-path';
 
 describe('safeReturnPath', () => {
   it('keeps paths inside the signed-in areas', () => {
@@ -23,6 +28,14 @@ describe('safeReturnPath', () => {
     ['a list', ['/painel']],
   ])('falls back to the dashboard for %s', (_, value) => {
     expect(safeReturnPath(value)).toBe(DEFAULT_RETURN_PATH);
+    expect(parseReturnPath(value)).toBeNull();
+  });
+});
+
+describe('defaultReturnPath', () => {
+  it('sends admins to the admin area and couples to their dashboard', () => {
+    expect(defaultReturnPath('admin')).toBe('/admin');
+    expect(defaultReturnPath('couple')).toBe('/painel');
   });
 });
 

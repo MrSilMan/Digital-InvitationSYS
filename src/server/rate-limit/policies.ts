@@ -12,6 +12,10 @@ export const RATE_LIMITS = {
   loginPerIp: { name: 'login-ip', limit: 20, windowMs: 15 * MINUTE },
   /** Login attempts per e-mail address, whatever the IP (password guessing on one account). */
   loginPerEmail: { name: 'login-email', limit: 8, windowMs: 15 * MINUTE },
+  /** "A minha conta" password changes per user (each one checks the current password). */
+  passwordChangesPerUser: { name: 'password-change-user', limit: 8, windowMs: 15 * MINUTE },
+  /** Changes in the admin area per admin (accounts, events, passwords). */
+  adminActionsPerUser: { name: 'admin-action-user', limit: 120, windowMs: 10 * MINUTE },
   /** Editor saves per user. */
   eventSavesPerUser: { name: 'event-save-user', limit: 60, windowMs: 10 * MINUTE },
   /** Live-preview drafts per user (sent about once a second while typing). */

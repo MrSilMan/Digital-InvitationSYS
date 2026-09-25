@@ -1,12 +1,17 @@
 import { z } from 'zod';
 
+import { EVENT_SLUG_MAX_LENGTH } from '@/lib/events/slug';
 import { isGuestToken } from '@/lib/guest-token';
 
 /** Event slugs: lowercase words joined by hyphens (also enforced by a database CHECK constraint). */
 const EVENT_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export function isEventSlug(value: unknown): value is string {
-  return typeof value === 'string' && value.length <= 80 && EVENT_SLUG_PATTERN.test(value);
+  return (
+    typeof value === 'string' &&
+    value.length <= EVENT_SLUG_MAX_LENGTH &&
+    EVENT_SLUG_PATTERN.test(value)
+  );
 }
 
 /**

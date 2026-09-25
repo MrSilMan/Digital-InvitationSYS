@@ -11,7 +11,7 @@ relevant sections before planning a phase. README.md documents setup and archite
   approval. After it: `npm run check` and `npm run build` must pass, then summarize and commit.
 - Before installing anything, check current versions with `npm view` and read the current docs
   (Next.js ships version-matched docs in `node_modules/next/dist/docs/`).
-- Phase status: 1–8 done. Next: Phase 9 (admin area and audit log).
+- Phase status: 1–9 done. Next: Phase 10 (production Docker/Caddy, backups, CI/CD, deploys).
 
 ## Commands
 
@@ -25,6 +25,7 @@ npm run test:e2e            # Playwright, phone-sized Chromium (+ a worker); nee
 npm run build && npm start  # production build, run like the Docker image
 npm run db:migrate -- --name what-changed   # after editing prisma/schema.prisma
 npm run db:seed             # demo data (idempotent)
+npm run admin:create -- --email=a@b.ao --name="Nome"   # create/promote an admin (prints a password)
 npx vitest run path/to/file.test.ts
 ```
 
@@ -163,7 +164,8 @@ section" "--click=button[aria-label='Abrir o convite']" --wait=3000`. Demo links
   `requireEditableEvent(id)` in pages, `authorizeEventAction(id)` in Server Actions
   (`src/server/events/access.ts`): owner or admin; everyone else gets "not found". `proxy.ts` only
   checks that a session cookie exists (`isSignedInArea`); never rely on it.
-- Redirects after login go through `safeReturnPath` (only `/painel…` and `/admin…`).
+- Redirects after login: `parseReturnPath(voltar)` (only `/painel…` and `/admin…`), else
+  `defaultReturnPath(role)` (admins → `/admin`).
 - The editor's single source of truth is `src/lib/validation/event-editor.ts`: field schemas, the
   cross-field rules (`eventEditorSchema`), `toEditorData` (form → database), placeholders
   (`{pessoas}`/`{local}`/`{hora}` ↔ `{seats}`/`{venue}`/`{time}`) and the preview's lenient
@@ -216,6 +218,33 @@ section" "--click=button[aria-label='Abrir o convite']" --wait=3000`. Demo links
   can fake an outage with `vi.spyOn(queueModule, 'enqueue…').mockResolvedValue(false)`.
 - The file-writing tool turns `\u` escapes into literal characters: write a BOM as
   `Papa.BYTE_ORDER_MARK`, never as an escape in source.
+
+## Admin area and audit log (README → Admin area)
+
+- Admin pages call `requireAdmin()`, admin Server Actions `authorizeAdminAction()` (role + rate
+  limit), both in `src/server/admin/access.ts`; couples get "not found". Admin UI lives in
+  `src/features/admin/` with the dashboard look.
+- Every admin-area change runs in `auditedTransaction(async (tx, audit) => …)`
+  (`src/server/audit/audit-log.ts`): the change and `audit(entry)` commit together. Returning early
+  still commits, so check everything before the first write.
+- Every mutating dashboard Server Action (and any download of guest data) calls
+  `auditDashboardChange(user, event, action, details)` after it succeeds; it records only an admin
+  working on someone else's event. Details are IDs and counts: never guest names, phones, tokens.
+- A new action: add it to `AUDIT_ACTIONS` (`src/lib/audit/actions.ts`) and a label to pt-AO
+  `admin.audit.actions`. Keys are stored and must match the CHECK constraint
+  (`^[a-z]+(\.[a-z]+(-[a-z]+)*)+$`): never rename one without a data migration.
+- `audit_log` is append-only (a trigger refuses UPDATE/DELETE except the `actorId → NULL` of a
+  deleted user). Never "fix" an entry; the integration tests reset it with TRUNCATE.
+- Accounts are written straight to the database (`src/server/auth/credentials.ts`, hashes from
+  `src/server/auth/passwords.ts`, which Better Auth is also configured with), not through Better
+  Auth's admin endpoints, so they share the audit transaction. A suspension is `banned = true` plus
+  deleting the sessions. Integration tests must sign in through Better Auth after such changes.
+- Never pass `revokeOtherSessions: true` to Better Auth's `changePassword` in a Server Action: it
+  replaces the current session, and the page rendered with the response still has the old cookie
+  (the user lands on the login page). Change the password, then call `revokeOtherSessions`.
+- Temporary passwords come from `generateTemporaryPassword()`, are shown once and never logged or
+  stored in audit metadata. Event slugs: `suggestEventSlug`/`nextFreeSlug`; a slug never changes.
+- Clipboard buttons in the signed-in areas use `useCopy` (`src/components/dashboard/use-copy.ts`).
 
 ## Uploads and the worker (README → Uploads and the worker)
 
@@ -271,6 +300,10 @@ section" "--click=button[aria-label='Abrir o convite']" --wait=3000`. Demo links
 - Next 16 allows one `next dev` per project folder ("Another next dev server is already
   running"). Stopping a background shell on Windows can leave its node process alive: stop the
   PID the message prints before `npm run test:e2e`.
+- E2E against `next dev` runs 4 browsers at most (playwright.config.ts): with 8, on-demand
+  compiling pushes Server Actions past the 5 s expect timeout. Tests that open the same event's
+  editor as the same couple must not run in parallel (opening the editor deletes the preview
+  draft): keep them in the serial `describe` of dashboard.spec.ts.
 - The containerized dev server (`--profile app`) runs `next dev --webpack` with `WATCHPACK_POLLING`:
   Turbopack's watcher misses host edits through the bind mount. Host `npm run dev` uses Turbopack.
   After dependency changes start it with `--build --renew-anon-volumes`: its `node_modules` lives in

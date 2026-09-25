@@ -399,21 +399,25 @@ model InvitationView {
 
 // ──────────────────────────── Audit ────────────────────────────
 
+/// What admins did (src/server/audit/audit-log.ts). Append-only: a trigger rejects every UPDATE
+/// and DELETE except the actorId → NULL of a deleted user.
 model AuditLog {
   id         String   @id @default(uuid(7)) @db.Uuid
-  /// Kept (set to null) when the acting user is deleted.
+  /// Kept (set to null) when the acting user is deleted; null also for the command line.
   actorId    String?
   actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
-  /// e.g. "event.activate", "user.create".
+  /// One of AUDIT_ACTIONS (src/lib/audit/actions.ts), e.g. "event.activate", "user.create".
   action     String
-  /// e.g. "event", "user".
+  /// "event" or "user".
   targetType String
   targetId   String?
+  /// { label?, changes?, details? } (src/lib/validation/audit.ts). Never guest data or passwords.
   metadata   Json?
   createdAt  DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([createdAt])
   @@index([actorId, createdAt])
   @@index([targetType, targetId])
+  @@index([action, createdAt])
   @@map("audit_log")
 }

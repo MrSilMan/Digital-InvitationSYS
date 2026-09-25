@@ -2,13 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
 
-import { hashPassword } from 'better-auth/crypto';
-
 import type { Prisma } from '@/generated/prisma/client';
 import { DEFAULT_GUEST_RULES } from '@/lib/event-defaults';
 import { isGuestToken } from '@/lib/guest-token';
 import { normalizeAngolanPhone } from '@/lib/validation/phone';
 import { DEFAULT_SECTION_CONFIG } from '@/lib/validation/sections';
+import { hashPassword } from '@/server/auth/passwords';
 import type { AppPrismaClient } from '@/server/db/client';
 
 import {
@@ -68,8 +67,8 @@ export async function seedDemo(
   prisma: AppPrismaClient,
   options: SeedDemoOptions,
 ): Promise<SeedDemoResult> {
-  // Same hashing as Better Auth's email + password sign-in (scrypt), done before the
-  // transaction because it is deliberately slow.
+  // The hashing Better Auth is configured with (scrypt), done before the transaction because it
+  // is deliberately slow.
   const [coupleHash, adminHash, gallerySizes, musicSize] = await Promise.all([
     hashPassword(options.couplePassword),
     hashPassword(options.adminPassword),

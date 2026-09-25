@@ -91,6 +91,348 @@ export const dashboard = {
     guestCount: { one: 'convidado', other: 'convidados' },
   },
   skipToContent: 'Saltar para o conteúdo',
+  /** Header links. */
+  links: {
+    label: 'Menu da conta',
+    account: 'A minha conta',
+    admin: 'Administração',
+  },
+} as const;
+
+/** "A minha conta": the signed-in user's details and password (couples and admins). */
+export const account = {
+  title: 'A minha conta',
+  details: {
+    legend: 'Os seus dados',
+    name: 'Nome',
+    email: 'E-mail',
+    hint: 'Para alterar o nome ou o e-mail, contacte-nos.',
+    adminHint: 'Altere o nome ou o e-mail na administração:',
+    adminLink: 'a sua conta',
+  },
+  password: {
+    legend: 'Alterar a palavra-passe',
+    hint: 'Ao alterar a palavra-passe, as sessões abertas noutros dispositivos terminam.',
+    current: 'Palavra-passe atual',
+    new: 'Nova palavra-passe',
+    /** {min} */
+    newHint:
+      'Pelo menos {min} caracteres. Uma frase curta é fácil de lembrar e difícil de adivinhar.',
+    confirm: 'Repita a nova palavra-passe',
+    show: 'Mostrar as palavras-passe',
+    submit: 'Alterar a palavra-passe',
+    submitting: 'A alterar…',
+    changed: 'Palavra-passe alterada.',
+  },
+  validation: {
+    currentRequired: 'Introduza a palavra-passe atual.',
+    /** {min} */
+    tooShort: 'Use pelo menos {min} caracteres.',
+    /** {max} */
+    tooLong: 'Use no máximo {max} caracteres.',
+    mismatch: 'As palavras-passe não coincidem.',
+    sameAsCurrent: 'Escolha uma palavra-passe diferente da atual.',
+  },
+  errors: {
+    invalid: 'Verifique os campos assinalados.',
+    'wrong-password': 'A palavra-passe atual está incorreta.',
+    'rate-limited': 'Demasiadas tentativas. Aguarde alguns minutos e tente de novo.',
+    unauthenticated: 'A sua sessão terminou. Entre de novo para continuar.',
+    unavailable: 'Não foi possível alterar agora. Tente de novo dentro de momentos.',
+  },
+} as const;
+
+/** The platform owner's area (/admin): events, accounts and the audit log. */
+export const admin = {
+  title: 'Administração',
+  nav: {
+    label: 'Secções da administração',
+    events: 'Eventos',
+    accounts: 'Contas',
+    audit: 'Registo de atividade',
+    dashboard: 'Painel',
+  },
+  common: {
+    search: 'Procurar',
+    status: 'Estado',
+    all: 'Todos',
+    filter: 'Filtrar',
+    clear: 'Limpar filtros',
+    pagination: 'Páginas',
+    previous: 'Anterior',
+    next: 'Seguinte',
+    /** {page}, {pages} */
+    page: 'Página {page} de {pages}',
+    /** {count} */
+    results: '{count} resultado(s)',
+    noResults: 'Nenhum resultado para estes filtros.',
+    save: 'Guardar',
+    saving: 'A guardar…',
+    saved: 'Guardado.',
+    cancel: 'Cancelar',
+    close: 'Fechar',
+    you: 'Você',
+  },
+  events: {
+    title: 'Eventos',
+    new: 'Novo evento',
+    searchPlaceholder: 'Noivos, endereço ou e-mail da conta',
+    statuses: { active: 'Ativos', inactive: 'Desativados' },
+    empty: 'Ainda não há eventos. Crie o primeiro.',
+    active: 'Ativo',
+    inactive: 'Desativado',
+    /** {count}, {limit} */
+    guests: '{count} de {limit} convidados',
+    manage: 'Gerir',
+    /** {couple} */
+    manageLabel: 'Gerir o evento de {couple}',
+  },
+  event: {
+    back: 'Eventos',
+    account: 'Conta dos noivos',
+    suspendedAccount: 'Conta suspensa',
+    address: 'Endereço dos convites',
+    date: 'Data',
+    theme: 'Tema',
+    phase: 'Fase',
+    /** {date} */
+    created: 'Criado a {date}',
+    guests: 'Convidados',
+    people: 'Pessoas confirmadas',
+    openDashboard: 'Abrir no painel',
+    edit: 'Editar convite',
+    status: {
+      legend: 'Estado',
+      activeHint: 'Ativo: os convidados abrem o convite.',
+      inactiveHint:
+        'Desativado: os convidados veem «Convite não encontrado». Os noivos continuam a ver e a editar o evento no painel.',
+      activate: 'Ativar evento',
+      deactivate: 'Desativar evento',
+      /** {couple} */
+      deactivateConfirm:
+        'Desativar o evento de {couple}? Os convidados deixam de conseguir abrir o convite.',
+      activated: 'Evento ativado: os convidados já abrem o convite.',
+      deactivated: 'Evento desativado.',
+    },
+    limit: {
+      legend: 'Limite de convidados',
+      /** {count} */
+      hint: 'O plano dos noivos: quantos convidados podem adicionar. O evento tem agora {count}.',
+      label: 'Limite',
+      save: 'Guardar limite',
+      saved: 'Limite guardado.',
+    },
+  },
+  newEvent: {
+    title: 'Novo evento',
+    intro:
+      'Crie o evento e, se for preciso, a conta dos noivos. O evento começa em Save the Date; os noivos completam o resto no painel.',
+    owner: {
+      legend: 'Conta dos noivos',
+      existing: 'Conta existente',
+      new: 'Nova conta',
+      choose: 'Conta',
+      placeholder: 'Escolha a conta',
+      none: 'Ainda não há contas de noivos ativas: crie uma nova.',
+      newHint: 'A palavra-passe temporária aparece depois de criar o evento.',
+    },
+    couple: 'Noivos',
+    groomName: 'Nome do noivo',
+    brideName: 'Nome da noiva',
+    date: 'Data do casamento',
+    time: 'Hora da cerimónia',
+    slug: 'Endereço dos convites',
+    /** {example} */
+    slugHint:
+      'Faz parte do link de cada convidado: {example}. Letras minúsculas, números e hífenes. Não pode ser alterado depois.',
+    theme: 'Tema',
+    guestLimit: 'Limite de convidados',
+    guestLimitHint: 'O plano dos noivos. Pode ser alterado depois.',
+    submit: 'Criar evento',
+    submitting: 'A criar…',
+    created: {
+      title: 'Evento criado',
+      /** {couple} */
+      text: 'O evento de {couple} está pronto, em Save the Date.',
+      manage: 'Gerir o evento',
+      open: 'Abrir no painel',
+      another: 'Criar outro evento',
+    },
+  },
+  accounts: {
+    title: 'Contas',
+    new: 'Nova conta',
+    searchPlaceholder: 'Nome ou e-mail',
+    statuses: { active: 'Ativas', suspended: 'Suspensas' },
+    roles: { couple: 'Noivos', admin: 'Administrador' },
+    suspended: 'Suspensa',
+    events: { one: 'evento', other: 'eventos' },
+    /** {date} */
+    created: 'Criada a {date}',
+    empty: 'Ainda não há contas.',
+    manage: 'Gerir',
+    /** {name} */
+    manageLabel: 'Gerir a conta de {name}',
+  },
+  newAccount: {
+    title: 'Nova conta de noivos',
+    intro:
+      'A conta com que os noivos entram no painel. A palavra-passe temporária aparece a seguir, uma só vez.',
+    name: 'Nome',
+    nameHint: 'Por exemplo «Braúlio e Nanda».',
+    email: 'E-mail',
+    submit: 'Criar conta',
+    submitting: 'A criar…',
+    created: {
+      title: 'Conta criada',
+      createEvent: 'Criar um evento para esta conta',
+      manage: 'Ver a conta',
+    },
+  },
+  accountDetail: {
+    back: 'Contas',
+    ownAccount: 'É a sua conta. A palavra-passe altera-se em «A minha conta».',
+    details: {
+      legend: 'Dados da conta',
+      name: 'Nome',
+      email: 'E-mail',
+      emailHint: 'O e-mail com que a conta entra no painel.',
+    },
+    events: {
+      title: 'Eventos',
+      empty: 'Esta conta ainda não tem eventos.',
+      create: 'Criar evento',
+    },
+    password: {
+      legend: 'Palavra-passe',
+      hint: 'Gera uma nova palavra-passe temporária. A atual deixa de funcionar e as sessões abertas terminam.',
+      reset: 'Gerar nova palavra-passe',
+      /** {name} */
+      confirm: 'Gerar uma nova palavra-passe para {name}? A atual deixa de funcionar.',
+    },
+    access: {
+      legend: 'Acesso',
+      activeHint: 'A conta pode entrar no painel.',
+      suspendedHint:
+        'Suspensa: não consegue entrar no painel. Os eventos continuam como estão (desative-os na página de cada evento).',
+      suspend: 'Suspender conta',
+      unsuspend: 'Reativar conta',
+      /** {name} */
+      suspendConfirm: 'Suspender a conta de {name}? As sessões abertas terminam de imediato.',
+      suspended: 'Conta suspensa.',
+      unsuspended: 'Conta reativada.',
+    },
+  },
+  temporaryPassword: {
+    title: 'Palavra-passe temporária',
+    hint: 'Envie-a aos noivos, por exemplo pelo WhatsApp. Não voltará a ser mostrada.',
+    copy: 'Copiar palavra-passe',
+    copyMessage: 'Copiar mensagem para os noivos',
+    copied: 'Copiado!',
+    copyFailed: 'Não foi possível copiar. Selecione o texto e copie-o manualmente.',
+    /** {url}, {email}, {password} */
+    message:
+      'Olá! A vossa conta nos Convites Digitais está pronta.\n\nEntrem em: {url}\nE-mail: {email}\nPalavra-passe temporária: {password}\n\nDepois de entrar, escolham uma palavra-passe vossa em «A minha conta».',
+  },
+  audit: {
+    title: 'Registo de atividade',
+    intro:
+      'Tudo o que os administradores alteram, aqui e no painel dos noivos. As entradas não podem ser alteradas nem apagadas.',
+    recent: 'Atividade recente',
+    all: 'Ver todo o registo',
+    empty: 'Sem atividade registada.',
+    action: 'Ação',
+    allActions: 'Todas as ações',
+    groups: { adminArea: 'Administração', dashboard: 'No painel dos noivos' },
+    /** {target} */
+    filteredBy: 'Só a atividade de {target}.',
+    showAll: 'Ver toda a atividade',
+    commandLine: 'Linha de comandos',
+    deletedAccount: 'Conta apagada',
+    targets: { event: 'Evento', user: 'Conta' },
+    actions: {
+      'event.create': 'Criou o evento',
+      'event.activate': 'Ativou o evento',
+      'event.deactivate': 'Desativou o evento',
+      'event.guest-limit': 'Alterou o limite de convidados',
+      'user.create': 'Criou a conta',
+      'user.update': 'Alterou os dados da conta',
+      'user.password-reset': 'Gerou uma nova palavra-passe',
+      'user.suspend': 'Suspendeu a conta',
+      'user.unsuspend': 'Reativou a conta',
+      'user.promote': 'Tornou a conta administradora',
+      'event.edit': 'Editou o convite',
+      'event.invite-message': 'Alterou a mensagem de envio',
+      'media.upload': 'Carregou um ficheiro',
+      'media.delete': 'Removeu um ficheiro',
+      'media.reorder': 'Reordenou a galeria',
+      'media.describe': 'Alterou a descrição de uma foto',
+      'media.retry': 'Voltou a preparar um ficheiro',
+      'guest.create': 'Adicionou um convidado',
+      'guest.update': 'Alterou um convidado',
+      'guest.delete': 'Apagou um convidado',
+      'guest.renew-link': 'Gerou um novo link de convidado',
+      'guest.mark-sent': 'Marcou um convite como enviado ou por enviar',
+      'guest.answer': 'Registou a resposta de um convidado',
+      'guest.import': 'Importou convidados',
+      'guest.export': 'Descarregou dados dos convidados',
+    },
+    /** Names of the changed fields and details. Unknown keys are shown as they are. */
+    fields: {
+      isActive: 'Ativo',
+      guestLimit: 'Limite de convidados',
+      name: 'Nome',
+      email: 'E-mail',
+      role: 'Função',
+      slug: 'Endereço',
+      owner: 'Conta',
+      newAccount: 'Conta nova',
+      via: 'Origem',
+      guestId: 'Convidado (ID)',
+      mediaId: 'Ficheiro (ID)',
+      importId: 'Importação (ID)',
+      type: 'Tipo',
+      file: 'Ficheiro',
+      rows: 'Linhas',
+      sent: 'Enviado',
+      suspended: 'Suspensa',
+      sessionsEnded: 'Sessões terminadas',
+    },
+    values: { yes: 'sim', no: 'não', empty: '—' },
+    /** Stored detail values shown in words. Unknown values are shown as they are. */
+    valueLabels: {
+      list: 'lista de convidados',
+      'import-errors': 'linhas com erros de uma importação',
+      HERO: 'ilustração principal',
+      GALLERY: 'foto da galeria',
+      MUSIC: 'música',
+      LOGO: 'logótipo',
+      couple: 'noivos',
+      admin: 'administrador',
+      cli: 'linha de comandos',
+    },
+  },
+  errors: {
+    invalid: 'Verifique os campos assinalados.',
+    unauthenticated: 'A sua sessão terminou. Entre de novo para continuar.',
+    'not-found': 'Já não existe. Atualize a página.',
+    'rate-limited': 'Demasiados pedidos seguidos. Aguarde um pouco e tente de novo.',
+    unavailable: 'Não foi possível concluir agora. Tente de novo dentro de momentos.',
+    'email-taken': 'Já existe uma conta com este e-mail.',
+    /** {suggestion} */
+    'slug-taken': 'Este endereço já está a ser usado. Sugestão: {suggestion}',
+    /** {count} */
+    'limit-below-guests': 'O evento já tem {count} convidados: o limite não pode ser menor.',
+    'own-account': 'Não pode fazer isto à sua própria conta.',
+    'last-admin': 'Tem de ficar pelo menos um administrador ativo.',
+    'owner-invalid': 'Escolha uma conta de noivos ativa.',
+  },
+  validation: {
+    slug: 'Use letras minúsculas sem acentos, números e hífenes (ex.: ana-e-joao).',
+    /** {max} */
+    guestLimit: 'Escolha um número entre 1 e {max}.',
+    chooseAccount: 'Escolha a conta dos noivos.',
+  },
 } as const;
 
 /** The menu shared by an event's dashboard pages. */
@@ -908,6 +1250,8 @@ export const ptAO = {
   validation,
   auth,
   dashboard,
+  account,
+  admin,
   eventNav,
   overview,
   guests,

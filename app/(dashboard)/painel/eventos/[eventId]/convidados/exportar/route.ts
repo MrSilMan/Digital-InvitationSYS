@@ -6,6 +6,7 @@ import { toLuandaDateInput } from '@/lib/luanda-time';
 import { REQUEST_ID_HEADER, resolveRequestId } from '@/lib/request-id';
 import { tooManyRequestsResponse } from '@/lib/security/too-many-requests';
 import { fillTemplate } from '@/lib/template';
+import { auditDashboardChange } from '@/server/audit/audit-log';
 import { getSessionUser } from '@/server/auth/session';
 import { findEditableEvent } from '@/server/events/access';
 import { guestsToCsv } from '@/server/guests/export';
@@ -15,7 +16,8 @@ import { rateLimit } from '@/server/rate-limit/sliding-window';
 
 /**
  * "Exportar lista (CSV)": the guests the list shows (same filters, from the query string), for
- * the event's couple or an admin. Anyone else gets the same "not found" as a missing event.
+ * the event's couple or an admin (recorded in the audit log). Anyone else gets the same
+ * "not found" as a missing event.
  */
 export async function GET(
   request: Request,
@@ -49,6 +51,7 @@ export async function GET(
     .filter((guest) => matchesGuestFilters(guest, filters))
     .sort(compareGuestNames);
   logger.info('Guest list exported', { eventId: event.id, rows: list.length });
+  await auditDashboardChange(user, event, 'guest.export', { file: 'list', rows: list.length });
 
   const fileName = fillTemplate(guests.export.fileName, {
     slug: event.slug,

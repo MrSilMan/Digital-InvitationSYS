@@ -4,13 +4,13 @@ import { IconBrandWhatsapp, IconCopy } from '@tabler/icons-react';
 import { useId, useState } from 'react';
 
 import { buttonClasses, inputClasses } from '@/components/dashboard/styles';
+import { useCopy } from '@/components/dashboard/use-copy';
 import { whatsappUrl } from '@/features/invitation/links';
 import { guests } from '@/i18n/pt-AO';
 import { cn } from '@/lib/cn';
 import { buildInviteMessage, type InviteContext } from '@/lib/guests/invite-message';
 
 import type { GuestListItem } from './types';
-import { useCopy } from './ui-helpers';
 
 const t = guests.send;
 

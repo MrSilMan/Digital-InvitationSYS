@@ -21,7 +21,7 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 | 6     | "Champanhe" theme                                                                 | Done    |
 | 7     | Auth, couple dashboard, uploads, BullMQ worker                                    | Done    |
 | 8     | Guest management, CSV, WhatsApp                                                   | Done    |
-| 9     | Admin area and audit log                                                          | Planned |
+| 9     | Admin area and audit log                                                          | Done    |
 | 10    | Production Docker/Caddy, backups, full CI/CD with staging and rollback            | Planned |
 | 11    | Performance, accessibility, final docs                                            | Planned |
 
@@ -156,13 +156,15 @@ one image can be promoted from staging to production. `.env.example` documents e
 | `npm run db:reset`            | Wipe the dev database, re-apply migrations, seed (asks to confirm) |
 | `npm run db:generate`         | Regenerate the Prisma client (`npm install` does it too)           |
 | `npm run db:studio`           | Prisma Studio, a browser UI for the data                           |
+| `npm run admin:create`        | Create or promote an admin account (see "Admin area")              |
 | `npm run themes:placeholders` | Draw missing placeholder theme artwork (see "Themes → Artwork")    |
 | `npm run demo:media`          | Draw missing demo photos and music in `public/demo/`               |
 
 ## Architecture
 
 ```
-app/                    Routes (App Router): (public) incl. /entrar (login), (dashboard)/painel, api/health
+app/                    Routes (App Router): (public) incl. /entrar (login), (dashboard)/painel, (admin)/admin,
+                        api/health
 app/c/[eventSlug]/[guestToken]/  Guest invitation, its WhatsApp preview image and calendar file
 app/previsualizar/[eventId]/  The editor's live preview (the invitation with unsaved changes)
 app/m/[...key]/         Processed uploads, streamed from the private bucket (/m/…)
@@ -174,7 +176,7 @@ instrumentation.ts      Server startup: environment check, request hooks, Sentry
 instrumentation-client.ts  Sentry browser SDK
 sentry.*.config.ts      Sentry server/edge initialization
 scripts/preload.ts      Runs before the production server (see "Request IDs")
-scripts/                Also: placeholder artwork generator, screenshot helper (see "Themes")
+scripts/                Also: admin:create, placeholder artwork generator, screenshot helper (see "Themes")
 prisma/                 Schema, migrations, demo seed (prisma/seed/)
 prisma.config.ts        Prisma 7 configuration (database URL, seed command)
 public/themes/<id>/     Theme artwork (placeholders until the licensed artwork replaces them)
@@ -182,13 +184,16 @@ public/demo/            Demo event media: placeholder photos and music (npm run 
 src/env.ts              Zod-validated server environment; src/env.public.ts for browser values
 src/i18n/               pt-AO.ts: every user-facing string (Portuguese, Angola); date and plural formatting
 src/components/         Shared UI: invitation building blocks (ui/), dashboard styles (dashboard/), icons, theme root
-src/features/           Feature code by area: invitation/ (guest pages), auth/, dashboard/, design-preview/
+src/features/           Feature code by area: invitation/ (guest pages), auth/, account/ (A minha conta),
+                        dashboard/, admin/, design-preview/
 src/themes/             Theme definitions (plain data), fonts, colour overrides, contrast maths
 src/lib/                Logger, redaction, request context, Sentry privacy, CSP, guest tokens, validation,
-                        guests/ (statuses and counts, list filters, the WhatsApp message)
-src/server/             Server-only code: Prisma/Redis clients, auth + sessions, events (editor, access), guests
-                        (list, changes, overview, CSV), invitations, media (processing, dashboard), queues
-                        (BullMQ), storage (S3)
+                        guests/ (statuses and counts, list filters, the WhatsApp message), audit/ (actions),
+                        admin/ (list filters), events/ (slugs)
+src/server/             Server-only code: Prisma/Redis clients, auth + sessions + passwords, events (editor,
+                        access), guests (list, changes, overview, CSV), invitations, media (processing,
+                        dashboard), admin (access, accounts, events, lists), audit (log), queues (BullMQ),
+                        storage (S3)
 src/generated/prisma    Generated Prisma client (not committed)
 tests/unit/             Tests for root-level files (the rest live next to the code as *.test.ts)
 tests/integration/      Tests against a real Postgres (*.int.test.ts)
@@ -216,14 +221,15 @@ Model overview:
 | Auth     | `User`, `Session`, `Account`, `Verification`                   | Exactly what Better Auth expects (email + password, admin plugin). Roles: `couple` (default), `admin`                                        |
 | Events   | `Event`, `EventLocation`, `TimelineItem`, `GuestRule`, `Media` | Editable texts are `null` until the couple changes them (the pt-AO defaults are shown). Section order and visibility live in `sectionConfig` |
 | Guests   | `Guest`, `Rsvp`, `InvitationView`                              | One RSVP per guest; `attending = null` means the guest only tapped a WhatsApp button so far                                                  |
-| Platform | `AuditLog`                                                     | Entries survive the deletion of the admin who made them                                                                                      |
+| Platform | `AuditLog`                                                     | Append-only (a trigger refuses changes); entries survive the deletion of the admin who made them                                             |
 
 Conventions: snake_case table names; UUIDv7 keys for our tables (Better Auth generates its own
 IDs); every timestamp is `timestamptz`, stored in UTC and shown in Africa/Luanda. Deleting an event
 deletes everything under it; deleting a user who owns an event is refused. Migration
 [20260923222022_integrity_constraints](prisma/migrations/20260923222022_integrity_constraints/migration.sql)
 adds CHECK constraints the Prisma schema cannot express: at least 1 seat, guest tokens of 16+
-URL-safe characters, at most 2 parents per side, valid slugs and roles.
+URL-safe characters, at most 2 parents per side, valid slugs and roles. Later migrations add the
+same kind of hand-written rules at the end of their SQL (guest imports, the audit log's trigger).
 
 **Changing the schema:** edit `schema.prisma`, run `npm run db:migrate -- --name what-changed`,
 review the generated SQL and commit it with the schema. Never edit a migration that has already
@@ -382,7 +388,7 @@ reconnect) and gives up after 250 ms, logging a warning at most every 30 s.
 - **Cache** ([src/server/invitations/queries.ts](src/server/invitations/queries.ts)): the event read
   model by slug and the guest by a hash of the token, 10 minutes each. Anything that changes a guest
   page must call `invalidateInvitationEvent(slug)` / `invalidateInvitationGuest(token)` (dashboard
-  edits in Phases 7 and 8, activation changes in Phase 9). RSVPs are not cached.
+  edits, guest changes, and turning an event on or off in the admin area). RSVPs are not cached.
 - **Rate limits** ([src/server/rate-limit/](src/server/rate-limit/)): a sliding-window log in a
   sorted set, one atomic Lua script per request; subjects (IPs, tokens) are hashed in the keys.
   Without Redis the request is allowed and the failure logged.
@@ -403,6 +409,8 @@ reconnect) and gives up after 250 ms, logging a warning at most every 30 s.
   | Guest-list changes per user     | 600 per 10 min | Add, edit, delete, answers, "sent", message |
   | Guest-list CSV exports per user | 30 per 10 min  | `…/convidados/exportar` → 429               |
   | CSV imports per user            | 20 per 10 min  | `startGuestImport`                          |
+  | Password changes per user       | 8 per 15 min   | `changePassword` (A minha conta)            |
+  | Admin-area changes per admin    | 120 per 10 min | Every admin Server Action                   |
 
   The per-IP limits are generous because Angolan mobile carriers put many phones behind one IP.
   The client IP is the right-most `X-Forwarded-For` entry (set by Caddy in production).
@@ -423,8 +431,10 @@ local bucket.
 
 Couples sign in at `/entrar` and find their events at `/painel`. Each event has three pages under
 one menu: **Resumo** (`/painel/eventos/<id>`), **Convidados** (`…/convidados`) and **Editar
-convite** (`…/editar`). Admins can open every event (their own area arrives in Phase 9). Accounts
-are created by the admin: there is no sign-up.
+convite** (`…/editar`). Admins can open every event here too (their changes to a couple's event are
+recorded in the audit log). Accounts are created in the admin area: there is no sign-up. **A minha
+conta** (`/painel/conta`) shows the user's name and e-mail and changes the password (the current
+one first; at least 10 characters; the other sessions end, this one stays).
 
 - **Logins** ([src/server/auth/auth.ts](src/server/auth/auth.ts)): Better Auth with e-mail + password,
   database sessions for 30 days (refreshed daily) and the admin plugin's roles (`couple`, `admin`).
@@ -434,7 +444,8 @@ are created by the admin: there is no sign-up.
   limiter only covers HTTP calls, and in memory); `disabledPaths` keeps sign-in and sign-up off if
   it is mounted later. Session cookies are named `convites.session_token`.
 - **Access**: `proxy.ts` sends visitors without a session cookie from `/painel`, `/previsualizar`
-  and `/admin` to `/entrar?voltar=…` (only paths inside those areas are accepted as `voltar`). That
+  and `/admin` to `/entrar?voltar=…` (only paths inside those areas are accepted as `voltar`;
+  without one, couples land on `/painel` and admins on `/admin`). That
   is only an optimistic check: every page, Server Action and Route Handler asks
   [src/server/auth/session.ts](src/server/auth/session.ts) and
   [src/server/events/access.ts](src/server/events/access.ts). A couple reaches only its own events;
@@ -516,6 +527,76 @@ are created by the admin: there is no sign-up.
     and import again. A blank template: `/painel/modelo-convidados.csv`.
   - The file holds names and phones: it is deleted (`content` null, a CHECK constraint) once the
     import finishes, and an event keeps only its last 5 imports (with their reports).
+
+## Admin area
+
+The platform owner's area, `/admin` ([app/(admin)/admin/](<app/(admin)/admin/>)), for the `admin`
+role only: couples get the same "not found" as a missing page, signed-out visitors the login page.
+Every page calls `requireAdmin()` and every Server Action `authorizeAdminAction()`
+([src/server/admin/access.ts](src/server/admin/access.ts)), which also applies the rate limit.
+
+- **Eventos** (`/admin`): every event, newest first; search (couple, address, account) and status
+  in the URL (`?q=silva&estado=desativados&pagina=2`). An event's page (`/admin/eventos/<id>`)
+  shows its account, date, address, theme, guests and confirmed people, links to it in the
+  dashboard, and has two controls:
+  - **Ativar / Desativar**: an inactive event answers "Convite não encontrado" to its guests at once
+    (the cached copy is dropped); the couple still sees and edits it.
+  - **Limite de convidados** (the plan, 1–2,000): never below the guests already added, counted
+    with the event row locked, exactly like adding a guest.
+- **Novo evento** (`/admin/eventos/novo`): for an existing couple account or a new one, created in
+  the same transaction; the names, date and ceremony time (Luanda), theme, guest limit, and the
+  address of the guest links, suggested from the names (`Braúlio` + `Nanda` → `braulio-e-nanda`; a
+  taken one gets a free suggestion such as `braulio-e-nanda-2`). The address never changes
+  afterwards: sent links contain it. The event starts in Save the Date with the default guest rules
+  and sections, and with RSVPs by form (no WhatsApp numbers needed yet); the couple does the rest.
+- **Contas** (`/admin/contas`): every account with its role, events and status. Admins create
+  couple accounts, change a name or e-mail (the login follows the e-mail), issue a new temporary
+  password (the old one stops working and every session ends) and suspend or reactivate an account
+  (sessions end at once, the login says "conta suspensa"; its events stay as they are). Nobody
+  resets or suspends their own account, and one active admin always remains.
+- **Temporary passwords** are generated (12 characters without look-alikes, e.g. `k7mq-9xrt-2hpd`,
+  about 59 bits), shown once with "Copiar" and a ready-made message for WhatsApp, and never stored
+  in clear or logged. Couples then pick their own in "A minha conta".
+- **How accounts are written**: straight to the database, the way Better Auth writes them (a user,
+  a `credential` account with the scrypt hash, the admin plugin's `banned` flag with the sessions
+  deleted), so each change and its audit entry share one transaction
+  ([src/server/admin/](src/server/admin/)). Better Auth is configured with the same password
+  functions ([src/server/auth/passwords.ts](src/server/auth/passwords.ts)); the integration tests
+  sign in through Better Auth after every change.
+
+### Audit log
+
+**Registo de atividade** (`/admin/registo`) lists what admins changed, newest first, by action and
+by event or account (each event and account page shows its latest entries too).
+
+- **What is recorded** ([src/lib/audit/actions.ts](src/lib/audit/actions.ts)): every change made in
+  the admin area, and every change an admin makes in a couple's dashboard (editor saves, the
+  sending message, media, guests, answers, imports, and downloads of guest data). Couples' own
+  changes are not recorded, nor an admin's changes to an event they own.
+- **What an entry holds**: who, when, the action, the event or account, and metadata checked with
+  Zod ([src/lib/validation/audit.ts](src/lib/validation/audit.ts)): the target's name at the time,
+  before/after values, plain facts (IDs, counts). Never guest names, phones, passwords or tokens.
+- **Always together**: admin-area services write the change and its entry in one transaction
+  (`auditedTransaction`, [src/server/audit/audit-log.ts](src/server/audit/audit-log.ts)).
+  Dashboard services own their transactions, so their entries are written right after the change
+  (`auditDashboardChange`); a failure to record is logged and reported to Sentry.
+- **Append-only**: a trigger (migration `20260925100339_audit_log_append_only`) refuses every UPDATE
+  and DELETE, except the `actorId → NULL` that deleting a user makes. Each committed entry is also
+  logged as "Admin action" (IDs only).
+
+### The first admin
+
+The seed only makes demo logins. On a real server, create the first admin (or promote an existing
+account) from the command line:
+
+```bash
+npm run admin:create -- --email=ana@exemplo.ao --name="Ana Silva"
+npm run admin:create -- --email=ana@exemplo.ao --new-password   # a new password for an account
+```
+
+It prints a temporary password once (sign in, then change it in "A minha conta"), reactivates a
+suspended account, and records the change in the audit log as "Linha de comandos". It reads
+`DATABASE_URL` from the environment or the `.env` files.
 
 ## Uploads and the worker
 
@@ -759,8 +840,9 @@ Vitest runs two projects, Playwright a third suite:
   loader, guest phones (Angolan and abroad), the guest schema, statuses and overview counts, list
   filters, the WhatsApp message, the CSV export (formula escaping) and CSV reading (encodings,
   delimiters, header names, row numbers, row checks, duplicates, the template and error files),
-  and one test that serves
-  real HTTP requests through the request hooks. No services needed.
+  event slugs, the admin forms and list filters, new passwords, temporary passwords and hashing,
+  audit actions and metadata, the audit list rendered to HTML, and one test that serves real HTTP
+  requests through the request hooks. No services needed.
 - `npm run test:e2e`: `tests/e2e/*.spec.ts` in a phone-sized Chromium: opening the envelope, the
   reload, reduced motion, the gallery lightbox, the calendar file, the 404 page, the Champanhe
   invitation and its preview image, the Save the Date dialog, answering and changing the RSVP
@@ -768,11 +850,15 @@ Vitest runs two projects, Playwright a third suite:
   preview (guests see the change only once saved), a gallery photo going from the browser to
   MinIO, through the worker, to the guest page, and removed again, and a couple adding a guest,
   sending the link by WhatsApp, the guest answering, and the answer in the list and the
-  overview, and a CSV import through the worker with a row in error. Its global setup re-seeds the
-  demo data and clears the rate-limit counters, so runs are repeatable (`E2E_SKIP_RESET=1` skips
-  that for a server that does not use the local database and Redis). It starts `next dev` on port
-  3100 and a worker, or tests a running app given in `E2E_BASE_URL`. Runs locally for now; CI gets
-  it in Phase 10.
+  overview, and a CSV import through the worker with a row in error; an admin creating an event
+  with a new couple account, deactivating it and finding it in the audit log, then the couple
+  signing in with the temporary password and choosing their own; and couples never reaching
+  `/admin`. Its global setup re-seeds the demo data and clears the rate-limit counters, so runs are
+  repeatable (`E2E_SKIP_RESET=1` skips that for a server that does not use the local database and
+  Redis). It starts `next dev` on port 3100 and a worker, with 4 browsers at most (one dev server
+  compiling on demand falls behind with more), or tests a running app given in `E2E_BASE_URL`.
+  Tests that open the same event's editor as the same couple run one after the other: opening the
+  editor clears that couple's preview draft. Runs locally for now; CI gets it in Phase 10.
 - `npm run test:integration`: `tests/integration/*.int.test.ts` against a real Postgres and Redis:
   the migrations, the demo seed (twice), guest lookup by token (including that no other guest's
   data leaks), the cache and its invalidation, the rate limiter (exact under concurrency), RSVP
@@ -784,7 +870,12 @@ Vitest runs two projects, Playwright a third suite:
   answers recorded by the couple, "sent" marks, new links, deletion, the sending message, the CSV
   export route and the overview's counts; CSV imports: queued and run by the worker's code,
   re-run without effect, the same file again, over the guest limit, Windows-1252, refusals, the
-  error and template downloads, the "last 5" rule and the sweep; and uploads: presigned URLs (type and size
+  error and template downloads, the "last 5" rule and the sweep; the admin area: couples refused
+  by every action, accounts created, changed, reset and suspended (each checked by signing in
+  through Better Auth), events created with or without a new account (all or nothing), the slug
+  suggestion, deactivation through the cache, the guest limit, the last-admin rule, admin changes
+  in a couple's dashboard recorded without guest data, the append-only log, "A minha conta" and
+  `npm run admin:create`; and uploads: presigned URLs (type and size
   enforced), processing, the guest read model, `/m/…` with byte ranges, the limits and access
   rules, replacing the hero, MP3s, deletion of files and the sweep, against MinIO (bucket
   `convites-media-test`, created by the tests; `TEST_S3_ENDPOINT`). It uses the `convites_test`

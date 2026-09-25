@@ -29,6 +29,7 @@
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset && prisma db seed",
     "db:studio": "prisma studio",
+    "admin:create": "tsx scripts/create-admin.ts",
     "themes:placeholders": "tsx scripts/generate-theme-placeholders.ts",
     "demo:media": "tsx scripts/generate-demo-media.ts",
     "test:e2e": "playwright test"

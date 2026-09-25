@@ -22,8 +22,8 @@ const ERROR_MESSAGES: Record<SignInErrorCode, string> = {
   unavailable: t.errors.unavailable,
 };
 
-/** E-mail + password; on success the Server Action redirects to `returnTo`. */
-export function LoginForm({ returnTo }: { returnTo: string }) {
+/** E-mail + password; on success the Server Action redirects (to `returnTo` when given). */
+export function LoginForm({ returnTo }: { returnTo: string | null }) {
   const [pending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -39,7 +39,7 @@ export function LoginForm({ returnTo }: { returnTo: string }) {
   const onSubmit = handleSubmit((values) => {
     setFormError(null);
     startTransition(async () => {
-      const result = await signIn(values, returnTo);
+      const result = await signIn(values, returnTo ?? undefined);
       if (result && !result.ok) setFormError(ERROR_MESSAGES[result.error]);
     });
   });

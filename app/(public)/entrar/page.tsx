@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { cardClasses } from '@/components/dashboard/styles';
 import { LoginForm } from '@/features/auth/login-form';
 import { app, auth } from '@/i18n/pt-AO';
-import { safeReturnPath } from '@/lib/auth/return-path';
+import { defaultReturnPath, parseReturnPath } from '@/lib/auth/return-path';
 import { getSessionUser } from '@/server/auth/session';
 
 export const metadata: Metadata = {
@@ -12,11 +12,15 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** Login for couples and admins. `?voltar=/painel/…` returns there afterwards. */
+/**
+ * Login for couples and admins. `?voltar=/painel/…` returns there afterwards; without it, couples
+ * go to their dashboard and admins to the admin area.
+ */
 export default async function LoginPage({ searchParams }: PageProps<'/entrar'>) {
   const { voltar } = await searchParams;
-  const returnTo = safeReturnPath(voltar);
-  if (await getSessionUser()) redirect(returnTo);
+  const returnTo = parseReturnPath(voltar);
+  const user = await getSessionUser();
+  if (user) redirect(returnTo ?? defaultReturnPath(user.role));
 
   return (
     <main className="flex min-h-svh items-center justify-center bg-stone-100 px-4 py-12 font-sans text-stone-900">

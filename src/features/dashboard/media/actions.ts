@@ -4,6 +4,8 @@ import { z } from 'zod';
 
 import { logger } from '@/lib/logger';
 import { ALT_TEXT_MAX, MEDIA_TYPES, uploadProblem } from '@/lib/media/rules';
+import { auditDashboardChange } from '@/server/audit/audit-log';
+import type { SessionUser } from '@/server/auth/session';
 import { type EditableEvent, authorizeEventAction } from '@/server/events/access';
 import {
   completeUpload,
@@ -23,7 +25,8 @@ import type { MediaActionResult, MediaErrorCode, MediaItem } from './types';
 /**
  * The "Multimédia" tab. Nothing from the browser is trusted: every action checks the session, the
  * event's owner, a rate limit and its input. Uploads go straight from the browser to storage with
- * a presigned URL; the worker then processes them (src/server/media/processing.ts).
+ * a presigned URL; the worker then processes them (src/server/media/processing.ts). An admin's
+ * changes to a couple's media are recorded in the audit log.
  */
 
 const mediaIdSchema = z.uuid();
@@ -35,7 +38,8 @@ const uploadRequestSchema = z.object({
 const directionSchema = z.union([z.literal(-1), z.literal(1)]);
 const altTextSchema = z.string().trim().max(ALT_TEXT_MAX);
 
-type Authorized = { ok: true; event: EditableEvent } | { ok: false; error: MediaErrorCode };
+type Authorized =
+  { ok: true; user: SessionUser; event: EditableEvent } | { ok: false; error: MediaErrorCode };
 
 async function authorize(eventId: unknown, policy?: RateLimitPolicy): Promise<Authorized> {
   const auth = await authorizeEventAction(eventId);
@@ -44,7 +48,7 @@ async function authorize(eventId: unknown, policy?: RateLimitPolicy): Promise<Au
     const limit = await rateLimit(policy, auth.user.id);
     if (!limit.allowed) return { ok: false, error: 'rate-limited' };
   }
-  return { ok: true, event: auth.event };
+  return { ok: true, user: auth.user, event: auth.event };
 }
 
 /** Runs a storage or database step; failures are logged and answered with "unavailable". */
@@ -112,7 +116,12 @@ export async function confirmUpload(
   if (!id.success) return { ok: false, error: 'invalid' };
   return attempt('upload confirmation', auth.event.id, async () => {
     const media = await completeUpload(auth.event, id.data);
-    return media ? { ok: true, media } : { ok: false, error: 'not-found' };
+    if (!media) return { ok: false, error: 'not-found' };
+    await auditDashboardChange(auth.user, auth.event, 'media.upload', {
+      mediaId: media.id,
+      type: media.type,
+    });
+    return { ok: true, media };
   });
 }
 
@@ -123,8 +132,10 @@ export async function removeMedia(eventId: unknown, mediaId: unknown): Promise<M
   if (!id.success) return { ok: false, error: 'invalid' };
   return attempt('deletion', auth.event.id, async () => {
     const deleted = await deleteMedia(auth.event, id.data);
-    if (deleted) logger.info('Media deleted', { eventId: auth.event.id, mediaId: id.data });
-    return deleted ? { ok: true } : { ok: false, error: 'not-found' };
+    if (!deleted) return { ok: false, error: 'not-found' };
+    logger.info('Media deleted', { eventId: auth.event.id, mediaId: id.data });
+    await auditDashboardChange(auth.user, auth.event, 'media.delete', { mediaId: id.data });
+    return { ok: true };
   });
 }
 
@@ -143,6 +154,7 @@ export async function reorderMedia(
     if (!(await moveMedia(auth.event, id.data, step.data))) {
       return { ok: false, error: 'not-found' };
     }
+    await auditDashboardChange(auth.user, auth.event, 'media.reorder', { mediaId: id.data });
     return { ok: true, items: await listEventMedia(auth.event.id) };
   });
 }
@@ -157,11 +169,13 @@ export async function saveAltText(
   const id = mediaIdSchema.safeParse(mediaId);
   const text = altTextSchema.safeParse(altText);
   if (!id.success || !text.success) return { ok: false, error: 'invalid' };
-  return attempt('description update', auth.event.id, async () =>
-    (await updateAltText(auth.event, id.data, text.data))
-      ? { ok: true }
-      : { ok: false, error: 'not-found' },
-  );
+  return attempt('description update', auth.event.id, async () => {
+    if (!(await updateAltText(auth.event, id.data, text.data))) {
+      return { ok: false, error: 'not-found' };
+    }
+    await auditDashboardChange(auth.user, auth.event, 'media.describe', { mediaId: id.data });
+    return { ok: true };
+  });
 }
 
 /** Processes a media again after a failure of ours (never after a bad file). */
@@ -175,6 +189,8 @@ export async function retryProcessing(
   if (!id.success) return { ok: false, error: 'invalid' };
   return attempt('retry', auth.event.id, async () => {
     const media = await retryMedia(auth.event, id.data);
-    return media ? { ok: true, media } : { ok: false, error: 'not-found' };
+    if (!media) return { ok: false, error: 'not-found' };
+    await auditDashboardChange(auth.user, auth.event, 'media.retry', { mediaId: id.data });
+    return { ok: true, media };
   });
 }

@@ -4,7 +4,8 @@ import { isAPIError } from 'better-auth/api';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { safeReturnPath } from '@/lib/auth/return-path';
+import { defaultReturnPath, parseReturnPath } from '@/lib/auth/return-path';
+import { toUserRole } from '@/lib/auth/roles';
 import { clientIp } from '@/lib/client-ip';
 import { logger } from '@/lib/logger';
 import { loginSchema } from '@/lib/validation/auth';
@@ -16,7 +17,10 @@ import { rateLimit } from '@/server/rate-limit/sliding-window';
 export type SignInErrorCode =
   'invalid' | 'invalid-credentials' | 'rate-limited' | 'suspended' | 'unavailable';
 
-/** Only returns on failure: a successful login redirects to `returnTo` (or the dashboard). */
+/**
+ * Only returns on failure: a successful login redirects to `returnTo`, or without one to the
+ * dashboard (couples) or the admin area (admins).
+ */
 export type SignInResult = { ok: false; error: SignInErrorCode };
 
 /**
@@ -39,12 +43,14 @@ export async function signIn(input: unknown, returnTo?: unknown): Promise<SignIn
     return { ok: false, error: 'rate-limited' };
   }
 
+  let destination: string;
   try {
     const result = await getAuth().api.signInEmail({
       body: { email, password, rememberMe: true },
       headers: requestHeaders,
     });
     logger.info('Login succeeded', { userId: result.user.id });
+    destination = parseReturnPath(returnTo) ?? defaultReturnPath(toUserRole(result.user.role));
   } catch (err) {
     if (isAPIError(err)) {
       const code = typeof err.body?.code === 'string' ? err.body.code : String(err.status);
@@ -55,7 +61,7 @@ export async function signIn(input: unknown, returnTo?: unknown): Promise<SignIn
     return { ok: false, error: 'unavailable' };
   }
 
-  redirect(safeReturnPath(returnTo));
+  redirect(destination);
 }
 
 /** Ends the session (database row and cookie) and returns to the login page. */

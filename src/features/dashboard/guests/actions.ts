@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { serverNow } from '@/lib/clock';
 import { logger } from '@/lib/logger';
 import { coupleAnswerSchema, guestSchema, inviteMessageSchema } from '@/lib/validation/guest';
+import { auditDashboardChange } from '@/server/audit/audit-log';
+import type { SessionUser } from '@/server/auth/session';
 import { authorizeEventAction, type EditableEvent } from '@/server/events/access';
 import { findGuestItem } from '@/server/guests/queries';
 import {
@@ -25,19 +27,20 @@ import type { GuestActionResult, GuestErrorCode, GuestFieldIssue, GuestListItem 
 /**
  * The guest list's Server Actions. Nothing from the browser is trusted: every action checks the
  * session, the event's owner (or admin), a rate limit and its input. Logs carry IDs, never names
- * or phone numbers.
+ * or phone numbers. An admin's changes to a couple's guests are recorded in the audit log (IDs).
  */
 
 const guestIdSchema = z.uuid();
 
-type Authorized = { ok: true; event: EditableEvent } | { ok: false; error: GuestErrorCode };
+type Authorized =
+  { ok: true; user: SessionUser; event: EditableEvent } | { ok: false; error: GuestErrorCode };
 
 async function authorize(eventId: unknown): Promise<Authorized> {
   const auth = await authorizeEventAction(eventId);
   if (!auth.ok) return auth;
   const limit = await rateLimit(RATE_LIMITS.guestChangesPerUser, auth.user.id);
   if (!limit.allowed) return { ok: false, error: 'rate-limited' };
-  return { ok: true, event: auth.event };
+  return { ok: true, user: auth.user, event: auth.event };
 }
 
 /** Runs a database step; failures are logged and answered with "unavailable". */
@@ -75,7 +78,7 @@ export async function addGuest(
   if (!auth.ok) return auth;
   const parsed = guestSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid', issues: toIssues(parsed.error) };
-  const { event } = auth;
+  const { user, event } = auth;
   return attempt('creation', event.id, async () => {
     const created = await createGuest(event, parsed.data);
     if (!created.ok) {
@@ -83,6 +86,7 @@ export async function addGuest(
       return created;
     }
     logger.info('Guest added', { eventId: event.id, guestId: created.guestId });
+    await auditDashboardChange(user, event, 'guest.create', { guestId: created.guestId });
     return guestResult(event, created.guestId);
   });
 }
@@ -98,11 +102,12 @@ export async function editGuest(
   if (!id.success) return { ok: false, error: 'invalid' };
   const parsed = guestSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'invalid', issues: toIssues(parsed.error) };
-  const { event } = auth;
+  const { user, event } = auth;
   return attempt('update', event.id, async () => {
     const updated = await updateGuest(event, id.data, parsed.data);
     if (!updated.ok) return updated;
     logger.info('Guest updated', { eventId: event.id, guestId: id.data });
+    await auditDashboardChange(user, event, 'guest.update', { guestId: id.data });
     return guestResult(event, id.data);
   });
 }
@@ -112,10 +117,11 @@ export async function removeGuest(eventId: unknown, guestId: unknown): Promise<G
   if (!auth.ok) return auth;
   const id = guestIdSchema.safeParse(guestId);
   if (!id.success) return { ok: false, error: 'invalid' };
-  const { event } = auth;
+  const { user, event } = auth;
   return attempt('deletion', event.id, async () => {
     if (!(await deleteGuest(event, id.data))) return { ok: false, error: 'not-found' };
     logger.info('Guest deleted', { eventId: event.id, guestId: id.data });
+    await auditDashboardChange(user, event, 'guest.delete', { guestId: id.data });
     return { ok: true };
   });
 }
@@ -129,10 +135,11 @@ export async function renewGuestLink(
   if (!auth.ok) return auth;
   const id = guestIdSchema.safeParse(guestId);
   if (!id.success) return { ok: false, error: 'invalid' };
-  const { event } = auth;
+  const { user, event } = auth;
   return attempt('link renewal', event.id, async () => {
     if (!(await renewGuestToken(event, id.data))) return { ok: false, error: 'not-found' };
     logger.info('Guest link renewed', { eventId: event.id, guestId: id.data });
+    await auditDashboardChange(user, event, 'guest.renew-link', { guestId: id.data });
     return guestResult(event, id.data);
   });
 }
@@ -148,13 +155,17 @@ export async function markGuestSent(
   const id = guestIdSchema.safeParse(guestId);
   const flag = z.boolean().safeParse(sent);
   if (!id.success || !flag.success) return { ok: false, error: 'invalid' };
-  const { event } = auth;
+  const { user, event } = auth;
   return attempt('sent mark', event.id, async () => {
     const found = await setInvitationSent(event, id.data, flag.data ? serverNow() : null);
     if (!found) return { ok: false, error: 'not-found' };
     logger.info(flag.data ? 'Invitation marked as sent' : 'Invitation marked as not sent', {
       eventId: event.id,
       guestId: id.data,
+    });
+    await auditDashboardChange(user, event, 'guest.mark-sent', {
+      guestId: id.data,
+      sent: flag.data,
     });
     return guestResult(event, id.data);
   });
@@ -170,7 +181,7 @@ export async function saveGuestAnswer(
   if (!auth.ok) return auth;
   const id = guestIdSchema.safeParse(guestId);
   if (!id.success) return { ok: false, error: 'invalid' };
-  const { event } = auth;
+  const { user, event } = auth;
   return attempt('answer', event.id, async () => {
     const guest = await getPrisma().guest.findFirst({
       where: { id: id.data, eventId: event.id },
@@ -187,6 +198,7 @@ export async function saveGuestAnswer(
       attending: parsed.data.attending,
       peopleCount: parsed.data.peopleCount,
     });
+    await auditDashboardChange(user, event, 'guest.answer', { guestId: id.data });
     return guestResult(event, id.data);
   });
 }
@@ -200,10 +212,11 @@ export async function updateInviteMessage(
   if (!auth.ok) return auth;
   const parsed = inviteMessageSchema.safeParse(text);
   if (!parsed.success) return { ok: false, error: 'invalid', issues: toIssues(parsed.error) };
-  const { event } = auth;
+  const { user, event } = auth;
   return attempt('message update', event.id, async () => {
     await saveInviteMessage(event, parsed.data);
     logger.info('Invite message saved', { eventId: event.id, custom: parsed.data !== null });
+    await auditDashboardChange(user, event, 'event.invite-message');
     return { ok: true, template: parsed.data };
   });
 }

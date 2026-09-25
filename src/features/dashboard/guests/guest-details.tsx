@@ -4,6 +4,7 @@ import { IconCheck, IconCopy, IconExternalLink, IconRefresh, IconTrash } from '@
 import { type ReactNode, useId, useState } from 'react';
 
 import { buttonClasses, inputClasses } from '@/components/dashboard/styles';
+import { useCopy } from '@/components/dashboard/use-copy';
 import { formatShortDateTime } from '@/i18n/format';
 import { guests } from '@/i18n/pt-AO';
 import { fillTemplate } from '@/lib/template';
@@ -12,7 +13,7 @@ import type { CoupleAnswerValues, GuestFormValues } from '@/lib/validation/guest
 import { AnswerForm } from './answer-form';
 import { GuestForm } from './guest-form';
 import type { GuestActionResult, GuestListItem } from './types';
-import { guestErrorText, toGuestFormValues, useCopy } from './ui-helpers';
+import { guestErrorText, toGuestFormValues } from './ui-helpers';
 
 const t = guests.details;
 const a = guests.answer;

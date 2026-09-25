@@ -24,18 +24,26 @@ export default async function DashboardLayout({ children }: LayoutProps<'/painel
         {dashboard.skipToContent}
       </a>
       <header className="border-b border-stone-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
           <Link href="/painel" className="font-serif text-xl text-stone-800">
             {app.name}
           </Link>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-stone-600 sm:inline">{user.name}</span>
+          <nav aria-label={dashboard.links.label} className="flex items-center gap-1">
+            <span className="mr-2 hidden text-sm text-stone-600 md:inline">{user.name}</span>
+            {user.role === 'admin' ? (
+              <Link href="/admin" className={buttonClasses('ghost', 'sm')}>
+                {dashboard.links.admin}
+              </Link>
+            ) : null}
+            <Link href="/painel/conta" className={buttonClasses('ghost', 'sm')}>
+              {dashboard.links.account}
+            </Link>
             <form action={signOut}>
               <button type="submit" className={buttonClasses('secondary', 'sm')}>
                 {auth.logout}
               </button>
             </form>
-          </div>
+          </nav>
         </div>
       </header>
       <SentryUser id={user.id} role={user.role} />
