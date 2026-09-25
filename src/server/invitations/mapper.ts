@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 import type { Prisma } from '@/generated/prisma/client';
 import type {
   InvitationAudio,
@@ -9,6 +7,7 @@ import type {
 import { invitationDefaults } from '@/i18n/pt-AO';
 import { parseSectionConfig } from '@/lib/validation/sections';
 import { mediaUrl } from '@/server/media/urls';
+import { audioFileKey, imageFiles } from '@/server/media/variants';
 import { parseThemeOverrides } from '@/themes/overrides';
 
 /** Everything a guest page shows about an event, and nothing more. */
@@ -81,16 +80,6 @@ type MediaRow = InvitationEventRow['media'][number];
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 const E164 = /^\+[1-9]\d{7,14}$/;
 
-/** Processed sizes written by the worker (Phase 7): { [size]: { key, width, height } }. */
-const variantsSchema = z.record(
-  z.string(),
-  z.object({
-    key: z.string(),
-    width: z.number().int().positive(),
-    height: z.number().int().positive(),
-  }),
-);
-
 /** Only http(s) links reach an href (never `javascript:` or other schemes). */
 export function safeHttpUrl(value: string | null): string | null {
   if (!value) return null;
@@ -102,22 +91,29 @@ export function safeHttpUrl(value: string | null): string | null {
   }
 }
 
+/**
+ * Uploaded images point at their widest processed file and list the other widths (`MediaImage`
+ * picks among them); demo media have no variants and point at their file in /public. Originals
+ * are never served.
+ */
 function toImage(media: MediaRow): InvitationImage | null {
-  const variants = variantsSchema.safeParse(media.variants ?? {});
-  const largest = variants.success
-    ? Object.values(variants.data).sort((a, b) => b.width - a.width)[0]
-    : undefined;
-  const key = largest?.key ?? media.originalKey;
-  const width = largest?.width ?? media.width;
-  const height = largest?.height ?? media.height;
+  const files = imageFiles(media.variants);
+  const widest = files[files.length - 1];
+  const key = widest?.key ?? media.originalKey;
+  const width = widest?.width ?? media.width;
+  const height = widest?.height ?? media.height;
   const src = mediaUrl(key);
   if (!src || !width || !height) return null;
-  return { src, width, height, alt: media.altText };
+  const image: InvitationImage = { src, width, height, alt: media.altText };
+  if (widest) image.widths = files.map((file) => file.width);
+  return image;
 }
 
 function toAudio(media: MediaRow): InvitationAudio | null {
-  const src = mediaUrl(media.originalKey);
-  return src ? { src, mimeType: media.mimeType } : null;
+  const processed = audioFileKey(media.variants);
+  const src = mediaUrl(processed ?? media.originalKey);
+  if (!src) return null;
+  return { src, mimeType: processed ? 'audio/mpeg' : media.mimeType };
 }
 
 function firstLetter(name: string): string {

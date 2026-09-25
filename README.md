@@ -19,7 +19,7 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 | 4     | Invitation pages ("Praia Rosa")                                                   | Done    |
 | 5     | RSVP, Redis cache, rate limiting, view tracking                                   | Done    |
 | 6     | "Champanhe" theme                                                                 | Done    |
-| 7     | Auth, couple dashboard, uploads, BullMQ worker                                    | 7a done |
+| 7     | Auth, couple dashboard, uploads, BullMQ worker                                    | Done    |
 | 8     | Guest management, CSV, WhatsApp                                                   | Planned |
 | 9     | Admin area and audit log                                                          | Planned |
 | 10    | Production Docker/Caddy, backups, full CI/CD with staging and rollback            | Planned |
@@ -30,9 +30,9 @@ The platform is built in 11 phases (see the brief). This README grows with each 
 Next.js 16.3 (App Router, Turbopack, React 19.3) · TypeScript 6.0 (strict) · Tailwind CSS 4.3 ·
 Zod 4 · Winston 3 · Sentry 11 · PostgreSQL 18 with Prisma 7.10 · Better Auth 1.7 (e-mail +
 password logins, couple/admin roles) · Redis 8 (ioredis 6) · React Hook Form 7 · Tabler Icons 3 ·
-Motion 13 · Embla Carousel 8 · sharp 0.35 (preview images; image processing later) · Vitest 5 ·
-Playwright · Node.js 24 LTS.
-Coming in later phases: BullMQ.
+Motion 13 · Embla Carousel 8 · BullMQ 6 (background jobs) · AWS SDK 3 (S3 API: MinIO, Cloudflare R2
+or AWS S3) · sharp 0.35 (uploaded images, link preview images) · Vitest 5 · Playwright ·
+Node.js 24 LTS.
 
 Every package is on its latest stable release except where a newer major is blocked:
 
@@ -54,6 +54,7 @@ docker compose up -d              # Postgres, Redis, MinIO (+ bucket), Mailpit
 npm run db:deploy                 # apply the database migrations
 npm run db:seed                   # demo event, guests and logins (see "Database")
 npm run dev                       # http://localhost:3000
+npm run worker:dev                # in a second terminal: processes uploads (see "Uploads")
 ```
 
 Check the stack with `curl http://localhost:3000/api/health`, then open a demo invitation (the seed
@@ -61,7 +62,7 @@ prints every link), e.g. http://localhost:3000/c/braulio-e-nanda/demo-familia-si
 same wedding in the "Champanhe" theme:
 http://localhost:3000/c/braulio-e-nanda-champanhe/demo-champanhe-silva-01.
 
-To run the dev server in a container as well (hot reload through a bind mount):
+To run the dev server and the worker in containers as well (hot reload through a bind mount):
 
 ```bash
 docker compose --profile app up -d --build --renew-anon-volumes
@@ -104,27 +105,35 @@ Validated with Zod in [src/env.ts](src/env.ts) when the server (or worker) start
 with the list of missing or invalid variables. They are **not** validated during `next build`, so
 one image can be promoted from staging to production. `.env.example` documents every variable.
 
-| Variable                                | Required | Default                 | Purpose                                               |
-| --------------------------------------- | -------- | ----------------------- | ----------------------------------------------------- |
-| `DATABASE_URL`                          | yes      |                         | PostgreSQL connection string                          |
-| `REDIS_URL`                             | yes      |                         | Redis connection string                               |
-| `BETTER_AUTH_SECRET`                    | yes      |                         | Signs session cookies; 32+ random characters          |
-| `APP_ENV`                               | no       | `development`           | `development`, `test`, `staging` or `production`      |
-| `APP_URL`                               | no       | `http://localhost:3000` | Public base URL (must be https on staging/production) |
-| `APP_RELEASE`                           | no       | `dev`                   | Release identifier (git SHA in CI/Docker)             |
-| `SERVICE_NAME`                          | no       | `web`                   | `web` or `worker`, added to every log line            |
-| `LOG_LEVEL`                             | no       | `info`                  | `error`, `warn`, `info`, `http` or `debug`            |
-| `SENTRY_DSN`                            | no       |                         | Server-side Sentry DSN; Sentry is off when empty      |
-| `SENTRY_TRACES_SAMPLE_RATE`             | no       | `0.1`                   | Fraction of requests traced (0–1)                     |
-| `NEXT_PUBLIC_SENTRY_DSN`                | no       |                         | Browser Sentry DSN (inlined at build time)            |
-| `NEXT_PUBLIC_APP_ENV`                   | no       | `development`           | Environment reported by the browser SDK               |
-| `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` | no       | `0.1`                   | Browser trace sample rate                             |
-| `SENTRY_ORG`, `SENTRY_PROJECT`          | CI only  |                         | Source map upload target                              |
-| `SENTRY_AUTH_TOKEN`                     | CI only  |                         | Enables source map upload; never needed at runtime    |
-| `SEED_COUPLE_PASSWORD`                  | seed     | `noivos-demo-2027`      | Password of the demo couple login                     |
-| `SEED_ADMIN_PASSWORD`                   | seed     | `admin-demo-2027`       | Password of the demo admin login                      |
-| `TEST_DATABASE_URL`                     | tests    | `…:5433/convites_test`  | Integration test database (name must end in `_test`)  |
-| `TEST_REDIS_URL`                        | tests    | `…:6379/15`             | Integration test Redis database (never 0; flushed)    |
+| Variable                                | Required | Default                 | Purpose                                                |
+| --------------------------------------- | -------- | ----------------------- | ------------------------------------------------------ |
+| `DATABASE_URL`                          | yes      |                         | PostgreSQL connection string                           |
+| `REDIS_URL`                             | yes      |                         | Redis connection string                                |
+| `BETTER_AUTH_SECRET`                    | yes      |                         | Signs session cookies; 32+ random characters           |
+| `S3_BUCKET`                             | yes      |                         | Private media bucket (no dots in the name)             |
+| `S3_ACCESS_KEY_ID`                      | yes      |                         | Storage access key, limited to that bucket             |
+| `S3_SECRET_ACCESS_KEY`                  | yes      |                         | Its secret                                             |
+| `S3_ENDPOINT`                           | no       | AWS S3                  | S3 API address (MinIO, Cloudflare R2)                  |
+| `S3_PUBLIC_ENDPOINT`                    | no       | `S3_ENDPOINT`           | Where browsers upload, when it differs (app in Docker) |
+| `S3_REGION`                             | no       | `us-east-1`             | `auto` for Cloudflare R2                               |
+| `S3_FORCE_PATH_STYLE`                   | no       | `false`                 | `true` for MinIO (`http://host/bucket/key` URLs)       |
+| `APP_ENV`                               | no       | `development`           | `development`, `test`, `staging` or `production`       |
+| `APP_URL`                               | no       | `http://localhost:3000` | Public base URL (must be https on staging/production)  |
+| `APP_RELEASE`                           | no       | `dev`                   | Release identifier (git SHA in CI/Docker)              |
+| `SERVICE_NAME`                          | no       | `web`                   | `web` or `worker`, added to every log line             |
+| `LOG_LEVEL`                             | no       | `info`                  | `error`, `warn`, `info`, `http` or `debug`             |
+| `SENTRY_DSN`                            | no       |                         | Server-side Sentry DSN; Sentry is off when empty       |
+| `SENTRY_TRACES_SAMPLE_RATE`             | no       | `0.1`                   | Fraction of requests traced (0–1)                      |
+| `NEXT_PUBLIC_SENTRY_DSN`                | no       |                         | Browser Sentry DSN (inlined at build time)             |
+| `NEXT_PUBLIC_APP_ENV`                   | no       | `development`           | Environment reported by the browser SDK                |
+| `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE` | no       | `0.1`                   | Browser trace sample rate                              |
+| `SENTRY_ORG`, `SENTRY_PROJECT`          | CI only  |                         | Source map upload target                               |
+| `SENTRY_AUTH_TOKEN`                     | CI only  |                         | Enables source map upload; never needed at runtime     |
+| `SEED_COUPLE_PASSWORD`                  | seed     | `noivos-demo-2027`      | Password of the demo couple login                      |
+| `SEED_ADMIN_PASSWORD`                   | seed     | `admin-demo-2027`       | Password of the demo admin login                       |
+| `TEST_DATABASE_URL`                     | tests    | `…:5433/convites_test`  | Integration test database (name must end in `_test`)   |
+| `TEST_REDIS_URL`                        | tests    | `…:6379/15`             | Integration test Redis database (never 0; flushed)     |
+| `TEST_S3_ENDPOINT`                      | tests    | `http://localhost:9000` | Integration test MinIO (bucket `convites-media-test`)  |
 
 ## Scripts
 
@@ -133,6 +142,7 @@ one image can be promoted from staging to production. `.env.example` documents e
 | `npm run dev`                 | Development server (Turbopack)                                     |
 | `npm run build`               | Production build (standalone output) + observability preload       |
 | `npm start`                   | Runs the production build locally, the way the Docker image does   |
+| `npm run worker`              | The background worker (uploads); `worker:dev` restarts on changes  |
 | `npm run lint`                | ESLint (zero warnings allowed)                                     |
 | `npm run typecheck`           | Generates route types, then `tsc --noEmit`                         |
 | `npm run format`              | Prettier (also sorts Tailwind classes)                             |
@@ -155,6 +165,8 @@ one image can be promoted from staging to production. `.env.example` documents e
 app/                    Routes (App Router): (public) incl. /entrar (login), (dashboard)/painel, api/health
 app/c/[eventSlug]/[guestToken]/  Guest invitation, its WhatsApp preview image and calendar file
 app/previsualizar/[eventId]/  The editor's live preview (the invitation with unsaved changes)
+app/m/[...key]/         Processed uploads, streamed from the private bucket (/m/…)
+worker/                 The background worker's entry point (BullMQ; npm run worker)
 app/(internal)/design/  Design preview page (/design; 404 in production)
 assets/fonts/           Theme fonts as WOFF files for the generated preview image (OFL)
 proxy.ts                Next.js 16 proxy (formerly middleware): request ID + nonce-based Content-Security-Policy
@@ -173,7 +185,8 @@ src/components/         Shared UI: invitation building blocks (ui/), dashboard s
 src/features/           Feature code by area: invitation/ (guest pages), auth/, dashboard/, design-preview/
 src/themes/             Theme definitions (plain data), fonts, colour overrides, contrast maths
 src/lib/                Logger, redaction, request context, Sentry privacy, CSP, guest tokens, validation
-src/server/             Server-only code: Prisma/Redis clients, auth + sessions, events (editor, access), invitations, media
+src/server/             Server-only code: Prisma/Redis clients, auth + sessions, events (editor, access), invitations,
+                        media (processing, dashboard), queues (BullMQ), storage (S3)
 src/generated/prisma    Generated Prisma client (not committed)
 tests/unit/             Tests for root-level files (the rest live next to the code as *.test.ts)
 tests/integration/      Tests against a real Postgres (*.int.test.ts)
@@ -264,8 +277,9 @@ Two Next.js 16 details shape the implementation:
 
 ### Sentry
 
-Server, edge and browser SDKs share one privacy configuration
-([src/lib/sentry/options.ts](src/lib/sentry/options.ts)). Sentry 11 collects user info, cookies,
+Server, edge, browser and worker SDKs share one privacy configuration
+([src/lib/sentry/options.ts](src/lib/sentry/options.ts)); the web server and the worker also share
+their init options ([src/lib/sentry/server-options.ts](src/lib/sentry/server-options.ts)). Sentry 11 collects user info, cookies,
 headers, bodies, query strings and local variables when `dataCollection` is left unset, so every
 category is set explicitly, and events, breadcrumbs and spans pass through the same redaction as the
 logs. Browser events are tunnelled through `/monitoring` on our own origin. Source maps are only
@@ -382,6 +396,8 @@ reconnect) and gives up after 250 ms, logging a warning at most every 30 s.
   | Editor saves per user           | 60 per 10 min  | `saveEvent`                                 |
   | Live-preview drafts per user    | 900 per 10 min | `savePreviewDraft` (about one a second)     |
   | Google Maps short links, user   | 30 per 10 min  | `resolveMapsLink`                           |
+  | Upload URLs per user            | 60 per 10 min  | `requestUpload`                             |
+  | Other media changes per user    | 300 per 10 min | Confirm, delete, reorder, describe, retry   |
 
   The per-IP limits are generous because Angolan mobile carriers put many phones behind one IP.
   The client IP is the right-most `X-Forwarded-For` entry (set by Caddy in production).
@@ -391,10 +407,12 @@ reconnect) and gives up after 250 ms, logging a warning at most every 30 s.
   preview bots do not count. A Redis key de-duplicates; without Redis, Postgres is asked for a view
   in the last hour.
 
-**Demo media.** Until uploads exist (Phase 7), the demo event's gallery photos and music are
-placeholder files in `public/demo/` (`npm run demo:media`), referenced by `Media` rows with `demo/…`
-keys that [src/server/media/urls.ts](src/server/media/urls.ts) maps to `/demo/…`. The music is a
-synthesized loop: use licensed music for anything real.
+**Demo media.** The demo events' gallery photos and music are placeholder files in `public/demo/`
+(`npm run demo:media`), referenced by `Media` rows with `demo/…` keys that
+[src/server/media/urls.ts](src/server/media/urls.ts) maps to `/demo/…`; uploads live in the bucket
+(see "Uploads and the worker"). The music is a synthesized loop: use licensed music for anything
+real. Re-seeding replaces the demo events' media rows, so files uploaded to them stay behind in the
+local bucket.
 
 ## Couple dashboard
 
@@ -433,6 +451,86 @@ Couples sign in at `/entrar` and edit their invitation at `/painel`. Admins can 
   browser. Short share links (`maps.app.goo.gl`) are followed on the server
   ([src/server/maps/resolve-short-link.ts](src/server/maps/resolve-short-link.ts)), only over https
   and only to Google hosts, at most 5 redirects.
+- **Multimédia** tab: the hero illustration, the logo (replaces the monogram), up to 12 gallery
+  photos (order, optional descriptions) and the music, with upload progress and processing status.
+  The exception to "Guardar": files are saved as they are uploaded and reach guests once processed
+  (see below); the preview refreshes when they do.
+
+## Uploads and the worker
+
+- **Storage** ([src/server/storage/s3.ts](src/server/storage/s3.ts)): any S3-compatible service
+  through the AWS SDK: MinIO locally, Cloudflare R2 or AWS S3 in production. The bucket stays
+  private. Uploads land under `originals/<event>/<media>.<ext>` and are never served (they may carry
+  the phone's GPS position); the worker writes what pages show under `media/<event>/<media>/`. Each
+  upload gets a new media ID, so a key's content never changes.
+- **Upload** ([src/features/dashboard/media/](src/features/dashboard/media/)): the browser asks
+  `requestUpload` for a URL (session, owner, rate limit, type, size, the 12-photo limit), `PUT`s the
+  file straight to storage with a 5-minute presigned URL whose signature covers the content type
+  and the exact size, then calls `confirmUpload`, which checks the file is there and queues it. A
+  new hero, logo or song replaces the current one only once it is ready.
+- **Limits:** JPEG, PNG or WebP up to 15 MB (logo 5 MB), MP3 up to 5 MB, 12 gallery photos;
+  checked in the browser, when the URL is issued, by the signature, and again by the worker.
+- **Worker** ([worker/index.ts](worker/index.ts), `npm run worker`): BullMQ 6 on Redis, queue
+  `media` ([src/server/queues/media-queue.ts](src/server/queues/media-queue.ts)), 2 jobs at a time,
+  5 attempts with exponential backoff (10 s, 20 s, 40 s…), a request ID per job in the logs
+  (`service: worker`), Sentry with the web app's privacy settings. Stops gracefully on SIGTERM.
+  - `process-media` ([src/server/media/processing.ts](src/server/media/processing.ts)): images are
+    turned upright (EXIF orientation), stripped of all metadata (GPS, camera, date), converted to
+    sRGB and written as WebP (first frame of an animation) at these widths, never enlarged:
+
+    | Type    | Widths         | Notes                                     |
+    | ------- | -------------- | ----------------------------------------- |
+    | Gallery | 480, 960, 1600 | Carousel on phones, full-screen lightbox  |
+    | Hero    | 540, 1080      | Full width of the card; transparency kept |
+    | Logo    | 240, 480       | Transparency kept                         |
+
+    Images over about 70 megapixels are refused before decoding, and very tall ones are capped at
+    3200 pixels high. Music must be real MP3 audio (several consecutive Layer III frames); its ID3
+    tags (cover art, comments) are dropped. The media then turns READY, replaces the previous hero,
+    logo or song, and the guests' cached page is cleared.
+
+  - `delete-files`: removes the files of deleted or replaced media (the original and the media's
+    `media/…/` folder).
+  - `sweep-media`, every 5 minutes: queues uploads whose job never ran (Redis was down when the
+    upload completed) and removes uploads whose file never arrived, after an hour.
+
+  A file we cannot use (not an image, not an MP3, too many pixels) fails at once with a reason the
+  dashboard explains; it is logged as a warning, not sent to Sentry. Other errors are retried; after
+  the last attempt the media shows "Não foi possível preparar o ficheiro" with a retry button, and
+  the error goes to the logs and Sentry.
+
+- **Delivery** ([app/m/[...key]/route.ts](app/m/[...key]/route.ts)): `/m/<event>/<media>/w960.webp`
+  streams `media/…` from the bucket (never `originals/…`), cached for a year (`immutable`), with byte
+  ranges so music plays and seeks on iPhones. Pages get the widest file and the list of widths;
+  [MediaImage](src/features/invitation/media-image.tsx) builds the `srcset` from them, so the server
+  never re-encodes an upload. Theme art and demo photos still go through the Next.js optimizer.
+- **Security:** presigned URLs are the only way in, short-lived and for one file. The CSP's
+  `connect-src` allows the storage origin ([src/lib/media/upload-origin.ts](src/lib/media/upload-origin.ts))
+  on every page, since the dashboard is reached by client-side navigation from `/entrar`. `/m/…`
+  responses carry `nosniff` and a sandboxing CSP of their own.
+
+**Locally:** `docker compose up -d` creates the `convites-media` bucket. Run `npm run worker:dev`
+next to `npm run dev`; without a worker, uploads stay "A preparar…" (and are processed once it
+starts). `docker compose --profile app up` runs both in containers; there the app reaches MinIO at
+`minio:9000` and browsers at `localhost:9000` (`S3_PUBLIC_ENDPOINT`).
+
+**Production storage (R2 or S3):** a private bucket without dots in its name, an access key
+limited to it, and the `S3_*` variables (R2: `S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com`,
+`S3_REGION=auto`). Browsers upload straight to the bucket, so it needs a CORS rule (MinIO allows
+every origin by default):
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://<the app's domain>"],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["content-type"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+The worker runs the TypeScript source with `tsx` for now; Phase 10 builds its production image.
 
 ## Themes
 
@@ -587,25 +685,32 @@ Vitest runs two projects, Playwright a third suite:
   and link builders, components and sections rendered to HTML with `react-dom/server` (in both
   themes where they differ, and in the dashboard's preview mode), the editor schema (fields,
   Luanda times, IBANs, the live preview's lenient reading), Google Maps links and the short-link
-  resolver, safe return paths, and one test that serves real HTTP requests through the request
-  hooks. No services needed.
+  resolver, safe return paths, upload rules, image sizes and storage keys, the MP3 check, image
+  processing (EXIF rotation and GPS removal, transparency, broken and oversized files), the image
+  loader, and one test that serves real HTTP requests through the request hooks. No services
+  needed.
 - `npm run test:e2e`: `tests/e2e/*.spec.ts` in a phone-sized Chromium: opening the envelope, the
   reload, reduced motion, the gallery lightbox, the calendar file, the 404 page, the Champanhe
   invitation and its preview image, the Save the Date dialog, answering and changing the RSVP
-  form, the WhatsApp link, the login redirect, and a couple editing the invitation with the live
-  preview (guests see the change only once saved). Its global setup re-seeds
-  the demo data and clears the rate-limit counters, so runs are repeatable (`E2E_SKIP_RESET=1`
-  skips that for a server that does not use the local database and Redis). It starts `next dev` on
-  port 3100, or tests a running app given in `E2E_BASE_URL`. Runs locally for
-  now; CI gets it in Phase 10.
+  form, the WhatsApp link, the login redirect, a couple editing the invitation with the live
+  preview (guests see the change only once saved), and a gallery photo going from the browser to
+  MinIO, through the worker, to the guest page, and removed again. Its global setup re-seeds the
+  demo data and clears the rate-limit counters, so runs are repeatable (`E2E_SKIP_RESET=1` skips
+  that for a server that does not use the local database and Redis). It starts `next dev` on port
+  3100 and a worker, or tests a running app given in `E2E_BASE_URL`. Runs locally for now; CI gets
+  it in Phase 10.
 - `npm run test:integration`: `tests/integration/*.int.test.ts` against a real Postgres and Redis:
   the migrations, the demo seed (twice), guest lookup by token (including that no other guest's
   data leaks), the cache and its invalidation, the rate limiter (exact under concurrency), RSVP
   storage and the Server Action's rules, view de-duplication (with and without Redis), the
   integrity rules and the delete behaviour, and the dashboard: login (redirect, wrong password,
   per-e-mail limit, sign-out), who may edit an event, saving and its cache refresh, a round trip
-  through the editor, and per-user preview drafts. It uses the `convites_test` database on the Docker
-  Postgres (`TEST_DATABASE_URL`) and Redis database 15 (`TEST_REDIS_URL`, never 0), applies
+  through the editor, and per-user preview drafts; and uploads: presigned URLs (type and size
+  enforced), processing, the guest read model, `/m/…` with byte ranges, the limits and access
+  rules, replacing the hero, MP3s, deletion of files and the sweep, against MinIO (bucket
+  `convites-media-test`, created by the tests; `TEST_S3_ENDPOINT`). It uses the `convites_test`
+  database on the Docker Postgres (`TEST_DATABASE_URL`) and Redis database 15 (`TEST_REDIS_URL`,
+  never 0), applies
   migrations with `prisma migrate deploy` and empties both before each run; it refuses a database
   whose name does not end in `_test`. If a migration was edited after the test database applied
   it, drop it: `docker compose exec postgres dropdb -U convites convites_test`.
@@ -613,5 +718,6 @@ Vitest runs two projects, Playwright a third suite:
 [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request, with a
 Postgres service container: Prisma schema validation, format check, lint, type-check, unit tests,
 migrations applied to an empty database, a check that fails if the schema changed without a
-migration, integration tests (with a Redis service container too), and the production build.
+migration, integration tests (with a Redis service container and a MinIO container too), and the
+production build.
 Playwright E2E and the deploy workflow arrive in Phase 10.

@@ -6,6 +6,9 @@ const minimal = {
   DATABASE_URL: 'postgresql://convites:convites@localhost:5432/convites',
   REDIS_URL: 'redis://localhost:6379',
   BETTER_AUTH_SECRET: 'test-secret-that-is-long-enough-0123456789',
+  S3_BUCKET: 'convites-media',
+  S3_ACCESS_KEY_ID: 'test-key',
+  S3_SECRET_ACCESS_KEY: 'test-secret',
 };
 
 function problemsOf(raw: Record<string, string | undefined>): readonly string[] {
@@ -51,10 +54,11 @@ describe('parseServerEnv', () => {
   it('lists every missing or invalid variable in one error', () => {
     const problems = problemsOf({ REDIS_URL: 'http://localhost:6379', LOG_LEVEL: 'verbose' });
 
-    expect(problems).toHaveLength(4);
+    expect(problems).toHaveLength(7);
     expect(problems).toContain('DATABASE_URL: is required');
     expect(problems).toContain('REDIS_URL: must be a redis:// URL');
     expect(problems).toContain('BETTER_AUTH_SECRET: is required');
+    expect(problems).toContain('S3_BUCKET: is required');
     expect(problems.some((problem) => problem.startsWith('LOG_LEVEL:'))).toBe(true);
   });
 

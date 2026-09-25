@@ -3,6 +3,8 @@ import { unstable_doesMiddlewareMatch as doesProxyMatch } from 'next/experimenta
 import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { getServerEnv } from '@/env';
+import { uploadOrigin } from '@/lib/media/upload-origin';
 import { RATE_LIMITS } from '@/server/rate-limit/policies';
 
 import { config, proxy } from '../../proxy';
@@ -34,6 +36,23 @@ describe('proxy', () => {
     const requestId = response.headers.get('x-request-id');
     expect(requestId).toMatch(UUID);
     expect(forwarded(response, 'x-request-id')).toBe(requestId);
+  });
+
+  it('lets pages upload to object storage (the dashboard is reached by client navigation)', async () => {
+    vi.stubEnv('DATABASE_URL', 'postgresql://convites:convites@localhost:5432/convites');
+    vi.stubEnv('REDIS_URL', 'redis://localhost:6379');
+    vi.stubEnv('BETTER_AUTH_SECRET', 'unit-test-secret-unit-test-secret-0123');
+    vi.stubEnv('S3_ENDPOINT', 'https://account.r2.cloudflarestorage.com');
+    vi.stubEnv('S3_BUCKET', 'convites-media');
+    vi.stubEnv('S3_ACCESS_KEY_ID', 'key-id');
+    vi.stubEnv('S3_SECRET_ACCESS_KEY', 'secret');
+    const expected = uploadOrigin(getServerEnv());
+    expect(expected).toMatch(/^https:\/\//);
+
+    const response = await proxy(new NextRequest('http://localhost/entrar'));
+    expect(response.headers.get('content-security-policy')).toMatch(
+      new RegExp(`connect-src 'self'[^;]* ${expected.replace(/\./g, '\\.')}(;| )`),
+    );
   });
 
   it('uses a fresh nonce for every request', async () => {

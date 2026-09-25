@@ -11,17 +11,17 @@ relevant sections before planning a phase. README.md documents setup and archite
   approval. After it: `npm run check` and `npm run build` must pass, then summarize and commit.
 - Before installing anything, check current versions with `npm view` and read the current docs
   (Next.js ships version-matched docs in `node_modules/next/dist/docs/`).
-- Phase status: 1–6 done. Phase 7: 7a (logins, dashboard, editor, live preview) done; 7b (storage,
-  presigned uploads, BullMQ worker with sharp, media tab) in progress.
+- Phase status: 1–7 done. Next: Phase 8 (guest management, CSV import, WhatsApp sending).
 
 ## Commands
 
 ```bash
 docker compose up -d        # Postgres (host port 5433), Redis, MinIO + bucket, Mailpit
 npm run dev                 # dev server
+npm run worker:dev          # background worker (uploads), restarts on changes
 npm run check               # format check + lint + typecheck + unit tests
-npm run test:integration    # tests against Postgres (convites_test)
-npm run test:e2e            # Playwright, phone-sized Chromium; needs `npm run db:seed`
+npm run test:integration    # tests against Postgres (convites_test), Redis db 15, MinIO
+npm run test:e2e            # Playwright, phone-sized Chromium (+ a worker); needs `npm run db:seed`
 npm run build && npm start  # production build, run like the Docker image
 npm run db:migrate -- --name what-changed   # after editing prisma/schema.prisma
 npm run db:seed             # demo data (idempotent)
@@ -146,7 +146,8 @@ section" "--click=button[aria-label='Abrir o convite']" --wait=3000`. Demo links
   `/c/braulio-e-nanda/demo-familia-silva-001` (Praia Rosa),
   `/c/braulio-e-nanda-champanhe/demo-champanhe-silva-01` (Champanhe). To see a Save the Date in
   another theme, change the demo event's `phase` in the local database, delete its cached read
-  model (`convites:inv:v1:event:<slug>`, else up to 10 min stale) and re-seed afterwards.
+  model (`convites:inv:v<CACHE_VERSION>:event:<slug>`, else up to 10 min stale) and re-seed
+  afterwards.
 - RSVP rules live in `src/features/invitation/rsvp/rules.ts` and are enforced on the server (Server
   Action `submitRsvp`, WhatsApp route); the browser only mirrors them. The form schema
   (`src/lib/validation/rsvp.ts`) uses `zod/mini` because it ships to guests: keep it that way.
@@ -180,6 +181,39 @@ section" "--click=button[aria-label='Abrir o convite']" --wait=3000`. Demo links
 - Icon keys live in `src/components/icons/keys.ts` (plain data); pickers offer `CONTENT_ICON_KEYS`.
 - React Hook Form drops the values of `disabled` inputs: show locked values without a disabled
   control. Anything that appears on validation (badges) must not shift clickable elements.
+- The editor is one `<form>`: buttons inside tabs need `type="button"`, and Enter in a text input
+  that is not a form field must be caught (the media descriptions blur instead of submitting).
+
+## Uploads and the worker (README → Uploads and the worker)
+
+- Storage keys (`src/lib/media/keys.ts`): uploads under `originals/` are never served (EXIF/GPS);
+  the worker writes under `media/<event>/<media>/`, served at `/m/…` only through `servedPath`.
+  Every upload gets a new media ID, so files are cached as immutable: never write other content to
+  an existing key. Delete a media's files with `discardStoredFiles` (queue first, then direct).
+- Presigned PUTs sign the content type and exact size (`presignUpload`); the S3 client keeps
+  `requestChecksumCalculation: 'WHEN_REQUIRED'` (R2 and MinIO reject some default checksums).
+- Dashboard media logic lives in `src/server/media/dashboard.ts`, behind the Server Actions of
+  `src/features/dashboard/media/actions.ts` (auth, rate limit, Zod first). Anything that changes a
+  READY media must call `invalidateInvitationEvent`.
+- `processMedia` must stay idempotent: only PENDING media are processed, file keys depend only on
+  the media, and READY is set by `updateMany … where status PENDING` in the same transaction that
+  replaces older single-type media. Bad files end FAILED with a `MEDIA_FAILURES` code (texts in
+  pt-AO `editor.media.failures`); only `error` is retryable.
+- Queue (`src/server/queues/media-queue.ts`): the web app only adds jobs, through the fail-fast
+  `getMediaQueue()` (returns false when Redis is down; the sweep catches up). `process-<mediaId>`
+  job IDs de-duplicate, so a manual retry uses a new ID and the sweep removes finished jobs first.
+  Workers need `maxRetriesPerRequest: null`. Validate job data with Zod in the worker.
+- The worker (`worker/index.ts`) runs with `tsx --conditions=react-server` (server-only modules);
+  `./setup` must stay its first import (env and `SERVICE_NAME` before the logger reads them). It
+  shares the Sentry init with the web server (`src/lib/sentry/server-options.ts`).
+- Image widths per type live in `src/lib/media/ladder.ts`; read models carry `widths`. Render
+  uploaded images with `MediaImage`, never plain `next/image`: `/m/` is not in `localPatterns`, so
+  the optimizer would refuse it (and must not re-encode uploads). sharp 0.35 exports its types
+  directly (`import sharp, { type Metadata } from 'sharp'`, no `sharp.` namespace).
+- The CSP's `connect-src` allows the storage origin on every page (`uploadOrigin`): the dashboard is
+  reached by client-side navigation, and a document keeps its first page's policy.
+- Integration tests use the MinIO bucket `convites-media-test` (created by the tests; the name
+  must end in `-test`) and run jobs directly (`processMedia`, `deleteStoredFiles`).
 
 ## Redis (README → Caching, rate limits and views)
 
@@ -200,7 +234,10 @@ section" "--click=button[aria-label='Abrir o convite']" --wait=3000`. Demo links
 - Postgres is on host port 5433 (a native PostgreSQL service may own 5432).
 - Manual browser tests of the dashboard hit the login limit (8 per e-mail per 15 min): sign in
   once and reuse Playwright's `storageState`, or delete `convites:rl:*` in the dev Redis. The e2e
-  dashboard test edits the Champanhe demo event (the other specs read the Praia Rosa one).
+  dashboard tests edit the Champanhe demo event (the other specs read the Praia Rosa one).
+- Next 16 allows one `next dev` per project folder ("Another next dev server is already
+  running"). Stopping a background shell on Windows can leave its node process alive: stop the
+  PID the message prints before `npm run test:e2e`.
 - The containerized dev server (`--profile app`) runs `next dev --webpack` with `WATCHPACK_POLLING`:
   Turbopack's watcher misses host edits through the bind mount. Host `npm run dev` uses Turbopack.
   After dependency changes start it with `--build --renew-anon-volumes`: its `node_modules` lives in

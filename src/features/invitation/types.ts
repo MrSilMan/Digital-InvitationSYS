@@ -37,6 +37,8 @@ export interface InvitationImage {
   width: number;
   height: number;
   alt: string | null;
+  /** Uploaded images: the widths of their processed files (`src` is the widest). */
+  widths?: number[];
 }
 
 export interface InvitationAudio {

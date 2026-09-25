@@ -1,9 +1,11 @@
 import { getSessionCookie } from 'better-auth/cookies';
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { getServerEnv } from '@/env';
 import { AUTH_COOKIE_PREFIX, isSignedInArea } from '@/lib/auth/cookies';
 import { isBotUserAgent } from '@/lib/bots';
 import { clientIp } from '@/lib/client-ip';
+import { uploadOrigin } from '@/lib/media/upload-origin';
 import { REQUEST_ID_HEADER, resolveRequestId } from '@/lib/request-id';
 import { buildContentSecurityPolicy, createNonce, NONCE_HEADER } from '@/lib/security/csp';
 import { tooManyRequestsResponse } from '@/lib/security/too-many-requests';
@@ -24,6 +26,15 @@ import { rateLimit } from '@/server/rate-limit/sliding-window';
  * database query per request), so every page, Server Action and Route Handler re-checks the session
  * (src/server/auth/session.ts).
  */
+/** Where browsers upload to. The server validated the environment at startup; tests may lack it. */
+function storageOrigins(): string[] {
+  try {
+    return [uploadOrigin(getServerEnv())];
+  } catch {
+    return [];
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const requestId = resolveRequestId(request.headers.get(REQUEST_ID_HEADER));
   const { pathname, search } = request.nextUrl;
@@ -52,6 +63,9 @@ export async function proxy(request: NextRequest) {
     nonce,
     isDev: process.env.NODE_ENV === 'development',
     upgradeInsecureRequests: process.env.APP_URL?.startsWith('https://') ?? false,
+    // The dashboard uploads straight to object storage (presigned URLs). On every page: the
+    // document's policy stays in force across client-side navigations (login → dashboard).
+    connectSrc: storageOrigins(),
   });
 
   const requestHeaders = new Headers(request.headers);

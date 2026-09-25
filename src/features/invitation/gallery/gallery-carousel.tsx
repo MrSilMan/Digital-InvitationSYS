@@ -2,10 +2,11 @@
 
 import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react';
 import useEmblaCarousel, { type UseEmblaCarouselType } from 'embla-carousel-react';
-import Image from 'next/image';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { fillTemplate } from '@/lib/template';
+
+import { MediaImage } from '../media-image';
 
 import styles from './gallery.module.css';
 
@@ -16,6 +17,8 @@ export interface GalleryPhoto {
   width: number;
   height: number;
   alt: string;
+  /** Uploaded photos: widths of their processed files. */
+  widths?: number[];
 }
 
 export interface GalleryLabels {
@@ -120,8 +123,9 @@ export function GalleryCarousel({
                   aria-label={fillTemplate(labels.openPhoto, { n: String(index + 1) })}
                 >
                   <span className={styles.photo}>
-                    <Image
+                    <MediaImage
                       src={photo.src}
+                      widths={photo.widths}
                       alt={photo.alt}
                       fill
                       sizes="(max-width: 480px) 62vw, 300px"
@@ -209,8 +213,9 @@ function Lightbox({
               aria-hidden={photoIndex === index ? undefined : true}
             >
               <div className={styles.lightboxPhoto}>
-                <Image
+                <MediaImage
                   src={photo.src}
+                  widths={photo.widths}
                   alt={photo.alt}
                   fill
                   sizes="100vw"

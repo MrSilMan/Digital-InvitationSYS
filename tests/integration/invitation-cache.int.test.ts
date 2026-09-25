@@ -37,7 +37,8 @@ describe('invitation cache', () => {
   it('serves the event from Redis until it is invalidated', async () => {
     const first = await loadInvitationEvent(DEMO_EVENT.slug);
     expect(first?.groomName).toBe('Braúlio');
-    expect(await redis.exists(`convites:inv:v1:event:${DEMO_EVENT.slug}`)).toBe(1);
+    // Whatever the cache version (bumped when the read model changes shape).
+    expect(await redis.keys(`convites:inv:v*:event:${DEMO_EVENT.slug}`)).toHaveLength(1);
 
     // A change in Postgres is not seen while the cached copy lives…
     await prisma.event.update({ where: { slug: DEMO_EVENT.slug }, data: { groomName: 'B.' } });
@@ -53,7 +54,7 @@ describe('invitation cache', () => {
 
   it('caches guests under a hash of the token, never the token itself', async () => {
     await loadInvitationGuest(silva.token);
-    const keys = await redis.keys('convites:inv:v1:guest:*');
+    const keys = await redis.keys('convites:inv:v*:guest:*');
     expect(keys).toHaveLength(1);
     expect(keys[0]).not.toContain(silva.token);
 

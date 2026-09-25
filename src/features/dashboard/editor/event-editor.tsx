@@ -17,6 +17,9 @@ import {
   eventEditorSchema,
 } from '@/lib/validation/event-editor';
 
+import { MediaTab } from '../media/media-tab';
+import type { MediaItem } from '../media/types';
+
 import { discardPreviewDraft, type EditorErrorCode, saveEvent } from './actions';
 import { PreviewPanel } from './preview-panel';
 import { CoupleTab } from './tab-couple';
@@ -31,7 +34,18 @@ const t = editor;
 
 type TabId = keyof typeof editor.tabs;
 
-const TABS: { id: TabId; fields: (keyof EventEditorValues)[]; content: () => ReactNode }[] = [
+interface TabContext {
+  eventId: string;
+  media: MediaItem[];
+  onMediaPublished: () => void;
+}
+
+const TABS: {
+  id: TabId;
+  /** Form fields shown in the tab (error badges, jumping to the first error). */
+  fields: (keyof EventEditorValues)[];
+  content: (context: TabContext) => ReactNode;
+}[] = [
   {
     id: 'general',
     fields: ['phase', 'themeId', 'colors', 'sections'],
@@ -75,6 +89,13 @@ const TABS: { id: TabId; fields: (keyof EventEditorValues)[]; content: () => Rea
     fields: ['rsvpMode', 'groomWhatsapp', 'brideWhatsapp', 'rsvpDeadline'],
     content: () => <RsvpTab />,
   },
+  {
+    id: 'media',
+    fields: [],
+    content: ({ eventId, media, onMediaPublished }) => (
+      <MediaTab eventId={eventId} initialItems={media} onPublished={onMediaPublished} />
+    ),
+  },
 ];
 
 /** Leaf errors under a value (a list with three invalid fields counts three). */
@@ -103,13 +124,15 @@ interface EventEditorProps {
   /** "Braúlio & Nanda" */
   title: string;
   initialValues: EventEditorValues;
+  initialMedia: MediaItem[];
 }
 
 /**
  * The event editor: every field of the invitation, in tabs, with the live preview beside it.
- * Nothing reaches guests until "Guardar alterações"; the preview shows unsaved changes.
+ * Nothing reaches guests until "Guardar alterações"; the preview shows unsaved changes. Media
+ * are the exception: saved on upload, live once processed ("Multimédia").
  */
-export function EventEditor({ eventId, title, initialValues }: EventEditorProps) {
+export function EventEditor({ eventId, title, initialValues, initialMedia }: EventEditorProps) {
   const [saved, setSaved] = useState(initialValues);
   const form = useForm<EventEditorValues, unknown, EventEditorData>({
     resolver: zodResolver(eventEditorSchema),
@@ -332,7 +355,11 @@ export function EventEditor({ eventId, title, initialValues }: EventEditorProps)
                 hidden={candidate.id !== tab}
                 className={`${cardClasses} mt-2 p-5 sm:p-6`}
               >
-                {candidate.content()}
+                {candidate.content({
+                  eventId,
+                  media: initialMedia,
+                  onMediaPublished: refreshPreview,
+                })}
               </div>
             ))}
           </div>

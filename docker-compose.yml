@@ -1,7 +1,7 @@
 # Local development stack.
 #
 #   docker compose up -d                  Postgres, Redis, MinIO (+ bucket), Mailpit
-#   docker compose --profile app up -d    …plus the Next.js dev server in a container (hot reload)
+#   docker compose --profile app up -d    …plus the Next.js dev server (hot reload) and the worker
 #
 # On Windows, running `npm run dev` on the host is much faster than the containerized dev server.
 # Credentials below are for local development only.
@@ -101,6 +101,9 @@ services:
     environment:
       DATABASE_URL: postgresql://convites:convites@postgres:5432/convites
       REDIS_URL: redis://redis:6379
+      # The app reaches MinIO inside the network; browsers upload through the host's port.
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:${MINIO_PORT:-9000}
       WATCHPACK_POLLING: 'true'
     ports:
       - '${WEB_PORT:-3000}:3000'
@@ -113,6 +116,34 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  # Background jobs: media processing (sharp), file deletion, the upload sweep. No file watching
+  # through the bind mount: after editing worker code, `docker compose restart worker`.
+  worker:
+    profiles: [app]
+    build:
+      context: .
+      target: dev
+    command: ['npm', 'run', 'worker']
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      DATABASE_URL: postgresql://convites:convites@postgres:5432/convites
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
 volumes:

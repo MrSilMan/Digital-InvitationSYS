@@ -51,6 +51,8 @@ jobs:
       TEST_DATABASE_URL: postgresql://convites:convites@localhost:5432/convites_test
       # Integration tests: cache, rate limiter and view tracking against a real Redis.
       TEST_REDIS_URL: redis://localhost:6379/15
+      # Upload tests: MinIO started below (the tests create their own bucket).
+      TEST_S3_ENDPOINT: http://localhost:9000
 
     steps:
       # Actions are pinned to commit SHAs (supply-chain safety); Dependabot keeps them current.
@@ -79,6 +81,19 @@ jobs:
 
       - name: Fail if the schema changed without a migration
         run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+
+      # A service container cannot take MinIO's `server /data` command, so it is started here.
+      - name: Start MinIO
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER=convites -e MINIO_ROOT_PASSWORD=convites-dev-secret \
+            cgr.dev/chainguard/minio:latest server /data
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://localhost:9000/minio/health/live > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          docker logs minio
+          exit 1
 
       - run: npm run test:integration
 

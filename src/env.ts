@@ -41,6 +41,21 @@ const serverEnvShape = z.object({
     .string(required('a random string of at least 32 characters'))
     .min(32, 'must be at least 32 characters (e.g. `openssl rand -base64 32`)'),
 
+  // Object storage (S3 API: MinIO locally, Cloudflare R2 or AWS S3 in production).
+  /** Where the app and the worker reach the storage. Unset: AWS S3 in S3_REGION. */
+  S3_ENDPOINT: z.url({ protocol: /^https?$/, ...required('an http(s) URL') }).optional(),
+  /** Where browsers upload (presigned URLs), when it differs from S3_ENDPOINT (Docker). */
+  S3_PUBLIC_ENDPOINT: z.url({ protocol: /^https?$/, ...required('an http(s) URL') }).optional(),
+  S3_REGION: z.string().trim().min(1).default('us-east-1'),
+  S3_BUCKET: z.string(required('a bucket name')).trim().min(3).max(63),
+  S3_ACCESS_KEY_ID: z.string(required('an access key ID')).trim().min(1),
+  S3_SECRET_ACCESS_KEY: z.string(required('a secret access key')).trim().min(1),
+  /** MinIO needs path-style URLs (http://host:9000/bucket/key). */
+  S3_FORCE_PATH_STYLE: z
+    .enum(['true', 'false'], { error: 'must be true or false' })
+    .default('false')
+    .transform((value) => value === 'true'),
+
   SENTRY_DSN: z.url(required('a valid Sentry DSN URL')).optional(),
   SENTRY_TRACES_SAMPLE_RATE: sampleRate.default(0.1),
 

@@ -17,6 +17,7 @@ export function GallerySection({ event, theme }: SectionProps) {
     src: photo.src,
     width: photo.width,
     height: photo.height,
+    widths: photo.widths,
     alt: photo.alt ?? fillTemplate(t.photoAlt, { n: String(index + 1), total }),
   }));
 

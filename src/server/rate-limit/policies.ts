@@ -18,6 +18,10 @@ export const RATE_LIMITS = {
   previewDraftsPerUser: { name: 'preview-draft-user', limit: 900, windowMs: 10 * MINUTE },
   /** Google Maps short links resolved on the server, per user. */
   mapsLinksPerUser: { name: 'maps-link-user', limit: 30, windowMs: 10 * MINUTE },
+  /** Upload URLs issued per user (a full gallery is 12, retries included). */
+  mediaUploadsPerUser: { name: 'media-upload-user', limit: 60, windowMs: 10 * MINUTE },
+  /** Other media changes per user: confirm, delete, reorder, descriptions, retries. */
+  mediaChangesPerUser: { name: 'media-change-user', limit: 300, windowMs: 10 * MINUTE },
   /** Guest pages (/c/…) per IP; link-preview bots are exempt (see proxy.ts). */
   invitationPagesPerIp: { name: 'inv-page-ip', limit: 300, windowMs: 5 * MINUTE },
   /** RSVP form submissions per guest link (answers can be changed a few times). */

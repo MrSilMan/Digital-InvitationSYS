@@ -22,7 +22,7 @@ import { invitationEventSelect, toInvitationEvent } from './mapper';
  */
 
 /** Bump when InvitationEvent or CachedGuest change shape, so old entries are never read. */
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const EVENT_TTL_SECONDS = 10 * 60;
 const GUEST_TTL_SECONDS = 10 * 60;
 

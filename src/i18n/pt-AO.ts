@@ -104,6 +104,7 @@ export const editor = {
     rules: 'Manual do convidado',
     gifts: 'Presentes',
     rsvp: 'Confirmação',
+    media: 'Multimédia',
   },
   tabsLabel: 'Partes do convite',
   /** {count} */
@@ -282,6 +283,83 @@ export const editor = {
     whatsappHint: 'Números angolanos, por exemplo 923 456 789.',
     deadline: 'Prazo para confirmar (opcional)',
     deadlineHint: 'Até ao fim deste dia.',
+  },
+  media: {
+    intro:
+      'As imagens e a música aparecem no convite logo que ficam prontas, sem «Guardar alterações».',
+    hero: {
+      legend: 'Ilustração principal',
+      hint: 'Aparece no fundo do cartão e do Save the Date, em vez da ilustração do tema. De preferência um PNG com fundo transparente e pelo menos 1080 píxeis de largura.',
+      empty: 'A usar a ilustração do tema.',
+      current: 'Ilustração principal atual',
+      upload: 'Carregar ilustração',
+    },
+    logo: {
+      legend: 'Logótipo',
+      hint: 'Substitui o monograma no convite. De preferência um PNG com fundo transparente.',
+      empty: 'A usar o monograma.',
+      current: 'Logótipo atual',
+      upload: 'Carregar logótipo',
+    },
+    gallery: {
+      legend: 'Galeria de fotos',
+      /** {max} */
+      hint: 'Até {max} fotos, pela ordem em que aparecem no convite. JPG, PNG ou WebP até 15 MB cada.',
+      /** {count}, {max} */
+      count: '{count} de {max} fotos',
+      empty: 'Ainda não há fotos.',
+      add: 'Adicionar fotos',
+      /** {count} */
+      tooMany: 'Só há lugar para mais {count} foto(s): as outras não foram carregadas.',
+      /** {n} */
+      photo: 'Foto {n}',
+      moveEarlier: 'Mover para antes',
+      moveLater: 'Mover para depois',
+      altLabel: 'Descrição (opcional)',
+      altHint: 'Lida em voz alta a quem não consegue ver a foto.',
+      altPlaceholder: 'Ex.: os noivos na praia',
+    },
+    music: {
+      legend: 'Música',
+      hint: 'Começa a tocar quando o convidado abre o envelope. MP3 até 5 MB.',
+      empty: 'Sem música.',
+      current: 'Música atual',
+      upload: 'Carregar música',
+    },
+    replace: 'Substituir',
+    remove: 'Remover',
+    removeConfirm: 'Remover este ficheiro do convite?',
+    retry: 'Tentar de novo',
+    /** {percent} */
+    uploading: 'A enviar… {percent}%',
+    processing: 'A preparar…',
+    /** Shown while a replacement is being prepared. */
+    replacing: 'A preparar o novo ficheiro. O atual continua no convite até lá.',
+    errors: {
+      type: {
+        image: 'Use uma imagem JPG, PNG ou WebP.',
+        audio: 'Use um ficheiro MP3.',
+      },
+      /** {max} */
+      size: 'O ficheiro é demasiado grande (máximo {max} MB).',
+      empty: 'O ficheiro está vazio.',
+      limit: 'A galeria já tem o máximo de fotos. Remova uma para adicionar outra.',
+      rateLimited: 'Demasiados pedidos seguidos. Aguarde um pouco e tente de novo.',
+      unauthenticated: 'A sua sessão terminou. Entre de novo para continuar.',
+      notFound: 'Este ficheiro já não existe. Atualize a página.',
+      invalid: 'Pedido inválido. Atualize a página e tente de novo.',
+      unavailable: 'Não foi possível concluir agora. Tente de novo dentro de momentos.',
+      upload: 'O envio falhou. Verifique a ligação à Internet e tente de novo.',
+    },
+    failures: {
+      missing: 'O ficheiro não chegou ao servidor. Carregue-o de novo.',
+      'too-large': 'O ficheiro é demasiado grande.',
+      unreadable: 'Não foi possível abrir esta imagem. Experimente outra (JPG, PNG ou WebP).',
+      'too-many-pixels':
+        'A imagem tem demasiados píxeis (mais de 70 megapíxeis). Reduza-a e carregue de novo.',
+      'not-mp3': 'Este ficheiro não é um MP3 válido.',
+      error: 'Não foi possível preparar o ficheiro.',
+    },
   },
   sectionToggle: {
     visible: 'Esta secção aparece no convite.',

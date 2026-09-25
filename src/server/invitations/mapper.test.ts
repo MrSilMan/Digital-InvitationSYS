@@ -63,19 +63,23 @@ function row(overrides: Partial<InvitationEventRow> = {}): InvitationEventRow {
       },
       {
         type: 'GALLERY',
-        originalKey: 'uploads/event-1/original.jpg',
-        variants: { lg: { key: 'demo/gallery/foto-2.webp', width: 1600, height: 2000 } },
+        originalKey: 'originals/event-1/photo-2.jpg',
+        variants: {
+          w480: { key: 'media/event-1/photo-2/w480.webp', width: 480, height: 600 },
+          w1600: { key: 'media/event-1/photo-2/w1600.webp', width: 1600, height: 2000 },
+          w960: { key: 'media/event-1/photo-2/w960.webp', width: 960, height: 1200 },
+        },
         mimeType: 'image/jpeg',
         width: 4000,
         height: 5000,
         altText: 'Na praia',
       },
       {
-        // Stored in object storage: no public URL until Phase 7, so it is skipped.
+        // Not processed: originals are never served, so it is skipped.
         type: 'HERO',
-        originalKey: 'uploads/event-1/hero.webp',
+        originalKey: 'originals/event-1/hero.png',
         variants: null,
-        mimeType: 'image/webp',
+        mimeType: 'image/png',
         width: 1080,
         height: 900,
         altText: null,
@@ -140,13 +144,42 @@ describe('invitation read model', () => {
     expect(event.sections.find((section) => section.id === 'gifts')?.visible).toBe(false);
   });
 
-  it('turns ready media into URLs, preferring the largest processed size', () => {
+  it('turns ready media into URLs: the widest processed file, with the other widths', () => {
     expect(event.gallery).toEqual([
       { src: '/demo/gallery/foto-1.webp', width: 1200, height: 1500, alt: null },
-      { src: '/demo/gallery/foto-2.webp', width: 1600, height: 2000, alt: 'Na praia' },
+      {
+        src: '/m/event-1/photo-2/w1600.webp',
+        width: 1600,
+        height: 2000,
+        alt: 'Na praia',
+        widths: [480, 960, 1600],
+      },
     ]);
     expect(event.hero).toBeNull();
     expect(event.music).toEqual({ src: '/demo/musica.wav', mimeType: 'audio/wav' });
+  });
+
+  it('plays the checked MP3 of uploaded music, never the original', () => {
+    const music = {
+      type: 'MUSIC' as const,
+      originalKey: 'originals/event-1/song.mp3',
+      mimeType: 'audio/mpeg',
+      width: null,
+      height: null,
+      altText: null,
+    };
+    const processed = toInvitationEvent(
+      row({
+        media: [
+          {
+            ...music,
+            variants: { audio: { key: 'media/event-1/song/musica.mp3', bytes: 4096 } },
+          },
+        ],
+      }),
+    );
+    expect(processed.music).toEqual({ src: '/m/event-1/song/musica.mp3', mimeType: 'audio/mpeg' });
+    expect(toInvitationEvent(row({ media: [{ ...music, variants: null }] })).music).toBeNull();
   });
 
   it('is JSON-safe (Phase 5 caches it in Redis)', () => {

@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import type { ReactNode } from 'react';
 
 import { CornerDecorations } from '@/components/ui/corner-decorations';
@@ -6,6 +5,7 @@ import { Monogram } from '@/components/ui/monogram';
 import { cn } from '@/lib/cn';
 import type { ThemeArea, ThemeDefinition } from '@/themes';
 
+import { MediaImage } from './media-image';
 import type { InvitationEvent, InvitationImage } from './types';
 
 interface SectionPageProps {
@@ -70,8 +70,9 @@ export function HeroIllustration({
 }) {
   const hero = image ?? theme.hero;
   return (
-    <Image
+    <MediaImage
       src={hero.src}
+      widths={image?.widths}
       width={hero.width}
       height={hero.height}
       alt=""
@@ -92,8 +93,9 @@ export function CoupleMark({
 }) {
   if (event.logo) {
     return (
-      <Image
+      <MediaImage
         src={event.logo.src}
+        widths={event.logo.widths}
         width={event.logo.width}
         height={event.logo.height}
         alt=""
