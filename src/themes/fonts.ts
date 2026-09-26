@@ -1,4 +1,13 @@
-import { Cinzel, Cormorant_SC, EB_Garamond, Ephesis, Great_Vibes } from 'next/font/google';
+import {
+  Alegreya_SC,
+  Allura,
+  Carattere,
+  Cinzel,
+  Cormorant_SC,
+  EB_Garamond,
+  Ephesis,
+  Great_Vibes,
+} from 'next/font/google';
 
 import { DEFAULT_THEME_ID, isThemeId, type ThemeId } from '.';
 
@@ -33,8 +42,8 @@ const praiaRosaScript = Ephesis({
   variable: '--font-theme-script',
 });
 
-/** Praia Rosa: true small caps, like "Com a benção de Deus" in the reference. */
-const praiaRosaCaps = Cormorant_SC({
+/** Praia Rosa and Jardim: true small caps, like "Com a benção de Deus" in the reference. */
+const cormorantCaps = Cormorant_SC({
   weight: ['500', '700'],
   subsets: ['latin'],
   display: 'swap',
@@ -60,6 +69,33 @@ const champanheCaps = Cinzel({
   variable: '--font-theme-caps',
 });
 
+/** Jardim: light, flowing script, as wide as Ephesis (the titles' sizes were set for it). */
+const jardimScript = Allura({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+  preload: false,
+  variable: '--font-theme-script',
+});
+
+/** Imbondeiro: warm calligraphic script with strong strokes, as wide as Ephesis. */
+const imbondeiroScript = Carattere({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+  preload: false,
+  variable: '--font-theme-script',
+});
+
+/** Imbondeiro: sturdy calligraphic small caps; its lines are as long as Cormorant SC's. */
+const imbondeiroCaps = Alegreya_SC({
+  weight: ['500', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+  preload: false,
+  variable: '--font-theme-caps',
+});
+
 interface ThemeFontSet {
   /** next/font classes that declare the theme's `--font-theme-*` variables. */
   className: string;
@@ -69,12 +105,20 @@ interface ThemeFontSet {
 
 const THEME_FONTS: Record<ThemeId, ThemeFontSet> = {
   'praia-rosa': {
-    className: [praiaRosaScript.variable, praiaRosaCaps.variable, bodyFont.variable].join(' '),
+    className: [praiaRosaScript.variable, cormorantCaps.variable, bodyFont.variable].join(' '),
     names: { script: 'Ephesis', caps: 'Cormorant SC', body: 'EB Garamond' },
   },
   champanhe: {
     className: [champanheScript.variable, champanheCaps.variable, bodyFont.variable].join(' '),
     names: { script: 'Great Vibes', caps: 'Cinzel', body: 'EB Garamond' },
+  },
+  jardim: {
+    className: [jardimScript.variable, cormorantCaps.variable, bodyFont.variable].join(' '),
+    names: { script: 'Allura', caps: 'Cormorant SC', body: 'EB Garamond' },
+  },
+  imbondeiro: {
+    className: [imbondeiroScript.variable, imbondeiroCaps.variable, bodyFont.variable].join(' '),
+    names: { script: 'Carattere', caps: 'Alegreya SC', body: 'EB Garamond' },
   },
 };
 

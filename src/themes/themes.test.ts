@@ -86,6 +86,8 @@ describe('theme registry', () => {
   it('falls back to the default theme for unknown or missing IDs', () => {
     expect(getTheme('praia-rosa').id).toBe('praia-rosa');
     expect(getTheme('champanhe').id).toBe('champanhe');
+    expect(getTheme('jardim').id).toBe('jardim');
+    expect(getTheme('imbondeiro').id).toBe('imbondeiro');
     expect(getTheme('does-not-exist').id).toBe(DEFAULT_THEME_ID);
     expect(getTheme(null).id).toBe(DEFAULT_THEME_ID);
     expect(getTheme(undefined).id).toBe(DEFAULT_THEME_ID);
@@ -131,5 +133,11 @@ describe('themeCssVariables', () => {
     expect(themeCssVariables(theme)).toMatchObject({ '--theme-caps-size-adjust': 'none' });
     const adjusted = { ...theme, fonts: { ...theme.fonts, capsSizeAdjust: 0.42 } };
     expect(themeCssVariables(adjusted)).toMatchObject({ '--theme-caps-size-adjust': '0.42' });
+  });
+
+  it("passes on the theme's size adjustment of the script font", () => {
+    expect(themeCssVariables(theme)).toMatchObject({ '--theme-script-size-adjust': 'none' });
+    const adjusted = { ...theme, fonts: { ...theme.fonts, scriptSizeAdjust: 0.28 } };
+    expect(themeCssVariables(adjusted)).toMatchObject({ '--theme-script-size-adjust': '0.28' });
   });
 });

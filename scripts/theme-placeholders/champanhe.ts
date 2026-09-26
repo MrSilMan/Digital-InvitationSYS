@@ -3,9 +3,17 @@
  * eucalyptus and a few gilded leaves, and a floral moon-gate arch for the hero pages
  * (README → Themes → Artwork).
  */
-import { paperTexture, r2, seeded, svgArtwork, type ArtworkFile, type Random } from './shared';
-
-type Point = [number, number];
+import {
+  paperTexture,
+  r2,
+  radians,
+  seeded,
+  stem,
+  svgArtwork,
+  type ArtworkFile,
+  type Point,
+  type Random,
+} from './shared';
 
 const DEFS = `
   <filter id="watercolor" x="-25%" y="-25%" width="150%" height="150%">
@@ -40,30 +48,6 @@ const DEFS = `
 `;
 
 const PETAL_EDGE = '#d2b995';
-const radians = (degrees: number) => (degrees * Math.PI) / 180;
-
-/** A gently curved stem: a quadratic curve from (x, y) towards `angle`, bent sideways by `bend`
- * (a share of the length). */
-function stem(x: number, y: number, length: number, angleDeg: number, bend: number) {
-  const [ux, uy] = [Math.cos(radians(angleDeg)), Math.sin(radians(angleDeg))];
-  const tip: Point = [x + ux * length, y + uy * length];
-  const control: Point = [
-    x + ux * length * 0.5 - uy * bend * length,
-    y + uy * length * 0.5 + ux * bend * length,
-  ];
-  const at = (t: number): Point => [
-    (1 - t) ** 2 * x + 2 * (1 - t) * t * control[0] + t ** 2 * tip[0],
-    (1 - t) ** 2 * y + 2 * (1 - t) * t * control[1] + t ** 2 * tip[1],
-  ];
-  const tangent = (t: number): Point => {
-    const dx = 2 * (1 - t) * (control[0] - x) + 2 * t * (tip[0] - control[0]);
-    const dy = 2 * (1 - t) * (control[1] - y) + 2 * t * (tip[1] - control[1]);
-    const norm = Math.hypot(dx, dy) || 1;
-    return [dx / norm, dy / norm];
-  };
-  const d = `M${r2(x)} ${r2(y)} Q${r2(control[0])} ${r2(control[1])} ${r2(tip[0])} ${r2(tip[1])}`;
-  return { at, tangent, d };
-}
 
 /** A cream rose: five outer petals around a cup with a swirl. */
 function rose(cx: number, cy: number, radius: number, fill: string, random: Random): string {

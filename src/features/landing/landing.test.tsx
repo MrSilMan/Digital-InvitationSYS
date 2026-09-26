@@ -23,7 +23,16 @@ vi.mock('next/font/google', () => {
     variable,
     style: { fontFamily: 'serif' },
   });
-  return { Cinzel: font, Cormorant_SC: font, EB_Garamond: font, Ephesis: font, Great_Vibes: font };
+  return {
+    Alegreya_SC: font,
+    Allura: font,
+    Carattere: font,
+    Cinzel: font,
+    Cormorant_SC: font,
+    EB_Garamond: font,
+    Ephesis: font,
+    Great_Vibes: font,
+  };
 });
 
 const phone = '+244923456789';

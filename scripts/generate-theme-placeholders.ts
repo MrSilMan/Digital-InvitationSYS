@@ -16,6 +16,8 @@ import path from 'node:path';
 import { isThemeId, THEMES, type ThemeId } from '@/themes';
 
 import { champanheArtwork } from './theme-placeholders/champanhe';
+import { imbondeiroArtwork } from './theme-placeholders/imbondeiro';
+import { jardimArtwork } from './theme-placeholders/jardim';
 import { praiaRosaArtwork } from './theme-placeholders/praia-rosa';
 import type { ArtworkFile } from './theme-placeholders/shared';
 
@@ -23,6 +25,8 @@ import type { ArtworkFile } from './theme-placeholders/shared';
 const ARTWORK: Record<ThemeId, readonly ArtworkFile[]> = {
   'praia-rosa': praiaRosaArtwork,
   champanhe: champanheArtwork,
+  jardim: jardimArtwork,
+  imbondeiro: imbondeiroArtwork,
 };
 
 const args = process.argv.slice(2);

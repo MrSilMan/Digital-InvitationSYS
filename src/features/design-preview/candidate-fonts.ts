@@ -1,6 +1,9 @@
 import {
+  Alegreya_SC,
+  Alex_Brush,
   Allison,
   Allura,
+  Carattere,
   Cinzel,
   Cormorant_Garamond,
   Cormorant_SC,
@@ -10,6 +13,7 @@ import {
   Mea_Culpa,
   Parisienne,
   Pinyon_Script,
+  Spectral_SC,
 } from 'next/font/google';
 
 /**
@@ -39,6 +43,13 @@ const pinyonScript = Pinyon_Script({
   display: 'swap',
   preload: false,
 });
+const alexBrush = Alex_Brush({
+  weight: '400',
+  subsets: ['latin'],
+  display: 'swap',
+  preload: false,
+});
+const carattere = Carattere({ weight: '400', subsets: ['latin'], display: 'swap', preload: false });
 const cormorantSc = Cormorant_SC({
   weight: ['500', '700'],
   subsets: ['latin'],
@@ -46,6 +57,18 @@ const cormorantSc = Cormorant_SC({
   preload: false,
 });
 const cinzel = Cinzel({ subsets: ['latin'], display: 'swap', preload: false });
+const alegreyaSc = Alegreya_SC({
+  weight: ['500', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+  preload: false,
+});
+const spectralSc = Spectral_SC({
+  weight: ['500', '700'],
+  subsets: ['latin'],
+  display: 'swap',
+  preload: false,
+});
 const cormorantGaramond = Cormorant_Garamond({
   weight: ['500', '600'],
   subsets: ['latin'],
@@ -69,11 +92,15 @@ export const SCRIPT_CANDIDATES: readonly FontCandidate[] = [
   { name: 'Ephesis', className: ephesis.className, inBrief: false },
   { name: 'Mea Culpa', className: meaCulpa.className, inBrief: false },
   { name: 'Pinyon Script', className: pinyonScript.className, inBrief: false },
+  { name: 'Alex Brush', className: alexBrush.className, inBrief: false },
+  { name: 'Carattere', className: carattere.className, inBrief: false },
 ];
 
 export const CAPS_CANDIDATES: readonly FontCandidate[] = [
   { name: 'Cormorant SC', className: cormorantSc.className, inBrief: true },
   { name: 'Cinzel', className: cinzel.className, inBrief: true },
+  { name: 'Alegreya SC', className: alegreyaSc.className, inBrief: false },
+  { name: 'Spectral SC', className: spectralSc.className, inBrief: false },
 ];
 
 export const BODY_CANDIDATES: readonly FontCandidate[] = [

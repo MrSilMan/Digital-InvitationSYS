@@ -21,6 +21,33 @@ export function seeded(seed: number): Random {
 /** Rounds to 2 decimals, to keep the SVG source short. */
 export const r2 = (value: number) => Math.round(value * 100) / 100;
 
+export type Point = [number, number];
+
+export const radians = (degrees: number) => (degrees * Math.PI) / 180;
+
+/** A gently curved stem: a quadratic curve from (x, y) towards `angle`, bent sideways by `bend`
+ * (a share of the length). */
+export function stem(x: number, y: number, length: number, angleDeg: number, bend: number) {
+  const [ux, uy] = [Math.cos(radians(angleDeg)), Math.sin(radians(angleDeg))];
+  const tip: Point = [x + ux * length, y + uy * length];
+  const control: Point = [
+    x + ux * length * 0.5 - uy * bend * length,
+    y + uy * length * 0.5 + ux * bend * length,
+  ];
+  const at = (t: number): Point => [
+    (1 - t) ** 2 * x + 2 * (1 - t) * t * control[0] + t ** 2 * tip[0],
+    (1 - t) ** 2 * y + 2 * (1 - t) * t * control[1] + t ** 2 * tip[1],
+  ];
+  const tangent = (t: number): Point => {
+    const dx = 2 * (1 - t) * (control[0] - x) + 2 * t * (tip[0] - control[0]);
+    const dy = 2 * (1 - t) * (control[1] - y) + 2 * t * (tip[1] - control[1]);
+    const norm = Math.hypot(dx, dy) || 1;
+    return [dx / norm, dy / norm];
+  };
+  const d = `M${r2(x)} ${r2(y)} Q${r2(control[0])} ${r2(control[1])} ${r2(tip[0])} ${r2(tip[1])}`;
+  return { at, tangent, d };
+}
+
 /** One file of a theme's placeholder artwork. */
 export interface ArtworkFile {
   /** File name in public/themes/<theme>/. */

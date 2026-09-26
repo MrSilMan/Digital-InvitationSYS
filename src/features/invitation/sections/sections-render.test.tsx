@@ -11,7 +11,7 @@ import { SaveTheDatePage } from '@/features/invitation/sections/save-the-date';
 import { ScheduleSection } from '@/features/invitation/sections/schedule-section';
 import type { SectionProps } from '@/features/invitation/sections/types';
 import { guestFixture, invitationEventFixture } from '@/features/invitation/test-fixtures';
-import { getTheme } from '@/themes';
+import { getTheme, THEMES } from '@/themes';
 
 // renderToStaticMarkup cannot wait for next/dynamic's lazy chunk (Next.js preloads it when it
 // renders the page): render the form itself. The lazy loading is covered by the e2e tests.
@@ -261,10 +261,17 @@ describe('buttons', () => {
       schedule: ['circle', 'circle'],
       closing: ['circle'],
     });
+    for (const { id, buttonShape: shape } of Object.values(THEMES)) {
+      expect(render(id)).toMatchObject({
+        saveTheDate: [shape],
+        schedule: [shape, shape],
+        closing: [shape],
+      });
+    }
   });
 
   it('stay round for WhatsApp and a pill for "Copiar IBAN" in every theme', () => {
-    for (const themeId of ['praia-rosa', 'champanhe']) {
+    for (const themeId of Object.keys(THEMES)) {
       expect(render(themeId)).toMatchObject({
         whatsapp: ['circle', 'circle'],
         gifts: ['pill'],

@@ -65,6 +65,11 @@ export interface ThemeFonts {
    * larger needs this to keep lines from wrapping. Applied by the `font-caps` class.
    */
   capsSizeAdjust?: number;
+  /**
+   * CSS `font-size-adjust` for the script font. The script sizes were set for Ephesis; a wider
+   * script needs this to keep the couple's names on one line. Applied by the `font-script` class.
+   */
+  scriptSizeAdjust?: number;
 }
 
 /**

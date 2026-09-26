@@ -37,6 +37,8 @@ export function demoWeddingDate(now: Date): Date {
 const DRESS_CODE_COLORS: Record<ThemeId, string[]> = {
   'praia-rosa': ['#A8C5D6', '#E7B7C3', '#857D45', '#F3E9DC'],
   champanhe: ['#D8C3A5', '#B08D57', '#8A9A80', '#5E5247'],
+  jardim: ['#A9B9A0', '#6F8C6A', '#D9BFB0', '#4F5D52'],
+  imbondeiro: ['#C46A43', '#D9A55E', '#7F7A4C', '#5B3B2B'],
 };
 
 export const DEMO_PARENTS = {

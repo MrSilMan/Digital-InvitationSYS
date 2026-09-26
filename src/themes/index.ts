@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react';
 
 import { champanhe } from './champanhe';
+import { imbondeiro } from './imbondeiro';
+import { jardim } from './jardim';
 import type { ThemeOverrides } from './overrides';
 import { praiaRosa } from './praia-rosa';
 import type { Decoration, ThemeArea, ThemeColors, ThemeDefinition } from './types';
@@ -11,6 +13,8 @@ export type { Decoration, ThemeArea, ThemeColors, ThemeDefinition } from './type
 export const THEMES = {
   'praia-rosa': praiaRosa,
   champanhe,
+  jardim,
+  imbondeiro,
 } as const satisfies Record<string, ThemeDefinition>;
 
 export type ThemeId = keyof typeof THEMES;
@@ -64,6 +68,8 @@ export function themeCssVariables(
     '--theme-font-body': theme.fonts.body,
     '--theme-caps-size-adjust':
       theme.fonts.capsSizeAdjust === undefined ? 'none' : String(theme.fonts.capsSizeAdjust),
+    '--theme-script-size-adjust':
+      theme.fonts.scriptSizeAdjust === undefined ? 'none' : String(theme.fonts.scriptSizeAdjust),
     '--theme-texture': theme.texture ? `url("${theme.texture.src}")` : 'none',
   } as CSSProperties;
 }

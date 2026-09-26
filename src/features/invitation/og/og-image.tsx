@@ -74,6 +74,30 @@ const OG_FONTS: Record<ThemeId, OgFonts> = {
       { file: 'cinzel-latin-ext-700-normal.woff', name: 'Cinzel Ext', weight: 700 },
     ],
   },
+  jardim: {
+    script: '"Allura", "Allura Ext"',
+    caps: '"Cormorant SC", "Cormorant SC Ext"',
+    files: [
+      { file: 'allura-latin-400-normal.woff', name: 'Allura', weight: 400 },
+      { file: 'allura-latin-ext-400-normal.woff', name: 'Allura Ext', weight: 400 },
+      { file: 'cormorant-sc-latin-500-normal.woff', name: 'Cormorant SC', weight: 500 },
+      { file: 'cormorant-sc-latin-ext-500-normal.woff', name: 'Cormorant SC Ext', weight: 500 },
+      { file: 'cormorant-sc-latin-700-normal.woff', name: 'Cormorant SC', weight: 700 },
+      { file: 'cormorant-sc-latin-ext-700-normal.woff', name: 'Cormorant SC Ext', weight: 700 },
+    ],
+  },
+  imbondeiro: {
+    script: '"Carattere", "Carattere Ext"',
+    caps: '"Alegreya SC", "Alegreya SC Ext"',
+    files: [
+      { file: 'carattere-latin-400-normal.woff', name: 'Carattere', weight: 400 },
+      { file: 'carattere-latin-ext-400-normal.woff', name: 'Carattere Ext', weight: 400 },
+      { file: 'alegreya-sc-latin-500-normal.woff', name: 'Alegreya SC', weight: 500 },
+      { file: 'alegreya-sc-latin-ext-500-normal.woff', name: 'Alegreya SC Ext', weight: 500 },
+      { file: 'alegreya-sc-latin-700-normal.woff', name: 'Alegreya SC', weight: 700 },
+      { file: 'alegreya-sc-latin-ext-700-normal.woff', name: 'Alegreya SC Ext', weight: 700 },
+    ],
+  },
 };
 
 /** The fonts of a theme; unknown IDs get the default theme's, like getTheme. */

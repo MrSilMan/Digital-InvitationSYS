@@ -116,6 +116,16 @@ export const landing = {
         description:
           'Marfim quente, dourado antigo, rosas creme e capim-dos-pampas, com botões redondos dourados. Uma elegância intemporal, para salões e grandes celebrações.',
       },
+      jardim: {
+        tagline: 'Fresco, ao ar livre',
+        description:
+          'Papel de aguarela verde-salva, títulos manuscritos em verde-floresta, rosas brancas, gipsófila, eucalipto e raminhos de oliveira, com uma pérgola de jardim coberta de verdura. Para quem vai dizer «sim» entre árvores e flores.',
+      },
+      imbondeiro: {
+        tagline: 'Quente, ao pôr do sol',
+        description:
+          'Papel cor de areia, títulos cor de terracota, proteas-rei, leques de palmeira secos e capim da savana, com um imbondeiro ao pôr do sol e botões redondos. Para um casamento com as cores e a alma de Angola.',
+      },
     },
   },
   journey: {

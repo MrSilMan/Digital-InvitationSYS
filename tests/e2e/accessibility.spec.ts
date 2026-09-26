@@ -124,12 +124,16 @@ test.describe('accessibility: guest pages', () => {
     await expectAccessible(page, 'landing page, answer open');
   });
 
-  test('a theme demo', async ({ page }) => {
-    await page.goto('/demonstracao/praia-rosa');
-    await expectAccessible(page, 'theme demo, envelope');
-    await openEnvelope(page);
-    await expectAccessible(page, 'theme demo, invitation');
-  });
+  // Champanhe is checked on its seeded invitation above; the other themes (colours, contrast) on
+  // their demos.
+  for (const themeId of ['praia-rosa', 'jardim', 'imbondeiro']) {
+    test(`the ${themeId} theme demo`, async ({ page }) => {
+      await page.goto(`/demonstracao/${themeId}`);
+      await expectAccessible(page, `${themeId} demo, envelope`);
+      await openEnvelope(page);
+      await expectAccessible(page, `${themeId} demo, invitation`);
+    });
+  }
 
   test('the landing page works with the keyboard alone', async ({ page }) => {
     await page.goto('/');

@@ -118,8 +118,9 @@ npx vitest run path/to/file.test.ts
   Fonts use `preload: false`: next/font preloads per route, not per theme, so a preloaded theme
   font is downloaded by every guest, and the envelope needs only the script and caps fonts (keep
   its text in those: body-font text there downloads the body font too).
-- Set the caps font only with the `font-caps` class: it also applies the theme's `capsSizeAdjust`
-  (Champanhe's Cinzel runs ~20% larger). Never `font-family: var(--theme-font-caps)` in plain CSS.
+- Set the caps font only with the `font-caps` class, the script font only with `font-script`: they
+  also apply the theme's `capsSizeAdjust` / `scriptSizeAdjust` (Champanhe's Cinzel runs ~20%
+  larger, Jardim's Allura ~6% wider). Never `font-family: var(--theme-font-*)` in plain CSS.
 - Main actions take `theme.buttonShape` (`PillButton shape`, `RsvpDialog shape`); WhatsApp RSVP
   buttons are always circles, buttons inside a form or box always pills.
 - Invitation components use the Tailwind tokens (`text-script`, `bg-accent`, `text-ink`,

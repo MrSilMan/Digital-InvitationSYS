@@ -745,14 +745,19 @@ The worker runs the TypeScript source with `tsx` for now; Phase 10b builds its p
 ## Themes
 
 An invitation's look is its **theme** (`Event.themeId`) plus the couple's colour **overrides**
-(`Event.themeOverrides`). Two themes exist (the couple will pick one in the dashboard, Phase 7):
+(`Event.themeOverrides`). Four themes exist (the couple picks one in the editor's first tab):
 
-| Theme                                  | Look                                                                                                                                           | Demo link                                              |
-| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| **Praia Rosa** (`praia-rosa`, default) | Pale-blue watercolour paper, pink script, olive-gold accents, pink rose corners, a beach wedding on the hero pages, pill buttons               | `/c/braulio-e-nanda/demo-familia-silva-001`            |
-| **Champanhe** (`champanhe`)            | Warm ivory paper, antique-gold script and accents, dark serif text, cream roses with pampas grass, a floral moon-gate arch, round gold buttons | `/c/braulio-e-nanda-champanhe/demo-champanhe-silva-01` |
+| Theme                                  | Look                                                                                                                                                      | Demo link                                              |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| **Praia Rosa** (`praia-rosa`, default) | Pale-blue watercolour paper, pink script, olive-gold accents, pink rose corners, a beach wedding on the hero pages, pill buttons                          | `/c/braulio-e-nanda/demo-familia-silva-001`            |
+| **Champanhe** (`champanhe`)            | Warm ivory paper, antique-gold script and accents, dark serif text, cream roses with pampas grass, a floral moon-gate arch, round gold buttons            | `/c/braulio-e-nanda-champanhe/demo-champanhe-silva-01` |
+| **Jardim** (`jardim`)                  | Pale sage paper, forest-green script, olive-green accents, white roses with baby's breath, eucalyptus and olive sprigs, a garden pergola, pill buttons    | `/demonstracao/jardim`                                 |
+| **Imbondeiro** (`imbondeiro`)          | Warm sand paper, terracotta script, rust accents, dark brown text, king proteas with dried palm fans and savanna grass, a baobab at sunset, round buttons | `/demonstracao/imbondeiro`                             |
 
-- **A theme is plain data** ([src/themes/praia-rosa.ts](src/themes/praia-rosa.ts),
+Jardim and Imbondeiro have no seeded event: their demos (`/demonstracao/<id>`, no database) show
+every section.
+
+- **A theme is plain data** (e.g. [src/themes/praia-rosa.ts](src/themes/praia-rosa.ts),
   [src/themes/champanhe.ts](src/themes/champanhe.ts)): colours, the envelope and wax seal colours,
   font variables, artwork files with their sizes, decorations per section, the hero illustration
   and the button shape. It imports no React or `next/font` code, so server code and tests can use
@@ -784,15 +789,19 @@ An invitation's look is its **theme** (`Event.themeId`) plus the couple's colour
 
 Self-hosted with `next/font` (the guest's phone never contacts Google; only the weights in use are
 downloaded), declared in [src/themes/fonts.ts](src/themes/fonts.ts). Each theme has its own script
-and small-caps fonts; the body font is shared. They were chosen side by side on `/design` (Praia
-Rosa's against the reference):
+font and a small-caps font (Jardim shares Praia Rosa's). They were chosen side by side on `/design`
+(Praia Rosa's against the reference):
 
-| Role                                 | Praia Rosa                                                        | Champanhe                                                  |
-| ------------------------------------ | ----------------------------------------------------------------- | ---------------------------------------------------------- |
-| Script titles and the couple's names | Ephesis: thin, relaxed brush-pen script, closest to the reference | Great Vibes: formal calligraphy, like gold-foil stationery |
-| Small caps ("Com a benção de Deus"…) | Cormorant SC: true small caps, elegant at small sizes             | Cinzel: engraved Roman capitals, lower case as small caps  |
-| Body text (message, rules, timeline) | EB Garamond: sturdy serif, readable on small screens              | EB Garamond                                                |
-| Buttons                              | System sans: clean labels like the reference, nothing to download | System sans                                                |
+| Theme      | Script titles and the couple's names                              | Small caps ("Com a benção de Deus"…)                      |
+| ---------- | ----------------------------------------------------------------- | --------------------------------------------------------- |
+| Praia Rosa | Ephesis: thin, relaxed brush-pen script, closest to the reference | Cormorant SC: true small caps, elegant at small sizes     |
+| Champanhe  | Great Vibes: formal calligraphy, like gold-foil stationery        | Cinzel: engraved Roman capitals, lower case as small caps |
+| Jardim     | Allura: light, flowing script                                     | Cormorant SC                                              |
+| Imbondeiro | Carattere: warm calligraphy with strong strokes                   | Alegreya SC: sturdy calligraphic small caps               |
+
+Every theme sets body text (message, rules, timeline) in EB Garamond, a sturdy serif readable on
+small screens, and button labels in the system sans (clean labels like the reference, nothing to
+download).
 
 - **Preloading:** none. Next.js preloads every font a route imports, whatever the page's theme,
   so preloaded theme fonts would reach every guest; and the envelope, the first screen, uses only
@@ -803,6 +812,11 @@ Rosa's against the reference):
   larger, so Champanhe sets `fonts.capsSizeAdjust` (CSS `font-size-adjust`, which the `font-caps`
   class applies to the web font and its fallback alike) and its lines break like Praia Rosa's.
   Always set the caps font with the `font-caps` class, never with `font-family` in plain CSS.
+  Alegreya SC's lines are as long as Cormorant SC's (measured: +2%), so Imbondeiro needs none.
+  Script sizes were set for Ephesis, and `fonts.scriptSizeAdjust` (applied by `font-script`) does
+  the same for the script font: Jardim draws Allura (+6% wider) at 95%, so the couple's names on
+  the closing page stay on one line. Great Vibes (+4%) and Carattere (−3%) need none. Keep the
+  adjustment small: Parisienne (+22%) and Alex Brush (+11%) were rejected rather than shrunk.
 - **Figures:** numbers use lining figures everywhere; the serif fonts default to old-style ones.
 - **Preview image:** `next/og` cannot use `next/font`: the WhatsApp preview reads each theme's font
   files from [assets/fonts/](assets/fonts/) (`OG_FONTS` in
@@ -827,17 +841,21 @@ rename one.
 ### Artwork
 
 The files in `public/themes/<theme>/` are **placeholders**, in the positions and style of the
-reference (Praia Rosa) or of the brief (Champanhe), drawn by `npm run themes:placeholders`
-([scripts/theme-placeholders/](scripts/theme-placeholders/)). Licensed artwork replaces them file
-for file. Both themes use the same slots:
+reference (Praia Rosa), of the brief (Champanhe) or of their own concept (Jardim, Imbondeiro), drawn
+by `npm run themes:placeholders` ([scripts/theme-placeholders/](scripts/theme-placeholders/)).
+Licensed artwork replaces them file for file. Every theme uses the same slots:
 
-| File                                 | Pixels    | Where                                                                         | Requirements                                                             |
-| ------------------------------------ | --------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `background.webp`                    | 1080×1920 | Paper texture behind every section                                            | Opaque. Repeats vertically at full width: top and bottom edges must join |
-| `floral-corner.webp`                 | 640×640   | Section corners                                                               | Transparent. Drawn for the **top-left** corner; other corners mirror it  |
-| `floral-corner-alt.webp`             | 640×640   | A second corner arrangement                                                   | Same as above                                                            |
-| `floral-garland.webp`                | 1080×440  | Top edge of some sections (mirrored at the bottom)                            | Transparent. Drawn for the top edge, flowers along the top-left          |
-| `hero-beach.webp` / `hero-arch.webp` | 1080×900  | Bottom of the invitation card and Save the Date (beach wedding / floral arch) | Transparent at the top, so the paper shows through above the scene       |
+| File                     | Pixels    | Where                                                   | Requirements                                                             |
+| ------------------------ | --------- | ------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `background.webp`        | 1080×1920 | Paper texture behind every section                      | Opaque. Repeats vertically at full width: top and bottom edges must join |
+| `floral-corner.webp`     | 640×640   | Section corners                                         | Transparent. Drawn for the **top-left** corner; other corners mirror it  |
+| `floral-corner-alt.webp` | 640×640   | A second corner arrangement                             | Same as above                                                            |
+| `floral-garland.webp`    | 1080×440  | Top edge of some sections (mirrored at the bottom)      | Transparent. Drawn for the top edge, flowers along the top-left          |
+| `hero-<scene>.webp`      | 1080×900  | Bottom of the invitation card and Save the Date (below) | Transparent at the top, so the paper shows through above the scene       |
+
+The hero scenes: `hero-beach.webp` (Praia Rosa, a beach wedding), `hero-arch.webp` (Champanhe, a
+floral moon-gate arch), `hero-pergola.webp` (Jardim, a garden pergola) and `hero-baobab.webp`
+(Imbondeiro, a baobab against a low sun).
 
 Which decorations each section shows, where and how big, is set in the theme's file
 (`src/themes/<id>.ts`).
@@ -847,7 +865,10 @@ under the same name. If its size or aspect ratio changes, update `width` and `he
 file (a unit test compares them with the files). Keep soft, half-transparent edges to what the art
 needs: the image optimizer keeps the alpha channel lossless, so feathery transparency costs guests
 far more bytes than detail in the colours. At a phone's 828 px, the Champanhe hero placeholder
-(pampas plumes) is about 75 KB; Praia Rosa's is about 20 KB.
+(pampas plumes) is about 75 KB; Praia Rosa's is about 20 KB. Jardim's pergola weighs about as much
+as Champanhe's arch and Imbondeiro's baobab about two thirds of it; Jardim's corners (many small
+leaves, baby's breath) are about 20% heavier than Champanhe's. Fine detail everywhere costs bytes
+too: each baby's breath spray is a pale cloud with the flowers inside it, not loose dots.
 
 `npm run themes:placeholders` only draws missing files; `-- --theme=<id>` limits it to one theme,
 and `-- --theme=<id> --force` redraws that theme's files. Never force a theme whose real artwork is
@@ -945,8 +966,9 @@ downloaded until it opens.
 
 - **Automated:** [tests/e2e/accessibility.spec.ts](tests/e2e/accessibility.spec.ts) runs axe-core
   (WCAG 2.2 A and AA rules) on every main page and state: the envelope and the open invitation with
-  its RSVP form, both themes, the lightbox, the Save the Date and its RSVP dialog, the not-found
-  page, the landing page (also with an answer open), a theme demo, the login; the couple's events, overview, guest list with its add (also with errors),
+  its RSVP form, every theme (Champanhe on its seeded invitation, the others on their demos), the
+  lightbox, the Save the Date and its RSVP dialog, the not-found page, the landing page (also with
+  an answer open), the login; the couple's events, overview, guest list with its add (also with errors),
   import and send dialogs, every editor tab and the account page; the admin lists, forms, audit
   log, an event and an account. Every scan must be clean. Lighthouse scores 100 on the key pages.
 - **Keyboard**, tested in the same spec: the envelope is the first stop and opens with Enter,
