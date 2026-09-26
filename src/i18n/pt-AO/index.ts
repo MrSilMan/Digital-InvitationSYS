@@ -18,12 +18,272 @@ export const app = {
   description: 'Convites de casamento digitais, interativos e personalizados para cada convidado.',
 } as const;
 
+/**
+ * The public landing page (/) and the theme demos (/demonstracao/<tema>). Couples do not sign up
+ * on their own: every "create" button opens a WhatsApp chat with the team.
+ */
 export const landing = {
-  eyebrow: 'Convites de casamento',
-  title: 'Convites Digitais',
-  subtitle:
-    'Convites elegantes e personalizados, enviados pelo WhatsApp, com confirmação de presença.',
-  comingSoon: 'Em breve',
+  metadata: {
+    title: 'Convites Digitais — convites de casamento digitais',
+    description:
+      'Convites de casamento elegantes e interativos, com o nome de cada convidado, enviados pelo WhatsApp: envelope com música, contagem regressiva, galeria de fotos e confirmação de presença.',
+    imageAlt: 'Convites Digitais: convites de casamento digitais',
+    imageTagline: 'Convites de casamento digitais',
+  },
+  skipToContent: 'Saltar para o conteúdo',
+  nav: {
+    label: 'Secções da página',
+    home: 'Convites Digitais: página inicial',
+    themes: 'Temas',
+    experience: 'A experiência',
+    features: 'O que inclui',
+    howItWorks: 'Como funciona',
+    faq: 'Perguntas',
+    login: 'Entrar',
+  },
+  cta: {
+    create: 'Criar o nosso convite',
+    createShort: 'Criar convite',
+    /** Read after the button text by screen readers: the button leaves the site. */
+    opensWhatsapp: '(abre o WhatsApp)',
+    seeThemes: 'Ver os temas',
+    hasAccount: 'Já têm conta?',
+    login: 'Entrar no painel',
+    /** Pre-filled WhatsApp messages to the team. */
+    message: 'Olá! Gostaríamos de criar o nosso convite de casamento digital.',
+    messageWithTheme:
+      'Olá! Gostaríamos de criar o nosso convite de casamento digital com o tema {theme}.',
+  },
+  hero: {
+    eyebrow: 'Convites de casamento digitais',
+    titleScript: 'O vosso sim',
+    titleCaps: 'merece um convite à altura',
+    lead: 'Um convite elegante e interativo, com o nome de cada convidado, enviado pelo WhatsApp. Envelope com música, contagem regressiva, fotos, o programa do dia e a confirmação de presença: tudo num só link.',
+    highlights: ['Abre em qualquer telemóvel', 'Nada para instalar', 'Respostas no vosso painel'],
+    /** {theme} */
+    phonesCaption:
+      'Um convite de exemplo no tema {theme}: o envelope selado e o cartão com o nome do convidado.',
+    sampleGuest: 'Família Silva',
+  },
+  tryIt: {
+    title: 'Experimentem com os vossos nomes',
+    hint: 'Os convites de exemplo mudam enquanto escrevem.',
+    groom: 'Noivo',
+    bride: 'Noiva',
+  },
+  /** The couple of every example (as in the demo event). */
+  sampleCouple: { groom: 'Braúlio', bride: 'Nanda' },
+  ribbon: {
+    label: 'O que cada convite traz',
+    pause: 'Parar a faixa em movimento',
+    items: [
+      'Um convite para cada convidado',
+      'Enviado pelo WhatsApp',
+      'Envelope com música',
+      'Contagem regressiva',
+      'Galeria de fotos',
+      'Programa do dia',
+      'Confirmação de presença',
+      'Lista de presentes',
+      'Adicionar ao calendário',
+    ],
+  },
+  themes: {
+    script: 'Os nossos',
+    caps: 'temas',
+    intro:
+      'Cada tema tem o seu papel, as suas flores, as suas cores e os seus tipos de letra. Escolham o que tem a cara do vosso casamento.',
+    palette: 'Cores',
+    fonts: 'Tipos de letra',
+    buttons: 'Botões',
+    buttonShapes: { pill: 'Alongados', circle: 'Redondos' },
+    demo: 'Ver demonstração',
+    /** Read by screen readers after "Ver demonstração". */
+    demoSuffix: 'do tema {theme}',
+    choose: 'Quero este tema',
+    /** Read by screen readers after "Quero este tema". */
+    chooseSuffix: '({theme}; abre o WhatsApp)',
+    previewCaption: 'Save the Date de exemplo no tema {theme}.',
+    count: { one: 'tema', other: 'temas' },
+    items: {
+      'praia-rosa': {
+        tagline: 'Romântico, à beira-mar',
+        description:
+          'Papel de aguarela azul-claro, títulos manuscritos em cor-de-rosa, detalhes em dourado-oliva e rosas nos cantos, com uma ilustração de casamento na praia. Para quem vai dizer «sim» com o mar como testemunha.',
+      },
+      champanhe: {
+        tagline: 'Clássico e dourado',
+        description:
+          'Marfim quente, dourado antigo, rosas creme e capim-dos-pampas, com botões redondos dourados. Uma elegância intemporal, para salões e grandes celebrações.',
+      },
+    },
+  },
+  journey: {
+    script: 'A experiência',
+    caps: 'do convidado',
+    intro: 'Do WhatsApp ao «sim, vou», sem sair do telemóvel.',
+    steps: [
+      {
+        title: 'Recebe o link',
+        text: 'Cada convidado recebe no WhatsApp uma mensagem com o seu link pessoal e a pré-visualização do convite.',
+      },
+      {
+        title: 'Abre o envelope',
+        text: 'O convite abre-se como uma carta, com o vosso monograma no selo e a vossa música a tocar.',
+      },
+      {
+        title: 'Confirma a presença',
+        text: 'Responde num toque, pelo formulário ou pelo WhatsApp, e a resposta aparece no vosso painel.',
+      },
+    ],
+    chatCaption: 'Mensagem de WhatsApp com o convite e a sua pré-visualização.',
+    envelopeCaption: 'O envelope fechado, com o nome do convidado.',
+    rsvpCaption: 'A presença confirmada e o aviso no painel dos noivos.',
+    chatTime: '10:24',
+    chatOnline: 'online',
+    chatReply: 'Que lindo! Lá estaremos.',
+    /** {guest} {people} */
+    dashboardNotice: '{guest} confirmou: {people}',
+    dashboardTitle: 'Painel dos noivos',
+  },
+  features: {
+    script: 'Tudo o que',
+    caps: 'o vosso convite inclui',
+    /** Example guests on the illustrations (as in the demo data). */
+    sampleGuests: ['Família Silva', 'Ana e Pedro', 'Família Neto', 'João Manuel'],
+    items: {
+      envelope: {
+        title: 'Envelope com música',
+        text: 'O convite abre-se com um toque no envelope, e a vossa música começa a tocar.',
+      },
+      personal: {
+        title: 'Um convite para cada convidado',
+        text: 'O nome de cada pessoa ou família no convite, com os lugares que lhe reservaram.',
+      },
+      rsvp: {
+        title: 'Confirmação de presença',
+        text: 'Pelo formulário, pelo WhatsApp ou pelos dois, até à data limite que escolherem.',
+      },
+      dashboard: {
+        title: 'O vosso painel',
+        text: 'A lista de convidados (também por CSV), os envios pelo WhatsApp, quem já abriu e quem confirmou.',
+      },
+      countdown: {
+        title: 'Contagem regressiva',
+        text: 'Dias, horas, minutos e segundos até ao grande dia.',
+      },
+      gallery: {
+        title: 'Galeria de fotos',
+        text: 'Até 12 fotos vossas, para ver em ecrã inteiro.',
+      },
+      schedule: {
+        title: 'Programa do dia',
+        text: 'Os locais com Google Maps e Waze, e o cronograma da festa, hora a hora.',
+      },
+      rules: {
+        title: 'Manual do bom convidado',
+        text: 'As regras da casa, com humor: pontualidade, fotos, pista de dança…',
+      },
+      dressCode: {
+        title: 'Traje sugerido',
+        text: 'O dress code, com a paleta de cores da festa.',
+      },
+      gifts: {
+        title: 'Lista de presentes',
+        text: 'A vossa lista ou o IBAN, com um botão para o copiar.',
+      },
+      saveTheDate: {
+        title: 'Save the Date',
+        text: 'Comecem por reservar a data e mostrem o convite completo mais tarde.',
+      },
+      light: {
+        title: 'Leve e rápido',
+        text: 'Pensado para telemóveis simples e dados móveis.',
+      },
+    },
+  },
+  howItWorks: {
+    script: 'Como',
+    caps: 'funciona',
+    steps: [
+      {
+        title: 'Falem connosco',
+        text: 'Enviem-nos uma mensagem pelo WhatsApp. Criamos a vossa conta e o vosso convite, no tema que escolherem.',
+      },
+      {
+        title: 'Personalizem tudo',
+        text: 'No vosso painel, editam nomes, datas, locais, textos, fotos e música, e veem o convite mudar ao vivo.',
+      },
+      {
+        title: 'Enviem pelo WhatsApp',
+        text: 'Adicionem os convidados, um a um ou por CSV, e enviem a cada um o seu link pessoal com a mensagem já escrita.',
+      },
+      {
+        title: 'Acompanhem as respostas',
+        text: 'Vejam quem abriu o convite, quem confirmou, quantas pessoas vêm e as mensagens de carinho.',
+      },
+    ],
+  },
+  faq: {
+    script: 'Perguntas',
+    caps: 'frequentes',
+    items: [
+      {
+        question: 'Os convidados precisam de instalar alguma aplicação?',
+        answer:
+          'Não. O convite abre no navegador do telemóvel, a partir do link recebido no WhatsApp, e funciona bem mesmo em telemóveis simples e com dados móveis.',
+      },
+      {
+        question: 'Cada convidado recebe um convite com o seu nome?',
+        answer:
+          'Sim. Cada convidado ou família tem o seu próprio link, com o nome no convite e o número de lugares reservados.',
+      },
+      {
+        question: 'Como é que os convidados confirmam a presença?',
+        answer:
+          'Pelo formulário do convite, pelo WhatsApp dos noivos, ou das duas formas: vocês escolhem, e definem a data limite para responder.',
+      },
+      {
+        question: 'Podemos alterar o convite depois de o enviar?',
+        answer:
+          'Sim. As alterações que guardarem no painel aparecem logo no convite, e o link de cada convidado continua o mesmo.',
+      },
+      {
+        question: 'Podemos usar as nossas fotos e a nossa música?',
+        answer:
+          'Sim: uma galeria com até 12 fotos, a vossa ilustração ou logótipo e uma música de fundo em MP3.',
+      },
+      {
+        question: 'Podemos começar por um Save the Date?',
+        answer:
+          'Sim. O convite pode começar como Save the Date, para reservar a data, e passar a convite completo quando quiserem.',
+      },
+      {
+        question: 'Quanto custa?',
+        answer:
+          'Depende do número de convidados. Falem connosco pelo WhatsApp e enviamos-vos um orçamento.',
+      },
+    ],
+  },
+  final: {
+    script: 'Vamos começar?',
+    text: 'Falem connosco pelo WhatsApp: criamos a vossa conta e ajudamos a preparar um convite à medida do vosso grande dia.',
+  },
+  footer: {
+    navLabel: 'Ligações do rodapé',
+    tagline: 'Convites de casamento digitais, elegantes e pessoais.',
+    /** {year} */
+    rights: '© {year} Convites Digitais',
+    contact: 'Falar connosco pelo WhatsApp',
+  },
+  demo: {
+    /** {theme} */
+    title: 'Demonstração do tema {theme}',
+    description:
+      'Um convite completo no tema {theme}, com dados de exemplo: envelope, música, contagem regressiva, fotos, programa do dia e confirmação de presença.',
+    badge: 'Demonstração',
+    back: 'Início',
+  },
 } as const;
 
 /** Login and logout (couples and admins). */

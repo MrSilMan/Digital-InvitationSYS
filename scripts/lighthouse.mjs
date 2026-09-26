@@ -18,8 +18,9 @@ import { parseArgs } from 'node:util';
 const LIGHTHOUSE = 'lighthouse@13.5.0';
 const OUT_DIR = '.lighthouse';
 
-/** The demo event's guest links (see the seed) and the login page. */
+/** The landing page, the demo event's guest links (see the seed) and the login page. */
 const KEY_PAGES = {
+  Landing: '/',
   'Praia Rosa': '/c/braulio-e-nanda/demo-familia-silva-001',
   Champanhe: '/c/braulio-e-nanda-champanhe/demo-champanhe-silva-01',
   'Save the Date': '/c/braulio-e-nanda-save-the-date/demo-std-familia-silva1',

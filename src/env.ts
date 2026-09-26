@@ -56,6 +56,17 @@ const serverEnvShape = z.object({
     .default('false')
     .transform((value) => value === 'true'),
 
+  /**
+   * The team's WhatsApp number: the landing page's "Criar o nosso convite" opens a chat with it
+   * (couples do not sign up on their own; the team creates their accounts). Required on staging
+   * and production; elsewhere an unassigned demo number stands in (src/features/landing/contact.ts).
+   */
+  CONTACT_WHATSAPP: z
+    .string()
+    .transform((value) => value.replace(/[\s().-]/g, ''))
+    .pipe(z.string().regex(/^\+2449\d{8}$/, 'must be an Angolan mobile number like +244923456789'))
+    .optional(),
+
   SENTRY_DSN: z.url(required('a valid Sentry DSN URL')).optional(),
   SENTRY_TRACES_SAMPLE_RATE: sampleRate.default(0.1),
 
@@ -65,12 +76,18 @@ const serverEnvShape = z.object({
   NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: sampleRate.default(0.1),
 });
 
-const serverEnvSchema = serverEnvShape.refine(
-  (env) =>
-    !(env.APP_ENV === 'staging' || env.APP_ENV === 'production') ||
-    env.APP_URL.startsWith('https://'),
-  { path: ['APP_URL'], message: 'must use https:// on staging and production' },
-);
+const isDeployed = (env: { APP_ENV: (typeof APP_ENVS)[number] }) =>
+  env.APP_ENV === 'staging' || env.APP_ENV === 'production';
+
+const serverEnvSchema = serverEnvShape
+  .refine((env) => !isDeployed(env) || env.APP_URL.startsWith('https://'), {
+    path: ['APP_URL'],
+    message: 'must use https:// on staging and production',
+  })
+  .refine((env) => !isDeployed(env) || env.CONTACT_WHATSAPP !== undefined, {
+    path: ['CONTACT_WHATSAPP'],
+    message: "is required on staging and production (the landing page's contact button)",
+  });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 

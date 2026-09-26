@@ -94,8 +94,8 @@ function loadFonts(files: readonly OgFontFile[]) {
   );
 }
 
-/** A theme's font files, read once per process. */
-function themeFonts(theme: ThemeDefinition) {
+/** A theme's font files, read once per process (also used by the landing page's image). */
+export function ogThemeFonts(theme: ThemeDefinition) {
   const cached = loadedFonts.get(theme.id);
   if (cached) return cached;
   const fonts = loadFonts(ogFontsFor(theme.id).files);
@@ -125,7 +125,8 @@ function themeImage(
   return image;
 }
 
-async function themeArtwork(theme: ThemeDefinition) {
+/** The theme's paper and two opposite corner florals, as PNG data URLs for next/og. */
+export async function ogThemeArtwork(theme: ThemeDefinition) {
   const corner = theme.images.corner ?? theme.images[Object.keys(theme.images)[0] ?? ''];
   const [texture, cornerTopLeft, cornerBottomRight] = await Promise.all([
     theme.texture
@@ -162,7 +163,7 @@ export async function renderInvitationOgImage(event: InvitationEvent): Promise<B
   const theme = getTheme(event.themeId);
   const colors = resolveThemeColors(theme, event.themeOverrides);
   const fonts = ogFontsFor(theme.id);
-  const [fontData, art] = await Promise.all([themeFonts(theme), themeArtwork(theme)]);
+  const [fontData, art] = await Promise.all([ogThemeFonts(theme), ogThemeArtwork(theme)]);
   const { day, month, year } = dateParts(new Date(event.startsAt));
   const [first = '', second = ''] = Array.from(event.monogram.toLocaleUpperCase('pt-AO'));
   const heading =

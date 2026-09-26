@@ -69,13 +69,33 @@ describe('parseServerEnv', () => {
   });
 
   it('requires https for APP_URL on staging and production', () => {
+    const contact = { CONTACT_WHATSAPP: '+244923456789' };
     expect(
-      problemsOf({ ...minimal, APP_ENV: 'production', APP_URL: 'http://convites.ao' }),
+      problemsOf({ ...minimal, ...contact, APP_ENV: 'production', APP_URL: 'http://convites.ao' }),
     ).toEqual(['APP_URL: must use https:// on staging and production']);
     expect(
-      parseServerEnv({ ...minimal, APP_ENV: 'staging', APP_URL: 'https://staging.convites.ao' })
-        .APP_URL,
+      parseServerEnv({
+        ...minimal,
+        ...contact,
+        APP_ENV: 'staging',
+        APP_URL: 'https://staging.convites.ao',
+      }).APP_URL,
     ).toBe('https://staging.convites.ao');
+  });
+
+  it("normalizes the team's WhatsApp number and requires it on staging and production", () => {
+    expect(parseServerEnv(minimal).CONTACT_WHATSAPP).toBeUndefined();
+    expect(parseServerEnv({ ...minimal, CONTACT_WHATSAPP: '+244 923 456 789' })).toMatchObject({
+      CONTACT_WHATSAPP: '+244923456789',
+    });
+    expect(problemsOf({ ...minimal, CONTACT_WHATSAPP: '923456789' })).toEqual([
+      'CONTACT_WHATSAPP: must be an Angolan mobile number like +244923456789',
+    ]);
+    expect(
+      problemsOf({ ...minimal, APP_ENV: 'production', APP_URL: 'https://convites.ao' }),
+    ).toEqual([
+      "CONTACT_WHATSAPP: is required on staging and production (the landing page's contact button)",
+    ]);
   });
 
   it('ignores unrelated variables', () => {

@@ -112,7 +112,9 @@ npx vitest run path/to/file.test.ts
 - Themes in `src/themes/` are plain data: never import `next/font` or React there. Fonts are bound
   per theme in `src/themes/fonts.ts`, applied by `ThemeRoot` with the `--theme-*` variables.
 - A theme needs entries in `THEMES`, `src/themes/fonts.ts` and `OG_FONTS` (og-image.tsx, `.woff`
-  files in `assets/fonts/`), plus artwork in `public/themes/<id>/` (README → Adding a theme).
+  files in `assets/fonts/`), the landing page's text (pt-AO `landing.themes.items`) and demo
+  colours (`src/features/landing/demo-event.ts`), plus artwork in `public/themes/<id>/`
+  (README → Adding a theme).
   Fonts use `preload: false`: next/font preloads per route, not per theme, so a preloaded theme
   font is downloaded by every guest, and the envelope needs only the script and caps fonts (keep
   its text in those: body-font text there downloads the body font too).
@@ -140,6 +142,28 @@ npx vitest run path/to/file.test.ts
   whose real artwork is in (`npm run themes:placeholders -- --theme=<id> --force`). Placeholder
   drawings live in `scripts/theme-placeholders/<id>.ts`; keep their edges opaque where possible
   (the image optimizer keeps alpha lossless, soft transparency makes images several times heavier).
+
+## Landing page (README → Landing page)
+
+- `/` and `/demonstracao/<tema>` live in `src/features/landing/`. There is no sign-up: every
+  "create" call is `WhatsappCta` → `contactUrl(contactWhatsapp(env.CONTACT_WHATSAPP), theme?)`.
+- Honest content only: no prices, testimonials or usage numbers unless the user provides them; a
+  feature is claimed only if the product has it.
+- Example screens (`mini-screens.tsx`) size everything in `calc(N*var(--u))` (1% of the phone
+  screen's width), and their `ThemeRoot`s are `container={false}`. `PhoneFrame` sets `--u: 1cqi`;
+  the hero's phones take `sizeContainer={false}` and `.heroPhones` computes `--u` from the
+  viewport (size containers on the first screen re-ran layout for every font). The couple's names
+  come from `LiveCouple`/`LiveName`/`LiveMonogram` (need `CouplePreviewProvider`).
+- Landing performance (README → Landing page): the first screens use only `LANDING_THEME_ID`'s
+  fonts; other themes sit in `.deferred` (content-visibility) blocks. Don't defer sections above
+  the FAQ (axe measured stale positions), and keep CSS variables out of keyframes (they stop
+  compositor animation). Measure with `npm run lighthouse` after `npm run build`.
+- `landing.module.css` classes are unlayered and beat Tailwind utilities: never set the same
+  property with a utility on an element that has one (`.night` sets the background). Buttons take
+  `ctaClasses(variant, size)`, never override classes. axe checks contrast inside `aria-hidden`
+  mockups too.
+- Moving content has a stop control (the ribbon's checkbox) and every animation stops with
+  `prefers-reduced-motion`. The demo reuses `InvitationView preview`; keep it database-free.
 
 ## Guest invitation (README → Guest invitation)
 

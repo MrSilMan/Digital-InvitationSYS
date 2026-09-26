@@ -17,6 +17,7 @@ import { cn } from '@/lib/cn';
 
 import { EARLY_TAP_FLAG, OPENED_ATTRIBUTE, REVEALED_ATTRIBUTE } from './constants';
 import styles from './opening.module.css';
+import { SEAL_PATH } from './seal';
 
 interface OpeningScreenProps {
   /** sessionStorage key that remembers the envelope was opened in this tab. */
@@ -42,20 +43,6 @@ interface OpeningScreenProps {
     pause: string;
   };
 }
-
-/** A wax blob: a circle with a slightly irregular edge (deterministic, same on server and client). */
-const SEAL_PATH = (() => {
-  const points = 72;
-  const commands: string[] = [];
-  for (let index = 0; index <= points; index += 1) {
-    const angle = (index / points) * Math.PI * 2;
-    const radius = 46 + 2.4 * Math.sin(angle * 7) + 1.5 * Math.sin(angle * 13 + 1.3);
-    const x = 50 + radius * Math.cos(angle);
-    const y = 50 + radius * Math.sin(angle);
-    commands.push(`${index === 0 ? 'M' : 'L'}${x.toFixed(2)} ${y.toFixed(2)}`);
-  }
-  return `${commands.join(' ')} Z`;
-})();
 
 const noSubscription = () => () => {};
 

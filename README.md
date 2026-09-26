@@ -125,6 +125,7 @@ one image can be promoted from staging to production. `.env.example` documents e
 | `APP_RELEASE`                           | no       | `dev`                   | Release identifier (git SHA in CI/Docker)              |
 | `SERVICE_NAME`                          | no       | `web`                   | `web` or `worker`, added to every log line             |
 | `LOG_LEVEL`                             | no       | `info`                  | `error`, `warn`, `info`, `http` or `debug`             |
+| `CONTACT_WHATSAPP`                      | deployed | demo number             | Team's WhatsApp (+2449…), the landing page's contact   |
 | `SENTRY_DSN`                            | no       |                         | Server-side Sentry DSN; Sentry is off when empty       |
 | `SENTRY_TRACES_SAMPLE_RATE`             | no       | `0.1`                   | Fraction of requests traced (0–1)                      |
 | `NEXT_PUBLIC_SENTRY_DSN`                | no       |                         | Browser Sentry DSN (inlined at build time)             |
@@ -167,8 +168,8 @@ one image can be promoted from staging to production. `.env.example` documents e
 ## Architecture
 
 ```
-app/                    Routes (App Router): (public) incl. /entrar (login), (dashboard)/painel, (admin)/admin,
-                        api/health
+app/                    Routes (App Router): (public) = landing page (/), theme demos (/demonstracao/<tema>) and
+                        /entrar (login); (dashboard)/painel, (admin)/admin, api/health
 app/c/[eventSlug]/[guestToken]/  Guest invitation, its WhatsApp preview image and calendar file
 app/previsualizar/[eventId]/  The editor's live preview (the invitation with unsaved changes)
 app/m/[...key]/         Processed uploads, streamed from the private bucket (/m/…)
@@ -189,8 +190,8 @@ src/env.ts              Zod-validated server environment; src/env.public.ts for 
 src/i18n/               pt-AO/: every user-facing string (Portuguese, Angola; the sections guest-page scripts
                         need are their own modules); date and plural formatting
 src/components/         Shared UI: invitation building blocks (ui/), dashboard styles (dashboard/), icons, theme root
-src/features/           Feature code by area: invitation/ (guest pages), auth/, account/ (A minha conta),
-                        dashboard/, admin/, design-preview/
+src/features/           Feature code by area: landing/ (home page, theme demos), invitation/ (guest pages),
+                        auth/, account/ (A minha conta), dashboard/, admin/, design-preview/
 src/themes/             Theme definitions (plain data), fonts, colour overrides, contrast maths
 src/lib/                Logger, redaction, request context, Sentry privacy, CSP, guest tokens, validation,
                         guests/ (statuses and counts, list filters, the WhatsApp message), audit/ (actions),
@@ -327,6 +328,50 @@ intercepted: errors from before and after the SDK loads both arrive, without gue
 - `down` (503): the database is unreachable.
 
 Failure details are logged, never returned.
+
+## Landing page
+
+The public home page, `/` ([app/(public)/page.tsx](<app/(public)/page.tsx>)), presents the
+product to couples. Code in [src/features/landing/](src/features/landing/), texts in pt-AO
+`landing`.
+
+- **No sign-up:** the team creates couples' accounts (SPEC §7). Every "Criar o nosso convite" and
+  "Quero este tema" opens a WhatsApp chat with the team (`wa.me`, new tab) with a pre-filled
+  message that names the theme; the number is `CONTACT_WHATSAPP` (required on staging and
+  production; elsewhere an unassigned demo number). "Entrar" leads to `/entrar`, which sends
+  signed-in users to their dashboard.
+- **Sections:** the hero at night (gold script, falling petals, the sealed envelope and the
+  invitation card on floating phones), a ribbon of highlights (hover or its checkbox stops it:
+  WCAG 2.2.2), the themes (built from `THEMES`: each theme's Save the Date on its paper, its
+  colours, fonts and button shape), the guest's experience (WhatsApp message → envelope → confirmed
+  answer), what an invitation includes, how it works, questions, and a closing call. No prices,
+  testimonials or numbers: nothing is claimed that the product does not do.
+- **"Experimentem com os vossos nomes":** the names typed in the hero replace the sample couple in
+  every example on the page (`couple-preview.tsx`, the only client code besides next/image and
+  links). Nothing is stored or sent.
+- **Examples** (`mini-screens.tsx`) are small, static versions of the invitation's screens in the
+  real themes, fonts and artwork, sized in `--u` (1% of the phone screen's width) to fit a phone
+  frame. They are decorative (`aria-hidden`, with a caption for screen readers).
+- **Look:** the page uses the Champanhe theme's fonts (`LANDING_THEME_ID`) and sets the theme
+  variables with its own ivory, rose and gold ([landing-root.tsx](src/features/landing/landing-root.tsx));
+  night sections redefine them (`.night` in `landing.module.css`). Every animation stops with
+  reduced motion.
+- **Performance** (Lighthouse mobile median 90, accessibility 100; the guest page measured 92 the
+  same day): the first screens use only the page's theme, so it loads three font files (the hero
+  shows Champanhe and the theme gallery starts with it). Other themes wait below:
+  `content-visibility: auto` on each theme card and on the guest's experience keeps their fonts
+  and artwork from loading before the first paint. The hero's phones are not size containers
+  (`--u` follows from the viewport, `.heroPhones`) and every phone has `contain: strict`, so a
+  font arriving re-runs layout for that phone only. The petals' keyframes use no variables, so
+  they run on the compositor. Sections with text before the questions are not deferred: axe
+  scrolls to check contrast, deferred sections then change size, and it measured a stale spot.
+- **Theme demos:** `/demonstracao/<theme>` renders the whole invitation with the demo wedding built
+  in memory ([demo-event.ts](src/features/landing/demo-event.ts); no database), through
+  `InvitationView`'s preview mode: the envelope every time, inert RSVP, WhatsApp and calendar
+  buttons. Its date is always a Saturday about four months ahead, so the countdown keeps counting.
+- **Link preview:** [app/(public)/opengraph-image.tsx](<app/(public)/opengraph-image.tsx>) draws the
+  wordmark on the night sky (JPEG, like the invitations'); `app/(public)/layout.tsx` sets its base
+  URL from `APP_URL`. It also serves the demos and the login page.
 
 ## Guest invitation
 
@@ -821,8 +866,12 @@ in (`--force` without `--theme` is refused).
 3. Put its artwork in `public/themes/<id>/`: licensed files, or placeholders drawn by a module in
    [scripts/theme-placeholders/](scripts/theme-placeholders/), registered in
    `scripts/generate-theme-placeholders.ts`.
-4. Run `npm test` (contrast, artwork files, fonts and the preview image are checked for every
-   theme), then review `/design?theme=<id>` and a guest page (give a demo event that `themeId`).
+4. Write its landing page text (a tagline and a description) in pt-AO `landing.themes.items`, and
+   its dress code colours for the demo in
+   [src/features/landing/demo-event.ts](src/features/landing/demo-event.ts) (TypeScript asks for
+   both). The theme then appears on the landing page with its demo at `/demonstracao/<id>`.
+5. Run `npm test` (contrast, artwork files, fonts and the preview image are checked for every
+   theme), then review `/design?theme=<id>`, `/demonstracao/<id>` and the landing page.
 
 ### Previewing
 
@@ -856,6 +905,9 @@ median of 5 runs, measured locally on 2026-09-25:
 | Invitation, Champanhe  | 91          | 100           | 3.3 s | 74 ms  | 81              |
 | Save the Date          | 93          | 100           | 3.0 s | 81 ms  | 87              |
 | Login                  | 93          | 100           | 2.9 s | 152 ms | 92              |
+
+The landing page, measured on 2026-09-26 (when the Praia Rosa invitation measured 92 again):
+performance 90, accessibility 100, LCP 3.5 s; the theme demos 89–92 (see "Landing page").
 
 With a Sentry DSN set (the browser SDK then loads 3 s after the page), the two invitations scored
 91–92. SEO shows 60 on guest links by design: they are `noindex`. These are lab numbers from one
@@ -894,7 +946,7 @@ downloaded until it opens.
 - **Automated:** [tests/e2e/accessibility.spec.ts](tests/e2e/accessibility.spec.ts) runs axe-core
   (WCAG 2.2 A and AA rules) on every main page and state: the envelope and the open invitation with
   its RSVP form, both themes, the lightbox, the Save the Date and its RSVP dialog, the not-found
-  page, the login; the couple's events, overview, guest list with its add (also with errors),
+  page, the landing page (also with an answer open), a theme demo, the login; the couple's events, overview, guest list with its add (also with errors),
   import and send dialogs, every editor tab and the account page; the admin lists, forms, audit
   log, an event and an account. Every scan must be clean. Lighthouse scores 100 on the key pages.
 - **Keyboard**, tested in the same spec: the envelope is the first stop and opens with Enter,

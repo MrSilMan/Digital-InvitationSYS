@@ -116,6 +116,42 @@ test.describe('accessibility: guest pages', () => {
     await expectAccessible(page, 'login');
   });
 
+  test('the landing page, with an answer open', async ({ page }) => {
+    await page.goto('/');
+    await expectAccessible(page, 'landing page');
+    await page.getByText('Quanto custa?').click();
+    await expect(page.getByText(/^Depende do número de convidados/)).toBeVisible();
+    await expectAccessible(page, 'landing page, answer open');
+  });
+
+  test('a theme demo', async ({ page }) => {
+    await page.goto('/demonstracao/praia-rosa');
+    await expectAccessible(page, 'theme demo, envelope');
+    await openEnvelope(page);
+    await expectAccessible(page, 'theme demo, invitation');
+  });
+
+  test('the landing page works with the keyboard alone', async ({ page }) => {
+    await page.goto('/');
+    // The skip link comes first and moves focus to the content.
+    await page.keyboard.press('Tab');
+    const skip = page.getByRole('link', { name: 'Saltar para o conteúdo' });
+    await expect(skip).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('main#conteudo')).toBeFocused();
+
+    // The name fields are reached in order, and a question opens with Enter.
+    const groom = page.getByLabel('Noivo', { exact: true });
+    await groom.focus();
+    await page.keyboard.type('Kiame');
+    await page.keyboard.press('Tab');
+    await expect(page.getByLabel('Noiva', { exact: true })).toBeFocused();
+    const question = page.getByText('Podemos começar por um Save the Date?');
+    await question.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByText(/^Sim\. O convite pode começar como Save the Date/)).toBeVisible();
+  });
+
   test('works with the keyboard alone', async ({ page }) => {
     await page.goto(INVITATION);
     // The envelope is the first stop; Enter opens it and focus moves to the invitation.
