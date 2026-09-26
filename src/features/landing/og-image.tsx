@@ -21,14 +21,17 @@ import { THEMES } from '@/themes';
 const NIGHT = '#121826';
 const GOLD = '#d9b56c';
 const IVORY = '#f5efe3';
+const MUTED = '#c5cad6';
 const ROSE = '#f0a6c2';
 
 export async function renderLandingOgImage(): Promise<Buffer> {
   const theme = THEMES.champanhe;
   const fonts = ogFontsFor(theme.id);
   const [fontData, art] = await Promise.all([ogThemeFonts(theme), ogThemeArtwork(theme)]);
+  // Two centred lines under the wordmark: all three highlights on one line are wider than the image.
   const { items } = landing.ribbon;
-  const highlights = [items[0], items[1], items[6]].filter(Boolean).join('  ·  ');
+  const promise = items[0];
+  const details = [items[1], items[6]].filter(Boolean).join('  ·  ');
 
   const response = new ImageResponse(
     <div
@@ -77,17 +80,6 @@ export async function renderLandingOgImage(): Promise<Buffer> {
       >
         <div
           style={{
-            fontFamily: fonts.caps,
-            fontWeight: 500,
-            fontSize: 30,
-            letterSpacing: 9,
-            color: GOLD,
-          }}
-        >
-          {landing.metadata.imageTagline.toLocaleUpperCase('pt-AO')}
-        </div>
-        <div
-          style={{
             fontFamily: fonts.script,
             fontSize: 168,
             lineHeight: 1.3,
@@ -101,12 +93,25 @@ export async function renderLandingOgImage(): Promise<Buffer> {
             display: 'flex',
             fontFamily: fonts.caps,
             fontWeight: 500,
-            fontSize: 26,
-            letterSpacing: 2,
+            fontSize: 32,
+            letterSpacing: 3,
             color: IVORY,
           }}
         >
-          {highlights}
+          {promise}
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            marginTop: 10,
+            fontFamily: fonts.caps,
+            fontWeight: 500,
+            fontSize: 24,
+            letterSpacing: 2,
+            color: MUTED,
+          }}
+        >
+          {details}
         </div>
         <div
           style={{ marginTop: 34, width: 120, height: 3, borderRadius: 3, backgroundColor: ROSE }}

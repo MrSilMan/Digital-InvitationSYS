@@ -3,7 +3,12 @@ import 'server-only';
 import { z } from 'zod';
 
 import type { Prisma } from '@/generated/prisma/client';
-import type { AccountListFilters, EventListFilters } from '@/lib/admin/filters';
+import type {
+  AccountListFilters,
+  AccountStatusFilter,
+  EventListFilters,
+  EventStatusFilter,
+} from '@/lib/admin/filters';
 import { toUserRole } from '@/lib/auth/roles';
 import { getPrisma } from '@/server/db/prisma';
 
@@ -48,13 +53,12 @@ const eventListSelect = {
 
 export type AdminEventRow = Prisma.EventGetPayload<{ select: typeof eventListSelect }>;
 
-/** Every event, newest first; the search matches the couple, the slug and the account. */
-export async function listAdminEvents(filters: EventListFilters): Promise<Page<AdminEventRow>> {
-  const prisma = getPrisma();
-  const words = filters.query.split(' ').filter(Boolean);
-  const where: Prisma.EventWhereInput = {
-    ...(filters.status ? { isActive: filters.status === 'active' } : {}),
-    AND: words.map((word) => ({
+/** Every word of the search matches the couple, the slug or the account. */
+function eventSearch(query: string): Prisma.EventWhereInput[] {
+  return query
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => ({
       OR: [
         { groomName: contains(word) },
         { brideName: contains(word) },
@@ -62,7 +66,15 @@ export async function listAdminEvents(filters: EventListFilters): Promise<Page<A
         { owner: { email: contains(word) } },
         { owner: { name: contains(word) } },
       ],
-    })),
+    }));
+}
+
+/** Every event, newest first; the search matches the couple, the slug and the account. */
+export async function listAdminEvents(filters: EventListFilters): Promise<Page<AdminEventRow>> {
+  const prisma = getPrisma();
+  const where: Prisma.EventWhereInput = {
+    ...(filters.status ? { isActive: filters.status === 'active' } : {}),
+    AND: eventSearch(filters.query),
   };
   const total = await prisma.event.count({ where });
   const { skip, page, pages } = paginate(filters.page, total);
@@ -75,6 +87,40 @@ export async function listAdminEvents(filters: EventListFilters): Promise<Page<A
   });
   return { items, total, page, pages };
 }
+
+/** How many events match the search, in each status (the list's tabs). */
+export async function countAdminEvents(
+  query: string,
+): Promise<Record<'all' | EventStatusFilter, number>> {
+  const groups = await getPrisma().event.groupBy({
+    by: ['isActive'],
+    where: { AND: eventSearch(query) },
+    _count: { _all: true },
+  });
+  const active = groups.find((group) => group.isActive)?._count._all ?? 0;
+  const inactive = groups.find((group) => !group.isActive)?._count._all ?? 0;
+  return { all: active + inactive, active, inactive };
+}
+
+/** Weddings this many days ahead count as upcoming in the overview. */
+export const UPCOMING_DAYS = 30;
+
+/** The platform at a glance (above the event list). */
+export async function loadAdminOverview(now: Date) {
+  const prisma = getPrisma();
+  const until = new Date(now.getTime() + UPCOMING_DAYS * 24 * 60 * 60 * 1000);
+  const [events, activeEvents, upcoming, guests, couples, suspendedCouples] = await Promise.all([
+    prisma.event.count(),
+    prisma.event.count({ where: { isActive: true } }),
+    prisma.event.count({ where: { isActive: true, startsAt: { gte: now, lt: until } } }),
+    prisma.guest.count(),
+    prisma.user.count({ where: { role: 'couple' } }),
+    prisma.user.count({ where: { role: 'couple', banned: true } }),
+  ]);
+  return { events, activeEvents, upcoming, guests, couples, suspendedCouples };
+}
+
+export type AdminOverview = Awaited<ReturnType<typeof loadAdminOverview>>;
 
 const eventIdSchema = z.uuid();
 
@@ -123,15 +169,22 @@ function toAccount(row: AccountRow) {
 
 export type AdminAccount = ReturnType<typeof toAccount>;
 
+/** Every word of the search matches the name or the e-mail. */
+function accountSearch(query: string): Prisma.UserWhereInput[] {
+  return query
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => ({ OR: [{ name: contains(word) }, { email: contains(word) }] }));
+}
+
 /** Every account (couples and admins), newest first; the search matches name and e-mail. */
 export async function listAccounts(filters: AccountListFilters): Promise<Page<AdminAccount>> {
   const prisma = getPrisma();
-  const words = filters.query.split(' ').filter(Boolean);
   const where: Prisma.UserWhereInput = {
     AND: [
       ...(filters.status === 'suspended' ? [{ banned: true }] : []),
       ...(filters.status === 'active' ? [notBanned] : []),
-      ...words.map((word) => ({ OR: [{ name: contains(word) }, { email: contains(word) }] })),
+      ...accountSearch(filters.query),
     ],
   };
   const total = await prisma.user.count({ where });
@@ -144,6 +197,19 @@ export async function listAccounts(filters: AccountListFilters): Promise<Page<Ad
     select: accountListSelect,
   });
   return { items: rows.map(toAccount), total, page, pages };
+}
+
+/** How many accounts match the search, in each status (the list's tabs). */
+export async function countAccounts(
+  query: string,
+): Promise<Record<'all' | AccountStatusFilter, number>> {
+  const prisma = getPrisma();
+  const search = accountSearch(query);
+  const [all, suspended] = await Promise.all([
+    prisma.user.count({ where: { AND: search } }),
+    prisma.user.count({ where: { AND: [{ banned: true }, ...search] } }),
+  ]);
+  return { all, active: all - suspended, suspended };
 }
 
 /** One account with its events; null when missing. */
@@ -163,6 +229,7 @@ export async function loadAccount(userId: string) {
           startsAt: true,
           isActive: true,
           phase: true,
+          _count: { select: { guests: true } },
         },
       },
     },

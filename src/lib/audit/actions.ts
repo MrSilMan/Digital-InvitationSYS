@@ -10,12 +10,14 @@ export const ADMIN_AREA_ACTIONS = [
   'event.activate',
   'event.deactivate',
   'event.guest-limit',
+  'event.delete',
   'user.create',
   'user.update',
   'user.password-reset',
   'user.suspend',
   'user.unsuspend',
   'user.promote',
+  'user.delete',
 ] as const;
 
 /** An admin working in a couple's dashboard (their own events are not recorded). */

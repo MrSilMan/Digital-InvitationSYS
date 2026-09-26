@@ -493,8 +493,13 @@ Couples sign in at `/entrar` and find their events at `/painel`. Each event has 
 one menu: **Resumo** (`/painel/eventos/<id>`), **Convidados** (`…/convidados`) and **Editar
 convite** (`…/editar`). Admins can open every event here too (their changes to a couple's event are
 recorded in the audit log). Accounts are created in the admin area: there is no sign-up. **A minha
-conta** (`/painel/conta`) shows the user's name and e-mail and changes the password (the current
-one first; at least 10 characters; the other sessions end, this one stays).
+conta** (`/painel/conta`) shows the couple's name and e-mail and changes the password (the current
+one first; at least 10 characters; the other sessions end, this one stays); admins are sent to
+their own page in the admin area, `/admin/conta`, where they can also change their name and e-mail.
+
+The dashboard's header is the landing page's night blue with the gold wordmark (like the login
+page and the admin area), around light pages in stone tones and the system font. The event list
+shows each invitation as a card in its theme's colours, with how far away the wedding is.
 
 - **Logins** ([src/server/auth/auth.ts](src/server/auth/auth.ts)): Better Auth with e-mail + password,
   database sessions for 30 days (refreshed daily) and the admin plugin's roles (`couple`, `admin`).
@@ -595,14 +600,30 @@ role only: couples get the same "not found" as a missing page, signed-out visito
 Every page calls `requireAdmin()` and every Server Action `authorizeAdminAction()`
 ([src/server/admin/access.ts](src/server/admin/access.ts)), which also applies the rate limit.
 
-- **Eventos** (`/admin`): every event, newest first; search (couple, address, account) and status
-  in the URL (`?q=silva&estado=desativados&pagina=2`). An event's page (`/admin/eventos/<id>`)
-  shows its account, date, address, theme, guests and confirmed people, links to it in the
-  dashboard, and has two controls:
+**Look.** The area's frame ([src/features/admin/admin-shell.tsx](src/features/admin/admin-shell.tsx))
+takes the landing page's night blue and gold (the `night`, `gold`, `ivory`, `mist` colours in
+[app/globals.css](app/globals.css), the wordmark in the landing's script font), so it is never
+mistaken for a couple's dashboard: a sidebar on wide screens, a top bar with the sections on phones.
+The pages keep the dashboard's stone tones and system font. Lists are compact rows (the whole row
+opens the event or account) under status tabs that show how many match the search; event and
+account pages put the details on the left and the controls on the right. Deactivating an event,
+suspending an account and issuing a new password ask first in a dialog, with the focus on
+"Cancelar"; deleting asks the admin to type the event's address or the account's e-mail.
+
+- **Eventos** (`/admin`): the platform at a glance (active events, weddings in the next 30 days,
+  guests, couple accounts), then every event, newest first, with how far away its wedding is;
+  search (couple, address, account) and status in the URL (`?q=silva&estado=desativados&pagina=2`).
+  An event's page (`/admin/eventos/<id>`) shows its account, date, address, theme, guests and
+  confirmed people, links to it in the dashboard, and has three controls:
   - **Ativar / Desativar**: an inactive event answers "Convite não encontrado" to its guests at once
     (the cached copy is dropped); the couple still sees and edits it.
   - **Limite de convidados** (the plan, 1–2,000): never below the guests already added, counted
     with the event row locked, exactly like adding a guest.
+  - **Eliminar evento**: for good, once the admin types the event's address. The event goes with
+    its guests, their answers and views, its places, programme, rules, imports and media, in one
+    transaction with its audit entry (the event row is locked first, so nothing is added
+    meanwhile); then its files are removed from storage (through the queue), its cached pages and
+    its preview drafts. Sent links answer "Convite não encontrado"; the address becomes free again.
 - **Novo evento** (`/admin/eventos/novo`): for an existing couple account or a new one, created in
   the same transaction; the names, date and ceremony time (Luanda), theme, guest limit, and the
   address of the guest links, suggested from the names (`Braúlio` + `Nanda` → `braulio-e-nanda`; a
@@ -612,8 +633,12 @@ Every page calls `requireAdmin()` and every Server Action `authorizeAdminAction(
 - **Contas** (`/admin/contas`): every account with its role, events and status. Admins create
   couple accounts, change a name or e-mail (the login follows the e-mail), issue a new temporary
   password (the old one stops working and every session ends) and suspend or reactivate an account
-  (sessions end at once, the login says "conta suspensa"; its events stay as they are). Nobody
-  resets or suspends their own account, and one active admin always remains.
+  (sessions end at once, the login says "conta suspensa"; its events stay as they are). **Eliminar
+  conta** deletes an account for good, once the admin types its e-mail: its events first, one by
+  one as above (the dialog lists them; the database never lets a user's deletion take events on
+  its own), then the account with its login and sessions. Audit entries the account wrote stay,
+  without their author. Nobody resets, suspends or deletes their own account, and one active admin
+  always remains.
 - **Temporary passwords** are generated (12 characters without look-alikes, e.g. `k7mq-9xrt-2hpd`,
   about 59 bits), shown once with "Copiar" and a ready-made message for WhatsApp, and never stored
   in clear or logged. Couples then pick their own in "A minha conta".
@@ -626,8 +651,9 @@ Every page calls `requireAdmin()` and every Server Action `authorizeAdminAction(
 
 ### Audit log
 
-**Registo de atividade** (`/admin/registo`) lists what admins changed, newest first, by action and
-by event or account (each event and account page shows its latest entries too).
+**Registo de atividade** (`/admin/registo`, "Atividade" in the menu) lists what admins changed,
+newest first and grouped by day (Luanda), by action and by event or account (each event and account
+page shows its latest entries too).
 
 - **What is recorded** ([src/lib/audit/actions.ts](src/lib/audit/actions.ts)): every change made in
   the admin area, and every change an admin makes in a couple's dashboard (editor saves, the

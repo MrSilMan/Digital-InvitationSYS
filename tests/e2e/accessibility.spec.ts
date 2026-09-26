@@ -356,6 +356,7 @@ test.describe('accessibility: admin area', () => {
       ['/admin/contas', 'Contas'],
       ['/admin/contas/nova', 'Nova conta'],
       ['/admin/registo', 'Registo de atividade'],
+      ['/admin/conta', 'A minha conta'],
     ] as const) {
       await page.goto(path);
       await expect(page.getByRole('heading', { name: heading, level: 1 })).toBeVisible(NAVIGATION);
@@ -377,5 +378,33 @@ test.describe('accessibility: admin area', () => {
       .click();
     await expect(page).toHaveURL(/\/admin\/contas\/[^/]+$/, NAVIGATION);
     await expectAccessible(page, 'admin: account');
+  });
+
+  test('the confirmation and deletion dialogs: focus inside, Esc returns it', async () => {
+    // The demo couple's account (never the admin's own: it has no password control).
+    await page.goto('/admin/contas?q=noivos%40convites.test');
+    await page
+      .getByRole('link', { name: /^Gerir a conta de / })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/admin\/contas\/[^/?]+$/, NAVIGATION);
+    const reset = page.getByRole('button', { name: 'Gerar nova palavra-passe' });
+    await reset.click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+    await expectAccessible(page, 'admin: confirmation dialog');
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(reset).toBeFocused();
+
+    // Deleting asks for the account's e-mail, and lists its events (nothing is deleted here).
+    const remove = page.getByRole('button', { name: 'Eliminar conta' });
+    await remove.click();
+    await expect(dialog.getByLabel(/^Para confirmar/)).toBeFocused();
+    await expect(dialog.getByRole('button', { name: 'Eliminar para sempre' })).toBeDisabled();
+    await expectAccessible(page, 'admin: deletion dialog');
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(remove).toBeFocused();
   });
 });

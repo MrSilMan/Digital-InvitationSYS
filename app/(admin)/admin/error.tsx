@@ -1,12 +1,14 @@
 'use client';
 
+import { IconAlertTriangle, IconRefresh } from '@tabler/icons-react';
 import { useEffect } from 'react';
 
+import { PageMain } from '@/components/dashboard/page-parts';
 import { buttonClasses, cardClasses } from '@/components/dashboard/styles';
 import { errors } from '@/i18n/pt-AO/errors';
 import { browserSentry } from '@/lib/sentry/browser';
 
-/** Errors inside the admin area keep the header (the menu and sign out stay reachable). */
+/** Errors inside the admin area keep the sidebar (the menu and sign out stay reachable). */
 export default function AdminError({
   error,
   retry,
@@ -19,11 +21,17 @@ export default function AdminError({
   }, [error]);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10">
-      <div className={`${cardClasses} flex flex-col items-start gap-3 p-6`}>
-        <h1 className="text-xl font-semibold">{errors.generic.title}</h1>
-        <p className="text-stone-600">{errors.generic.description}</p>
+    <PageMain width="narrow">
+      <div className={`${cardClasses} flex flex-col items-start gap-4 p-6 sm:p-8`}>
+        <span className="flex size-12 items-center justify-center rounded-full bg-amber-50 text-amber-700 ring-1 ring-amber-200">
+          <IconAlertTriangle size={24} stroke={1.75} aria-hidden="true" />
+        </span>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-xl font-semibold">{errors.generic.title}</h1>
+          <p className="text-stone-600">{errors.generic.description}</p>
+        </div>
         <button type="button" onClick={() => retry()} className={buttonClasses('primary')}>
+          <IconRefresh size={18} stroke={1.75} aria-hidden="true" />
           {errors.generic.retry}
         </button>
         {error.digest ? (
@@ -32,6 +40,6 @@ export default function AdminError({
           </p>
         ) : null}
       </div>
-    </main>
+    </PageMain>
   );
 }

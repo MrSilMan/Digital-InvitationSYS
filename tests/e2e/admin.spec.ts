@@ -14,12 +14,12 @@ async function signIn(page: Page, email: string, password: string): Promise<void
 }
 
 test.describe('admin area', () => {
-  test('an admin creates an event with a new couple account, deactivates it, and sees it in the log; the couple signs in', async ({
+  test('an admin creates an event with a new couple account, deactivates it, and sees it in the log; the couple signs in; the admin deletes both', async ({
     page,
     browser,
   }) => {
     // A dev server compiles each page on first use.
-    test.setTimeout(150_000);
+    test.setTimeout(180_000);
     const run = Date.now();
     const email = `noivos-${run}@exemplo.ao`;
 
@@ -57,8 +57,12 @@ test.describe('admin area', () => {
     await expect(page.getByRole('heading', { name: couple, level: 1 })).toBeVisible({
       timeout: 30_000,
     });
-    page.once('dialog', (dialog) => void dialog.accept());
+    const eventUrl = page.url();
     await page.getByRole('button', { name: 'Desativar evento' }).click();
+    // It asks first; Cancelar is focused, so only a deliberate click confirms.
+    const confirm = page.getByRole('dialog', { name: `Desativar o evento de ${couple}?` });
+    await expect(confirm.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+    await confirm.getByRole('button', { name: 'Sim, desativar' }).click();
     // A Server Action, then the page refreshes from the server.
     await expect(page.getByRole('status').filter({ hasText: 'Evento desativado.' })).toBeVisible({
       timeout: 15_000,
@@ -71,7 +75,7 @@ test.describe('admin area', () => {
     // The audit log has the whole story.
     await page
       .getByRole('navigation', { name: 'Secções da administração' })
-      .getByRole('link', { name: 'Registo de atividade' })
+      .getByRole('link', { name: 'Atividade' })
       .click();
     await expect(page.getByRole('heading', { name: 'Registo de atividade' })).toBeVisible({
       timeout: 30_000,
@@ -107,6 +111,32 @@ test.describe('admin area', () => {
       couplePage.getByRole('status').filter({ hasText: 'Palavra-passe alterada.' }),
     ).toBeVisible({ timeout: 30_000 });
     await context.close();
+
+    // Finally the admin deletes what this test created, each confirmed by typing what identifies
+    // it: the event (its address), then the account (its e-mail).
+    await page.goto(eventUrl);
+    await page.getByRole('button', { name: 'Eliminar evento' }).click();
+    const eventDeletion = page.getByRole('dialog', { name: `Eliminar o evento de ${couple}?` });
+    const forGood = eventDeletion.getByRole('button', { name: 'Eliminar para sempre' });
+    await expect(forGood).toBeDisabled();
+    await eventDeletion.getByLabel(/^Para confirmar/).fill(`joao-${run}-e-ana`);
+    await forGood.click();
+    await expect(page.getByRole('status').filter({ hasText: 'Evento eliminado.' })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole('link', { name: `Gerir o evento de ${couple}` })).toHaveCount(0);
+
+    await page.goto(`/admin/contas?q=${encodeURIComponent(email)}`);
+    await page.getByRole('link', { name: `Gerir a conta de Ana e João ${run}` }).click();
+    await page.getByRole('button', { name: 'Eliminar conta' }).click();
+    const accountDeletion = page.getByRole('dialog', {
+      name: `Eliminar a conta de Ana e João ${run}?`,
+    });
+    await accountDeletion.getByLabel(/^Para confirmar/).fill(email);
+    await accountDeletion.getByRole('button', { name: 'Eliminar para sempre' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Conta eliminada.' })).toBeVisible({
+      timeout: 30_000,
+    });
   });
 
   test('couples never see the admin area', async ({ page }) => {

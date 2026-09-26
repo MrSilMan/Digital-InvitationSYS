@@ -1,3 +1,5 @@
+import { IconAlertCircle, IconCircleCheck } from '@tabler/icons-react';
+
 import { cn } from '@/lib/cn';
 
 export interface NoticeState {
@@ -8,15 +10,17 @@ export interface NoticeState {
 /** The outcome of an action under its button: announced politely, errors assertively. */
 export function Notice({ notice, className }: { notice: NoticeState | null; className?: string }) {
   if (!notice) return null;
+  const Icon = notice.tone === 'error' ? IconAlertCircle : IconCircleCheck;
   return (
     <p
       role={notice.tone === 'error' ? 'alert' : 'status'}
       className={cn(
-        'rounded-lg px-3 py-2 font-sans text-sm',
+        'flex items-start gap-2 rounded-lg px-3 py-2 font-sans text-sm',
         notice.tone === 'error' ? 'bg-red-50 text-red-800' : 'bg-emerald-50 text-emerald-800',
         className,
       )}
     >
+      <Icon size={18} stroke={1.75} aria-hidden="true" className="mt-px shrink-0" />
       {notice.text}
     </p>
   );

@@ -48,6 +48,12 @@ export function toLuandaTimeInput(value: Date): string {
   return new Date(value.getTime() + OFFSET_MS).toISOString().slice(11, 16);
 }
 
+/** Calendar days from one instant to another in Luanda: tomorrow is 1 whatever the hours. */
+export function luandaDaysBetween(from: Date, to: Date): number {
+  const day = (value: Date) => Date.parse(`${toLuandaDateInput(value)}T00:00:00Z`);
+  return Math.round((day(to) - day(from)) / DAY_MS);
+}
+
 export function addDays(date: string, days: number): string {
   return new Date(new Date(`${date}T00:00:00Z`).getTime() + days * DAY_MS)
     .toISOString()

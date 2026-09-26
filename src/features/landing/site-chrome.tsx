@@ -27,6 +27,10 @@ const NAV_LINKS = [
 
 export const MAIN_ID = 'conteudo';
 
+/** A gold underline that grows from the centre on hover and keyboard focus. */
+const NAV_LINK_CLASSES =
+  'relative py-1 transition-colors hover:text-accent after:absolute after:inset-x-0 after:bottom-0 after:h-px after:origin-center after:scale-x-0 after:bg-accent after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100 focus-visible:after:scale-x-100 motion-reduce:after:transition-none';
+
 /** Sticky night bar: the wordmark, the sections (wide screens), login and the WhatsApp call. */
 export function SiteHeader({ contactHref }: { contactHref: string }) {
   return (
@@ -50,7 +54,7 @@ export function SiteHeader({ contactHref }: { contactHref: string }) {
           <ul className="flex items-center gap-7 font-button text-sm text-muted">
             {NAV_LINKS.map(([anchor, label]) => (
               <li key={anchor}>
-                <a href={`#${anchor}`} className="transition-colors hover:text-accent">
+                <a href={`#${anchor}`} className={NAV_LINK_CLASSES}>
                   {label}
                 </a>
               </li>

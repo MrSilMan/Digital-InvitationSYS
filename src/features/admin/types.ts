@@ -11,7 +11,9 @@ export type AdminErrorCode =
   | 'limit-below-guests'
   | 'own-account'
   | 'last-admin'
-  | 'owner-invalid';
+  | 'owner-invalid'
+  /** The typed confirmation of a deletion does not match. */
+  | 'confirmation';
 
 export interface AdminFieldIssue {
   /** Dotted form path, e.g. "owner.email". */

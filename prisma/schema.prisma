@@ -159,7 +159,8 @@ model Verification {
 
 model Event {
   id         String     @id @default(uuid(7)) @db.Uuid
-  /// The couple's account. Deleting a user never deletes their events.
+  /// The couple's account. Deleting a user never takes their events implicitly (Restrict): the
+  /// admin area deletes them first, one by one (src/server/admin/deletion.ts).
   ownerId    String
   owner      User       @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   /// Public URL segment: /c/<slug>/<guestToken>.

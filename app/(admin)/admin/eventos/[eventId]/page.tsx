@@ -1,16 +1,25 @@
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconLayoutDashboard, IconPencil } from '@tabler/icons-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import type { ReactNode } from 'react';
 
-import { buttonClasses, cardClasses } from '@/components/dashboard/styles';
+import { Avatar } from '@/components/dashboard/avatar';
+import { Fact, PageHeader, PageMain, Panel } from '@/components/dashboard/page-parts';
+import { StatusBadge } from '@/components/dashboard/status-badge';
+import { buttonClasses } from '@/components/dashboard/styles';
+import { ThemeSwatch } from '@/components/dashboard/theme-swatch';
 import { AuditList } from '@/features/admin/audit-list';
-import { EventStatusControl, GuestLimitForm } from '@/features/admin/event-controls';
-import { StatusBadge } from '@/features/admin/status-badge';
+import {
+  DeleteEventControl,
+  EventStatusControl,
+  GuestLimitForm,
+} from '@/features/admin/event-controls';
+import { UsageMeter } from '@/features/admin/usage-meter';
 import { formatLongDate, formatShortDate, formatTime } from '@/i18n/format';
 import { admin, dashboard } from '@/i18n/pt-AO';
+import { formatRelativeDay } from '@/i18n/relative';
 import { auditQuery } from '@/lib/admin/filters';
+import { serverNow } from '@/lib/clock';
 import { fillTemplate } from '@/lib/template';
 import { requireAdmin } from '@/server/admin/access';
 import { loadAdminEvent } from '@/server/admin/queries';
@@ -21,27 +30,7 @@ const t = admin.event;
 
 export const metadata: Metadata = { title: admin.events.title };
 
-function Card({ title, id, children }: { title: string; id: string; children: ReactNode }) {
-  return (
-    <section aria-labelledby={id} className={`${cardClasses} flex flex-col gap-3 p-5`}>
-      <h2 id={id} className="text-lg font-semibold">
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
-function Fact({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-xs font-medium tracking-wide text-stone-600 uppercase">{label}</dt>
-      <dd className="text-sm text-stone-900">{children}</dd>
-    </div>
-  );
-}
-
-/** One event: its account, status, plan (guest limit) and the admin changes made to it. */
+/** One event: its details and account, its status and plan, and the admin changes made to it. */
 export default async function AdminEventPage({ params }: PageProps<'/admin/eventos/[eventId]'>) {
   await requireAdmin();
   const { eventId } = await params;
@@ -52,99 +41,140 @@ export default async function AdminEventPage({ params }: PageProps<'/admin/event
     10,
   );
   const couple = `${event.groomName} & ${event.brideName}`;
+  const now = serverNow();
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8">
-      <div className="flex flex-col gap-2">
-        <Link href="/admin" className={buttonClasses('ghost', 'sm', '-ml-3 self-start')}>
-          <IconArrowLeft size={18} stroke={1.75} aria-hidden="true" />
-          {t.back}
-        </Link>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="font-serif text-3xl text-stone-900">{couple}</h1>
-          <StatusBadge tone={event.isActive ? 'good' : 'bad'}>
-            {event.isActive ? admin.events.active : admin.events.inactive}
-          </StatusBadge>
-          <StatusBadge>{dashboard.events.phase[event.phase]}</StatusBadge>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href={`/painel/eventos/${event.id}`} className={buttonClasses('secondary', 'sm')}>
-            {t.openDashboard}
-          </Link>
-          <Link
-            href={`/painel/eventos/${event.id}/editar`}
-            className={buttonClasses('secondary', 'sm')}
-          >
-            {t.edit}
-          </Link>
-        </div>
-      </div>
-
-      <section className={`${cardClasses} p-5`} aria-label={couple}>
-        <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Fact label={t.account}>
-            <Link
-              href={`/admin/contas/${event.owner.id}`}
-              className="font-medium underline-offset-2 hover:underline"
-            >
-              {event.owner.name}
+    <PageMain>
+      <PageHeader
+        parents={[{ href: '/admin', label: t.back }]}
+        title={<span className="lining-nums">{couple}</span>}
+        serif
+        badges={
+          <>
+            <StatusBadge tone={event.isActive ? 'good' : 'bad'} dot>
+              {event.isActive ? admin.events.active : admin.events.inactive}
+            </StatusBadge>
+            <StatusBadge>{dashboard.events.phase[event.phase]}</StatusBadge>
+          </>
+        }
+        description={
+          <>
+            {formatLongDate(event.startsAt)}, {formatTime(event.startsAt)} ·{' '}
+            {formatRelativeDay(event.startsAt, now)}
+          </>
+        }
+        actions={
+          <>
+            <Link href={`/painel/eventos/${event.id}`} className={buttonClasses('secondary')}>
+              <IconLayoutDashboard size={18} stroke={1.75} aria-hidden="true" />
+              {t.openDashboard}
             </Link>
-            <span className="block break-all text-stone-600">{event.owner.email}</span>
-            {event.owner.banned ? (
-              <span className="mt-1 inline-block">
-                <StatusBadge tone="bad">{t.suspendedAccount}</StatusBadge>
+            <Link href={`/painel/eventos/${event.id}/editar`} className={buttonClasses('primary')}>
+              <IconPencil size={18} stroke={1.75} aria-hidden="true" />
+              {t.edit}
+            </Link>
+          </>
+        }
+      />
+
+      {/* Phones: details, controls, activity. Wide screens: the controls in a column on the right. */}
+      <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_1fr] lg:items-start">
+        <Panel
+          id="detalhes"
+          title={t.details}
+          description={fillTemplate(t.created, { date: formatShortDate(event.createdAt) })}
+          className="lg:col-span-2"
+        >
+          <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+            <Fact label={t.account} className="sm:col-span-2">
+              <span className="flex items-center gap-3">
+                <Avatar name={event.owner.name} size="md" />
+                <span className="flex min-w-0 flex-col">
+                  <span className="flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/admin/contas/${event.owner.id}`}
+                      className="font-medium underline decoration-stone-300 underline-offset-2 hover:decoration-stone-900"
+                    >
+                      {event.owner.name}
+                    </Link>
+                    {event.owner.banned ? (
+                      <StatusBadge tone="bad" dot>
+                        {t.suspendedAccount}
+                      </StatusBadge>
+                    ) : null}
+                  </span>
+                  <span className="break-all text-stone-600">{event.owner.email}</span>
+                </span>
               </span>
-            ) : null}
-          </Fact>
-          <Fact label={t.date}>
-            {formatLongDate(event.startsAt)}, {formatTime(event.startsAt)}
-          </Fact>
-          <Fact label={t.address}>
-            <span className="break-all">/c/{event.slug}/…</span>
-          </Fact>
-          <Fact label={t.theme}>{getTheme(event.themeId).name}</Fact>
-          <Fact label={t.guests}>
-            {fillTemplate(admin.events.guests, {
-              count: String(event._count.guests),
-              limit: String(event.guestLimit),
-            })}
-          </Fact>
-          <Fact label={t.people}>{event.confirmedPeople}</Fact>
-        </dl>
-        <p className="mt-4 text-xs text-stone-600">
-          {fillTemplate(t.created, { date: formatShortDate(event.createdAt) })}
-        </p>
-      </section>
+            </Fact>
+            <Fact label={t.theme}>
+              <span className="flex items-center gap-2">
+                <ThemeSwatch themeId={event.themeId} />
+                {getTheme(event.themeId).name}
+              </span>
+            </Fact>
+            <Fact label={t.address}>
+              <span className="font-mono text-[0.8125rem] break-all">/c/{event.slug}/…</span>
+            </Fact>
+            <Fact label={t.guests}>
+              <span className="flex flex-col gap-1.5">
+                <span className="tabular-nums">
+                  {fillTemplate(admin.events.guests, {
+                    count: String(event._count.guests),
+                    limit: String(event.guestLimit),
+                  })}
+                </span>
+                <UsageMeter value={event._count.guests} max={event.guestLimit} className="w-40" />
+              </span>
+            </Fact>
+            <Fact label={t.people}>
+              <span className="text-2xl font-semibold text-stone-900 tabular-nums">
+                {event.confirmedPeople}
+              </span>
+            </Fact>
+          </dl>
+        </Panel>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card title={t.status.legend} id="estado">
-          <EventStatusControl eventId={event.id} isActive={event.isActive} couple={couple} />
-        </Card>
-        <Card title={t.limit.legend} id="limite">
-          <GuestLimitForm
-            eventId={event.id}
-            guestLimit={event.guestLimit}
-            guestCount={event._count.guests}
-          />
-        </Card>
-      </div>
-
-      <section aria-labelledby="atividade" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="atividade" className="text-lg font-semibold">
-            {admin.audit.recent}
-          </h2>
-          {history.total > history.items.length ? (
-            <Link
-              href={`/admin/registo${auditQuery({ target: { type: 'event', id: event.id } })}`}
-              className="text-sm font-medium underline underline-offset-2"
-            >
-              {admin.audit.all}
-            </Link>
-          ) : null}
+        <div className="flex flex-col gap-6 lg:row-span-2">
+          <Panel id="estado" title={t.status.legend}>
+            <EventStatusControl eventId={event.id} isActive={event.isActive} couple={couple} />
+          </Panel>
+          <Panel id="limite" title={t.limit.legend}>
+            <GuestLimitForm
+              eventId={event.id}
+              guestLimit={event.guestLimit}
+              guestCount={event._count.guests}
+            />
+          </Panel>
+          <Panel id="eliminar" title={t.delete.legend} tone="danger">
+            <DeleteEventControl
+              eventId={event.id}
+              slug={event.slug}
+              couple={couple}
+              guestCount={event._count.guests}
+            />
+          </Panel>
         </div>
-        <AuditList entries={history.items} />
-      </section>
-    </main>
+
+        <Panel
+          id="atividade"
+          title={admin.audit.recent}
+          flush
+          className="overflow-hidden lg:col-span-2"
+          actions={
+            history.total > history.items.length ? (
+              <Link
+                href={`/admin/registo${auditQuery({ target: { type: 'event', id: event.id } })}`}
+                className="text-sm font-medium text-stone-800 underline underline-offset-4 hover:text-stone-950"
+              >
+                {admin.audit.all}
+              </Link>
+            ) : null
+          }
+        >
+          <AuditList entries={history.items} now={now} headingLevel={3} />
+        </Panel>
+      </div>
+    </PageMain>
   );
 }

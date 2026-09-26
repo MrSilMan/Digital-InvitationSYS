@@ -24,7 +24,7 @@ const SIZES: Record<CtaSize, string> = {
  */
 export function ctaClasses(variant: CtaVariant = 'gold', size: CtaSize = 'regular'): string {
   return cn(
-    'inline-flex items-center justify-center rounded-full font-button text-sm font-semibold tracking-[0.12em] whitespace-nowrap uppercase transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent',
+    'inline-flex items-center justify-center rounded-full font-button text-sm font-semibold tracking-[0.12em] whitespace-nowrap uppercase transition focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent motion-safe:active:scale-[0.97]',
     SIZES[size],
     VARIANTS[variant],
   );

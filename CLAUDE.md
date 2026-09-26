@@ -165,6 +165,9 @@ npx vitest run path/to/file.test.ts
   mockups too.
 - Moving content has a stop control (the ribbon's checkbox) and every animation stops with
   `prefers-reduced-motion`. The demo reuses `InvitationView preview`; keep it database-free.
+- In-page links glide only on the landing page (`.smoothScroll` on its `<main>` turns on
+  `scroll-behavior` through `html:has()`). Entrance animations move, never fade: axe measures
+  contrast right after load (`.rise`).
 
 ## Guest invitation (README → Guest invitation)
 
@@ -241,7 +244,18 @@ section" "--click=[data-opening-envelope]" --wait=3000`. Demo links per theme:
   RSVP, WhatsApp and calendar buttons inert). The editor and the iframe exchange versioned
   messages (`preview-messages.ts`): keep that handshake when changing either side.
 - Dashboard look: `src/components/dashboard/` (`buttonClasses`, `inputClasses`, `Field`), stone
-  tones and the system font; never the invitation theme tokens.
+  tones and the system font; never the invitation theme tokens. The login page (`/entrar`) is the
+  exception: the landing's night sky around an ivory `LandingRoot` card, `ctaClasses` buttons;
+  only its fields keep the dashboard look.
+- The signed-in areas sit in a night frame (the dashboard's header, the admin's sidebar):
+  `nightFrameClasses`/`nightButtonClasses` and `Wordmark` (the landing's script font, the only
+  theme font they download), colours `night`, `gold`, `ivory`, `mist` from globals.css. Their pages
+  are built from `src/components/dashboard/page-parts.tsx` (`PageMain`, `PageHeader`, `Panel` with
+  `tone="danger"`, `Fact`, `EmptyState`, `Callout`); `Avatar`, `StatusBadge` and `ThemeSwatch` live
+  there too. Relative dates ("daqui a 9 meses"): `formatRelativeDay` (`src/i18n/relative.ts`).
+- The dashboard's event list (`/painel`) is cards: each `li` has "Tema …" in its text and one
+  stretched link named "Abrir: …" (the e2e tests pick events that way). `/painel/conta` sends
+  admins to `/admin/conta`.
 - Icon keys live in `src/components/icons/keys.ts` (plain data); pickers offer `CONTENT_ICON_KEYS`.
 - React Hook Form drops the values of `disabled` inputs: show locked values without a disabled
   control. Anything that appears on validation (badges) must not shift clickable elements.
@@ -285,7 +299,20 @@ section" "--click=[data-opening-envelope]" --wait=3000`. Demo links per theme:
 
 - Admin pages call `requireAdmin()`, admin Server Actions `authorizeAdminAction()` (role + rate
   limit), both in `src/server/admin/access.ts`; couples get "not found". Admin UI lives in
-  `src/features/admin/` with the dashboard look.
+  `src/features/admin/`: the frame is `AdminShell` (the night frame: a sidebar from `lg`, a top
+  bar on phones); the admin's own account is `/admin/conta`. Lists are one card: `ListFilters`
+  (status tabs with counts from `countAdminEvents`/`countAccounts`, search), `ListSummary`, rows
+  with one stretched link named "Gerir … de …" (e2e and axe tests click it), `Pagination`.
+- Confirm hard-to-undo admin steps with `ConfirmDialog` (focus on "Cancelar", a confirm label that
+  differs from the button behind it), never `window.confirm`. Deletions use `DeleteDialog`: the
+  admin types the event's address or the account's e-mail (`confirmsEvent`/`confirmsAccount` in
+  `src/lib/admin/confirmation.ts`, checked again on the server).
+- Deleting (`src/server/admin/deletion.ts`): an event locks its row, then goes with its guests,
+  answers, media rows and imports (cascade); an account deletes its events first, one by one
+  (`Event.owner` is `Restrict`: never make it cascade), then itself (sessions go with it). One
+  `event.delete` entry per event plus `user.delete`. After the commit, never failing the deletion:
+  `discardStoredFiles`, `invalidateInvitationEvent` + `invalidateInvitationGuests`, preview drafts.
+  Nobody deletes their own account; one active admin always remains.
 - Every admin-area change runs in `auditedTransaction(async (tx, audit) => …)`
   (`src/server/audit/audit-log.ts`): the change and `audit(entry)` commit together. Returning early
   still commits, so check everything before the first write.

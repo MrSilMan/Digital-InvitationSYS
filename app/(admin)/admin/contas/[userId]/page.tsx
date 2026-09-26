@@ -1,21 +1,31 @@
-import { IconArrowLeft } from '@tabler/icons-react';
+import { IconCalendarPlus, IconChevronRight, IconInbox, IconInfoCircle } from '@tabler/icons-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import type { ReactNode } from 'react';
 
-import { buttonClasses, cardClasses } from '@/components/dashboard/styles';
+import { Avatar } from '@/components/dashboard/avatar';
+import {
+  Callout,
+  EmptyState,
+  PageHeader,
+  PageMain,
+  Panel,
+} from '@/components/dashboard/page-parts';
+import { StatusBadge } from '@/components/dashboard/status-badge';
+import { buttonClasses } from '@/components/dashboard/styles';
 import { getServerEnv } from '@/env';
 import {
   AccountDetailsForm,
+  DeleteAccountControl,
   PasswordResetControl,
   SuspensionControl,
 } from '@/features/admin/account-controls';
 import { AuditList } from '@/features/admin/audit-list';
-import { StatusBadge } from '@/features/admin/status-badge';
-import { formatLongDate, formatShortDate } from '@/i18n/format';
+import { formatShortDate } from '@/i18n/format';
 import { admin, dashboard } from '@/i18n/pt-AO';
+import { formatRelativeDay } from '@/i18n/relative';
 import { auditQuery } from '@/lib/admin/filters';
+import { serverNow } from '@/lib/clock';
 import { fillTemplate } from '@/lib/template';
 import { requireAdmin } from '@/server/admin/access';
 import { loadAccount } from '@/server/admin/queries';
@@ -25,18 +35,7 @@ const t = admin.accountDetail;
 
 export const metadata: Metadata = { title: admin.accounts.title };
 
-function Card({ title, id, children }: { title: string; id: string; children: ReactNode }) {
-  return (
-    <section aria-labelledby={id} className={`${cardClasses} flex flex-col gap-3 p-5`}>
-      <h2 id={id} className="text-lg font-semibold">
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
-}
-
-/** One account: its details, events, password, access, and the admin changes made to it. */
+/** One account: its events, details, password, access, and the admin changes made to it. */
 export default async function AccountPage({ params }: PageProps<'/admin/contas/[userId]'>) {
   const user = await requireAdmin();
   const { userId } = await params;
@@ -47,109 +46,171 @@ export default async function AccountPage({ params }: PageProps<'/admin/contas/[
     { action: null, target: { type: 'user', id: account.id }, page: 1 },
     10,
   );
+  const now = serverNow();
+  const canCreateEvent = account.role === 'couple' && !account.suspended;
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8">
-      <div className="flex flex-col gap-2">
-        <Link href="/admin/contas" className={buttonClasses('ghost', 'sm', '-ml-3 self-start')}>
-          <IconArrowLeft size={18} stroke={1.75} aria-hidden="true" />
-          {t.back}
-        </Link>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold break-all">{account.name}</h1>
-          <StatusBadge tone={account.role === 'admin' ? 'dark' : 'neutral'}>
-            {admin.accounts.roles[account.role]}
-          </StatusBadge>
-          {account.suspended ? (
-            <StatusBadge tone="bad">{admin.accounts.suspended}</StatusBadge>
-          ) : null}
-        </div>
-        <p className="text-sm text-stone-600">
-          <span className="break-all">{account.email}</span> ·{' '}
-          {fillTemplate(admin.accounts.created, { date: formatShortDate(account.createdAt) })}
-        </p>
-        {own ? <p className="text-sm text-stone-700">{t.ownAccount}</p> : null}
-      </div>
+    <PageMain>
+      <PageHeader
+        parents={[{ href: '/admin/contas', label: t.back }]}
+        leading={<Avatar name={account.name} size="lg" />}
+        title={<span className="break-all">{account.name}</span>}
+        badges={
+          <>
+            <StatusBadge tone={account.role === 'admin' ? 'dark' : 'neutral'}>
+              {admin.accounts.roles[account.role]}
+            </StatusBadge>
+            {account.suspended ? (
+              <StatusBadge tone="bad" dot>
+                {admin.accounts.suspended}
+              </StatusBadge>
+            ) : null}
+            {own ? <StatusBadge tone="warn">{admin.common.you}</StatusBadge> : null}
+          </>
+        }
+        description={
+          <>
+            <span className="break-all">{account.email}</span> ·{' '}
+            {fillTemplate(admin.accounts.created, { date: formatShortDate(account.createdAt) })}
+          </>
+        }
+      />
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card title={t.details.legend} id="dados">
-          <AccountDetailsForm
-            userId={account.id}
-            initialValues={{ name: account.name, email: account.email }}
-          />
-        </Card>
-        <Card title={t.events.title} id="eventos">
+      {own ? (
+        <Callout icon={<IconInfoCircle size={18} stroke={1.75} aria-hidden="true" />}>
+          {t.ownAccount}{' '}
+          <Link href="/admin/conta" className="font-medium underline underline-offset-2">
+            {t.ownAccountLink}
+          </Link>
+          .
+        </Callout>
+      ) : null}
+
+      {/* Phones: events, the account's settings, activity. Wide screens: settings on the right. */}
+      <div className="grid gap-6 lg:grid-cols-3 lg:grid-rows-[auto_1fr] lg:items-start">
+        <Panel
+          id="eventos"
+          title={t.events.title}
+          flush
+          className="overflow-hidden lg:col-span-2"
+          actions={
+            canCreateEvent ? (
+              <Link
+                href={`/admin/eventos/novo?conta=${encodeURIComponent(account.id)}`}
+                className={buttonClasses('secondary', 'sm')}
+              >
+                <IconCalendarPlus size={16} stroke={1.75} aria-hidden="true" />
+                {t.events.create}
+              </Link>
+            ) : null
+          }
+        >
           {account.events.length === 0 ? (
-            <p className="text-sm text-stone-600">{t.events.empty}</p>
+            <EmptyState icon={<IconInbox size={24} stroke={1.5} aria-hidden="true" />}>
+              {t.events.empty}
+            </EmptyState>
           ) : (
-            <ul className="flex flex-col divide-y divide-stone-200">
-              {account.events.map((event) => (
-                <li key={event.id} className="flex flex-col gap-1 py-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Link
-                      href={`/admin/eventos/${event.id}`}
-                      className="font-medium underline-offset-2 hover:underline"
-                    >
-                      {event.groomName} &amp; {event.brideName}
-                    </Link>
-                    <StatusBadge tone={event.isActive ? 'good' : 'bad'}>
-                      {event.isActive ? admin.events.active : admin.events.inactive}
-                    </StatusBadge>
-                    <StatusBadge>{dashboard.events.phase[event.phase]}</StatusBadge>
-                  </div>
-                  <p className="text-sm text-stone-600">
-                    {formatLongDate(event.startsAt)} ·{' '}
-                    <span className="break-all">/c/{event.slug}</span>
-                  </p>
-                </li>
-              ))}
+            <ul className="divide-y divide-stone-100">
+              {account.events.map((event) => {
+                const couple = `${event.groomName} & ${event.brideName}`;
+                return (
+                  <li
+                    key={event.id}
+                    className="group relative flex items-center gap-3 px-5 py-4 transition-colors hover:bg-stone-50"
+                  >
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                          href={`/admin/eventos/${event.id}`}
+                          aria-label={fillTemplate(admin.events.manageLabel, { couple })}
+                          className="font-serif text-lg leading-snug text-stone-900 lining-nums after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-stone-900"
+                        >
+                          {couple}
+                        </Link>
+                        <StatusBadge tone={event.isActive ? 'good' : 'bad'} dot>
+                          {event.isActive ? admin.events.active : admin.events.inactive}
+                        </StatusBadge>
+                        <StatusBadge>{dashboard.events.phase[event.phase]}</StatusBadge>
+                      </div>
+                      <p className="text-sm text-stone-600">
+                        <span className="tabular-nums">{formatShortDate(event.startsAt)}</span> ·{' '}
+                        {formatRelativeDay(event.startsAt, now)} ·{' '}
+                        <span className="font-mono text-xs break-all">/c/{event.slug}</span>
+                      </p>
+                    </div>
+                    <IconChevronRight
+                      size={18}
+                      stroke={2}
+                      aria-hidden="true"
+                      className="shrink-0 text-stone-400 transition-colors group-hover:text-stone-700"
+                    />
+                  </li>
+                );
+              })}
             </ul>
           )}
-          {account.role === 'couple' && !account.suspended ? (
-            <Link
-              href={`/admin/eventos/novo?conta=${encodeURIComponent(account.id)}`}
-              className={buttonClasses('secondary', 'sm', 'self-start')}
-            >
-              {t.events.create}
-            </Link>
-          ) : null}
-        </Card>
-        {own ? null : (
-          <>
-            <Card title={t.password.legend} id="palavra-passe">
-              <PasswordResetControl
-                userId={account.id}
-                name={account.name}
-                loginUrl={new URL('/entrar', getServerEnv().APP_URL).toString()}
-              />
-            </Card>
-            <Card title={t.access.legend} id="acesso">
-              <SuspensionControl
-                userId={account.id}
-                name={account.name}
-                suspended={account.suspended}
-              />
-            </Card>
-          </>
-        )}
-      </div>
+        </Panel>
 
-      <section aria-labelledby="atividade" className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="atividade" className="text-lg font-semibold">
-            {admin.audit.recent}
-          </h2>
-          {history.total > history.items.length ? (
-            <Link
-              href={`/admin/registo${auditQuery({ target: { type: 'user', id: account.id } })}`}
-              className="text-sm font-medium underline underline-offset-2"
-            >
-              {admin.audit.all}
-            </Link>
-          ) : null}
+        <div className="flex flex-col gap-6 lg:row-span-2">
+          <Panel id="dados" title={t.details.legend}>
+            <AccountDetailsForm
+              userId={account.id}
+              initialValues={{ name: account.name, email: account.email }}
+              nameHint={account.role === 'admin' ? null : undefined}
+            />
+          </Panel>
+          {own ? null : (
+            <>
+              <Panel id="palavra-passe" title={t.password.legend}>
+                <PasswordResetControl
+                  userId={account.id}
+                  name={account.name}
+                  loginUrl={new URL('/entrar', getServerEnv().APP_URL).toString()}
+                />
+              </Panel>
+              <Panel id="acesso" title={t.access.legend}>
+                <SuspensionControl
+                  userId={account.id}
+                  name={account.name}
+                  suspended={account.suspended}
+                />
+              </Panel>
+              <Panel id="eliminar" title={t.delete.legend} tone="danger">
+                <DeleteAccountControl
+                  userId={account.id}
+                  name={account.name}
+                  email={account.email}
+                  events={account.events.map((event) => ({
+                    id: event.id,
+                    couple: `${event.groomName} & ${event.brideName}`,
+                    slug: event.slug,
+                    guests: event._count.guests,
+                  }))}
+                />
+              </Panel>
+            </>
+          )}
         </div>
-        <AuditList entries={history.items} />
-      </section>
-    </main>
+
+        <Panel
+          id="atividade"
+          title={admin.audit.recent}
+          flush
+          className="overflow-hidden lg:col-span-2"
+          actions={
+            history.total > history.items.length ? (
+              <Link
+                href={`/admin/registo${auditQuery({ target: { type: 'user', id: account.id } })}`}
+                className="text-sm font-medium text-stone-800 underline underline-offset-4 hover:text-stone-950"
+              >
+                {admin.audit.all}
+              </Link>
+            ) : null
+          }
+        >
+          <AuditList entries={history.items} now={now} headingLevel={3} />
+        </Panel>
+      </div>
+    </PageMain>
   );
 }

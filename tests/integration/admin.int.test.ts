@@ -11,14 +11,25 @@ import {
   changeGuestLimit,
   editAccount,
   issueTemporaryPassword,
+  removeAccount,
+  removeEvent,
 } from '@/features/admin/actions';
 import { changePassword } from '@/features/account/actions';
 import { signIn } from '@/features/auth/actions';
 import { addGuest } from '@/features/dashboard/guests/actions';
+import { createGuestToken } from '@/lib/guest-token';
 import { DEFAULT_SECTION_CONFIG } from '@/lib/validation/sections';
 import { requireAdmin } from '@/server/admin/access';
 import { setSuspended } from '@/server/admin/accounts';
-import { listAccounts, listAdminEvents, loadAdminEvent } from '@/server/admin/queries';
+import { deleteAccount } from '@/server/admin/deletion';
+import {
+  countAccounts,
+  countAdminEvents,
+  listAccounts,
+  listAdminEvents,
+  loadAdminEvent,
+  loadAdminOverview,
+} from '@/server/admin/queries';
 import { listAuditEntries } from '@/server/audit/queries';
 import { getSessionUser } from '@/server/auth/session';
 import { getPrisma } from '@/server/db/prisma';
@@ -242,6 +253,8 @@ describe('accounts', () => {
 
     as(cookies.admin);
     await expect(changeAccountSuspension(userId, true)).resolves.toEqual({ ok: true });
+    // The list's tabs count with the search.
+    await expect(countAccounts('suspenso')).resolves.toEqual({ all: 1, active: 0, suspended: 1 });
     as(session);
     await expect(getSessionUser()).resolves.toBeNull();
     as(null);
@@ -367,8 +380,19 @@ describe('events', () => {
     await expect(
       listAdminEvents({ query: '', status: 'inactive', page: 1 }),
     ).resolves.toMatchObject({ total: 1, items: [expect.objectContaining({ id: eventId })] });
+    // The tabs count what the list shows; the overview leaves inactive events out of the
+    // upcoming weddings (the three demo weddings are on 15 January 2027).
+    const listed = await listAdminEvents({ query: 'nanda', status: null, page: 1 });
+    await expect(countAdminEvents('nanda')).resolves.toEqual({
+      all: listed.total,
+      active: listed.total - 1,
+      inactive: 1,
+    });
+    const newYear = new Date('2027-01-01T00:00:00Z');
+    await expect(loadAdminOverview(newYear)).resolves.toMatchObject({ upcoming: 2 });
 
     await expect(changeEventStatus(eventId, true)).resolves.toEqual({ ok: true });
+    await expect(loadAdminOverview(newYear)).resolves.toMatchObject({ upcoming: 3 });
     await expect(getInvitation(DEMO_EVENT.slug, guestToken)).resolves.not.toBeNull();
     // A repeated request changes nothing and records nothing.
     await expect(changeEventStatus(eventId, true)).resolves.toEqual({ ok: true });
@@ -408,6 +432,145 @@ describe('events', () => {
     expect((await entriesFor(eventId)).at(-1)?.metadata).toMatchObject({
       changes: { guestLimit: { from: count, to: DEMO_EVENT.guestLimit } },
     });
+  });
+});
+
+describe('deleting events and accounts', () => {
+  it('deletes an event with everything under it, once its address is typed', async () => {
+    as(cookies.admin);
+    const created = await addEvent(newEvent({ slug: 'casal-a-eliminar' }));
+    if (!created.ok) throw new Error(created.error);
+    const id = created.eventId;
+    const guest = await prisma.guest.create({
+      data: {
+        eventId: id,
+        token: createGuestToken(),
+        displayName: 'Convidado',
+        seatsAllowed: 2,
+        rsvp: { create: { attending: true, peopleCount: 2, source: 'FORM' } },
+      },
+      select: { id: true, token: true },
+    });
+    await prisma.media.create({
+      data: {
+        eventId: id,
+        type: 'GALLERY',
+        status: 'READY',
+        originalKey: `originals/${id}/foto.jpg`,
+        mimeType: 'image/jpeg',
+        sizeBytes: 1000,
+      },
+    });
+    await expect(getInvitation('casal-a-eliminar', guest.token)).resolves.not.toBeNull(); // cached
+
+    await expect(removeEvent(id, 'outro-endereco')).resolves.toEqual({
+      ok: false,
+      error: 'confirmation',
+    });
+    await expect(prisma.event.count({ where: { id } })).resolves.toBe(1);
+
+    await expect(removeEvent(id, ' casal-a-eliminar ')).resolves.toEqual({ ok: true });
+    await expect(prisma.event.count({ where: { id } })).resolves.toBe(0);
+    await expect(prisma.guest.count({ where: { eventId: id } })).resolves.toBe(0);
+    await expect(prisma.rsvp.count({ where: { guestId: guest.id } })).resolves.toBe(0);
+    await expect(prisma.media.count({ where: { eventId: id } })).resolves.toBe(0);
+    // The cached copy went with it.
+    await expect(getInvitation('casal-a-eliminar', guest.token)).resolves.toBeNull();
+    expect((await entriesFor(id)).at(-1)).toMatchObject({
+      action: 'event.delete',
+      actorId: adminId,
+      metadata: {
+        label: 'Ana & João',
+        details: { slug: 'casal-a-eliminar', guests: 1, media: 1 },
+      },
+    });
+    // The account keeps existing; a second request finds nothing.
+    await expect(prisma.user.count({ where: { id: coupleId } })).resolves.toBe(1);
+    await expect(removeEvent(id, 'casal-a-eliminar')).resolves.toEqual({
+      ok: false,
+      error: 'not-found',
+    });
+
+    as(cookies.couple);
+    await expect(removeEvent(eventId, DEMO_EVENT.slug)).resolves.toEqual({
+      ok: false,
+      error: 'not-found',
+    });
+    await expect(prisma.event.count({ where: { id: eventId } })).resolves.toBe(1);
+  });
+
+  it('deletes an account with its events; its sessions end and it cannot sign in', async () => {
+    const couple = {
+      name: 'Conta a Eliminar',
+      email: 'conta.eliminar@convites.test',
+      password: 'senha-conta-eliminar',
+    };
+    const userId = await createCouple(prisma, couple);
+    const session = await sessionCookie(couple.email, couple.password);
+    as(cookies.admin);
+    const created = await addEvent(
+      newEvent({ slug: 'conta-a-eliminar', owner: { kind: 'existing', userId } }),
+    );
+    if (!created.ok) throw new Error(created.error);
+
+    await expect(removeAccount(userId, 'outra@convites.test')).resolves.toEqual({
+      ok: false,
+      error: 'confirmation',
+    });
+    await expect(removeAccount(userId, 'Conta.Eliminar@convites.test')).resolves.toEqual({
+      ok: true,
+      events: 1,
+    });
+    await expect(prisma.user.count({ where: { id: userId } })).resolves.toBe(0);
+    await expect(prisma.session.count({ where: { userId } })).resolves.toBe(0);
+    await expect(prisma.event.count({ where: { id: created.eventId } })).resolves.toBe(0);
+    expect((await entriesFor(created.eventId)).at(-1)?.action).toBe('event.delete');
+    expect((await entriesFor(userId)).at(-1)).toMatchObject({
+      action: 'user.delete',
+      metadata: {
+        label: couple.email,
+        details: { name: couple.name, role: 'couple', events: 1 },
+      },
+    });
+
+    as(session);
+    await expect(getSessionUser()).resolves.toBeNull();
+    as(null);
+    await expect(signIn({ email: couple.email, password: couple.password })).resolves.toMatchObject(
+      { ok: false },
+    );
+  });
+
+  it('never deletes your own account or the last admin', async () => {
+    as(cookies.admin);
+    await expect(removeAccount(adminId, DEMO_USERS.admin.email)).resolves.toEqual({
+      ok: false,
+      error: 'own-account',
+    });
+    await expect(
+      deleteAccount({ id: 'someone-else' }, adminId, DEMO_USERS.admin.email),
+    ).resolves.toEqual({ ok: false, error: 'last-admin' });
+    await expect(prisma.user.count({ where: { id: adminId } })).resolves.toBe(1);
+  });
+
+  it('keeps the entries a deleted admin wrote, without their author', async () => {
+    const other = {
+      name: 'Outra Administradora',
+      email: 'outra.admin@convites.test',
+      password: 'senha-outra-admin',
+    };
+    const otherId = await createCouple(prisma, other);
+    await prisma.user.update({ where: { id: otherId }, data: { role: 'admin' } });
+    const entry = await prisma.auditLog.create({
+      data: { actorId: otherId, action: 'user.update', targetType: 'user', targetId: coupleId },
+      select: { id: true },
+    });
+
+    as(cookies.admin);
+    await expect(removeAccount(otherId, other.email)).resolves.toEqual({ ok: true, events: 0 });
+    await expect(
+      prisma.auditLog.findUniqueOrThrow({ where: { id: entry.id } }),
+    ).resolves.toMatchObject({ actorId: null, action: 'user.update' });
   });
 });
 

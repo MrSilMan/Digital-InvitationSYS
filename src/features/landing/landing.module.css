@@ -42,6 +42,28 @@
   contain-intrinsic-size: auto 1100px;
 }
 
+/* The landing page's in-page links (the menu, "Ver os temas") glide to their section. */
+@media (prefers-reduced-motion: no-preference) {
+  :global(html):has(.smoothScroll) {
+    scroll-behavior: smooth;
+  }
+}
+
+/*
+ * A block that settles into place as the page opens (the login card). Movement only, never
+ * opacity: axe runs right after the page loads and would measure half-faded text.
+ */
+.rise {
+  animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes rise {
+  from {
+    translate: 0 28px;
+    scale: 0.97;
+  }
+}
+
 /* A warm glow in two corners of the night sky. */
 .glow {
   background-image:
@@ -274,7 +296,8 @@
   .float,
   .floatLate,
   .sparkle,
-  .pulse {
+  .pulse,
+  .rise {
     animation: none;
   }
 

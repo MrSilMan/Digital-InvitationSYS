@@ -26,6 +26,16 @@
   /* Button labels: the reference uses a clean sans; the system font costs no download. */
   --font-button:
     ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /*
+   * The admin area's frame (src/features/admin/admin-shell.tsx): the landing page's night sky and
+   * gold. On `night`: ivory 16:1, mist 11:1, gold 9.6:1.
+   */
+  --color-night: #0c111c;
+  --color-night-raised: #161d2c;
+  --color-ivory: #f5efe3;
+  --color-mist: #c5cad6;
+  --color-gold: #d9b56c;
 }
 
 @layer base {

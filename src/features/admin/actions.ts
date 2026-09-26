@@ -2,6 +2,7 @@
 
 import { z } from 'zod';
 
+import { CONFIRMATION_MAX_LENGTH } from '@/lib/admin/confirmation';
 import { logger } from '@/lib/logger';
 import { accountSchema, guestLimitSchema, newEventSchema } from '@/lib/validation/admin';
 import { authorizeAdminAction } from '@/server/admin/access';
@@ -11,6 +12,7 @@ import {
   setSuspended,
   updateAccount,
 } from '@/server/admin/accounts';
+import { deleteAccount, deleteEvent } from '@/server/admin/deletion';
 import { createEvent, setEventActive, setGuestLimit } from '@/server/admin/events';
 import type { SessionUser } from '@/server/auth/session';
 
@@ -29,6 +31,8 @@ import type {
 
 const userIdSchema = z.string().regex(/^[A-Za-z0-9-]{1,64}$/);
 const eventIdSchema = z.uuid();
+/** What the admin typed to confirm a deletion (compared on the server). */
+const confirmationSchema = z.string().max(CONFIRMATION_MAX_LENGTH);
 
 function toIssues(error: z.ZodError): AdminFieldIssue[] {
   return error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message }));
@@ -107,6 +111,19 @@ export async function changeAccountSuspension(
   });
 }
 
+/** Deletes an account and its events for good; `confirmation` is the account's e-mail. */
+export async function removeAccount(
+  userId: unknown,
+  confirmation: unknown,
+): Promise<AdminActionResult<{ events: number }>> {
+  return asAdmin('account deletion', async (admin) => {
+    const id = userIdSchema.safeParse(userId);
+    const typed = confirmationSchema.safeParse(confirmation);
+    if (!id.success || !typed.success) return invalid();
+    return deleteAccount(admin, id.data, typed.data);
+  });
+}
+
 // ── Events ───────────────────────────────────────────────────────────────────
 
 /** A new event (and, if asked, its couple's account with a temporary password). */
@@ -157,5 +174,18 @@ export async function changeGuestLimit(
       return { ok: false, error: 'invalid', issues } satisfies AdminActionError;
     }
     return setGuestLimit(admin, id.data, limit.data);
+  });
+}
+
+/** Deletes an event and everything under it for good; `confirmation` is the event's address. */
+export async function removeEvent(
+  eventId: unknown,
+  confirmation: unknown,
+): Promise<AdminActionResult> {
+  return asAdmin('event deletion', async (admin) => {
+    const id = eventIdSchema.safeParse(eventId);
+    const typed = confirmationSchema.safeParse(confirmation);
+    if (!id.success || !typed.success) return invalid();
+    return deleteEvent(admin, id.data, typed.data);
   });
 }

@@ -1,8 +1,17 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  IconCircleCheck,
+  IconCircleCheckFilled,
+  IconLayoutDashboard,
+  IconPlus,
+  IconSettings,
+  IconUserPlus,
+  IconUserSearch,
+} from '@tabler/icons-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { type Path, useForm, useWatch } from 'react-hook-form';
 
 import { Field } from '@/components/dashboard/field';
@@ -70,6 +79,47 @@ function initialValues(owners: OwnerOption[], preselected: string | null): NewEv
   };
 }
 
+/** A card or radio card that shows it is chosen, and the keyboard focus of the radio inside. */
+const CHOICE_CARD =
+  'flex cursor-pointer rounded-xl border border-stone-300 bg-white transition-colors hover:border-stone-400 has-checked:border-stone-900 has-checked:ring-1 has-checked:ring-stone-900 has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-stone-900 has-disabled:cursor-not-allowed has-disabled:bg-stone-50 has-disabled:text-stone-600';
+
+/**
+ * A field of a two-column grid that lines up with its neighbour: from `sm` it spans the grid's
+ * four rows (label, hint, control, error) as a subgrid. Both fields need a hint.
+ */
+const ALIGNED_FIELD = 'sm:row-span-4 sm:grid sm:grid-rows-subgrid';
+
+/** One numbered part of the form: a card with a legend and a line of help. */
+function Step({
+  number,
+  legend,
+  intro,
+  children,
+}: {
+  number: number;
+  legend: string;
+  intro: string;
+  children: ReactNode;
+}) {
+  return (
+    <fieldset className={cn(cardClasses, 'min-w-0')}>
+      <legend className="float-left flex w-full items-start gap-3 border-b border-stone-200 px-5 py-4">
+        <span
+          aria-hidden="true"
+          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-night text-xs font-semibold text-gold"
+        >
+          {number}
+        </span>
+        <span className="flex flex-col gap-0.5">
+          <span className="text-base font-semibold text-stone-900">{legend}</span>
+          <span className="text-sm font-normal text-stone-600">{intro}</span>
+        </span>
+      </legend>
+      <div className="clear-both flex flex-col gap-5 p-5">{children}</div>
+    </fieldset>
+  );
+}
+
 /**
  * A new event: the couple's account (existing or new), their names, the date, the address of the
  * guest links (suggested from the names), the theme and the plan.
@@ -135,25 +185,32 @@ export function NewEventForm({ owners, preselectedOwnerId, appUrl, loginUrl }: N
     return (
       <section
         aria-labelledby="evento-criado"
-        className={cn(cardClasses, 'flex flex-col items-start gap-4 p-6')}
+        className={cn(cardClasses, 'flex flex-col items-start gap-5 p-6 sm:p-8')}
       >
-        <h2 id="evento-criado" className="text-xl font-semibold">
-          {t.created.title}
-        </h2>
-        <p role="status" className="text-stone-700">
-          {fillTemplate(t.created.text, { couple: created.couple })}
-        </p>
+        <span className="flex size-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
+          <IconCircleCheck size={26} stroke={1.75} aria-hidden="true" />
+        </span>
+        <div className="flex flex-col gap-1">
+          <h2 id="evento-criado" className="text-xl font-semibold">
+            {t.created.title}
+          </h2>
+          <p role="status" className="text-stone-700">
+            {fillTemplate(t.created.text, { couple: created.couple })}
+          </p>
+        </div>
         {created.credentials ? (
           <TemporaryPassword credentials={created.credentials} loginUrl={loginUrl} />
         ) : null}
         <div className="flex flex-wrap gap-2">
           <Link href={`/admin/eventos/${created.eventId}`} className={buttonClasses('primary')}>
+            <IconSettings size={18} stroke={1.75} aria-hidden="true" />
             {t.created.manage}
           </Link>
           <Link
             href={`/painel/eventos/${created.eventId}/editar`}
             className={buttonClasses('secondary')}
           >
+            <IconLayoutDashboard size={18} stroke={1.75} aria-hidden="true" />
             {t.created.open}
           </Link>
           <button
@@ -165,6 +222,7 @@ export function NewEventForm({ owners, preselectedOwnerId, appUrl, loginUrl }: N
             }}
             className={buttonClasses('ghost')}
           >
+            <IconPlus size={18} stroke={1.75} aria-hidden="true" />
             {t.created.another}
           </button>
         </div>
@@ -176,10 +234,9 @@ export function NewEventForm({ owners, preselectedOwnerId, appUrl, loginUrl }: N
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
-      <fieldset className={cn(cardClasses, 'flex flex-col gap-4 p-5')}>
-        <legend className="float-left mb-1 w-full text-lg font-semibold">{t.owner.legend}</legend>
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <label className="flex items-center gap-2 text-sm">
+      <Step number={1} legend={t.owner.legend} intro={t.owner.intro}>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className={cn(CHOICE_CARD, 'items-center gap-3 px-4 py-3.5 text-sm font-medium')}>
             <input
               type="radio"
               value="existing"
@@ -187,15 +244,17 @@ export function NewEventForm({ owners, preselectedOwnerId, appUrl, loginUrl }: N
               {...register('owner.kind')}
               className="size-4 accent-stone-900"
             />
+            <IconUserSearch size={20} stroke={1.75} aria-hidden="true" />
             {t.owner.existing}
           </label>
-          <label className="flex items-center gap-2 text-sm">
+          <label className={cn(CHOICE_CARD, 'items-center gap-3 px-4 py-3.5 text-sm font-medium')}>
             <input
               type="radio"
               value="new"
               {...register('owner.kind')}
               className="size-4 accent-stone-900"
             />
+            <IconUserPlus size={20} stroke={1.75} aria-hidden="true" />
             {t.owner.new}
           </label>
         </div>
@@ -214,12 +273,15 @@ export function NewEventForm({ owners, preselectedOwnerId, appUrl, loginUrl }: N
             )}
           </Field>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          // Side by side, the two fields share the rows of label, hint, input and error
+          // (subgrid): the inputs line up however long each hint is.
+          <div className="grid gap-4 sm:grid-cols-2 sm:gap-y-1.5">
             <Field
               id="novo-evento-conta-nome"
               label={admin.newAccount.name}
               hint={admin.newAccount.nameHint}
               error={ownerErrors?.name?.message}
+              className={ALIGNED_FIELD}
             >
               {(props) => (
                 <input
@@ -237,6 +299,7 @@ export function NewEventForm({ owners, preselectedOwnerId, appUrl, loginUrl }: N
               label={admin.newAccount.email}
               hint={t.owner.newHint}
               error={ownerErrors?.email?.message}
+              className={ALIGNED_FIELD}
             >
               {(props) => (
                 <input
@@ -251,10 +314,9 @@ export function NewEventForm({ owners, preselectedOwnerId, appUrl, loginUrl }: N
             </Field>
           </div>
         )}
-      </fieldset>
+      </Step>
 
-      <fieldset className={cn(cardClasses, 'flex flex-col gap-4 p-5')}>
-        <legend className="float-left mb-1 w-full text-lg font-semibold">{t.couple}</legend>
+      <Step number={2} legend={t.couple} intro={t.coupleIntro}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="novo-evento-noivo" label={t.groomName} error={errors.groomName?.message}>
             {(props) => (
@@ -291,6 +353,9 @@ export function NewEventForm({ owners, preselectedOwnerId, appUrl, loginUrl }: N
             )}
           </Field>
         </div>
+      </Step>
+
+      <Step number={3} legend={t.invitation} intro={t.invitationIntro}>
         <Field
           id="novo-evento-endereco"
           label={t.slug}
@@ -313,46 +378,85 @@ export function NewEventForm({ owners, preselectedOwnerId, appUrl, loginUrl }: N
             />
           )}
         </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field id="novo-evento-tema" label={t.theme} error={errors.themeId?.message}>
-            {(props) => (
-              <select {...props} {...register('themeId')} className={inputClasses}>
-                {Object.entries(THEMES).map(([id, theme]) => (
-                  <option key={id} value={id}>
-                    {theme.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </Field>
-          <Field
-            id="novo-evento-limite"
-            label={t.guestLimit}
-            hint={t.guestLimitHint}
-            error={errors.guestLimit?.message}
-          >
-            {(props) => (
-              <input
-                {...props}
-                {...register('guestLimit')}
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={ADMIN_LIMITS.guestLimit}
-                className={inputClasses}
-              />
-            )}
-          </Field>
-        </div>
-      </fieldset>
 
-      <div className="flex flex-col items-start gap-3">
-        <button type="submit" disabled={isSubmitting} className={buttonClasses('primary')}>
+        <fieldset className="flex min-w-0 flex-col gap-2">
+          <legend className="mb-2 font-sans text-sm font-medium text-stone-800">{t.theme}</legend>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {Object.entries(THEMES).map(([id, theme]) => (
+              <label key={id} className={cn(CHOICE_CARD, 'group flex-col overflow-hidden')}>
+                <input type="radio" value={id} {...register('themeId')} className="sr-only" />
+                {/* The theme's paper and colours; its fonts are not loaded here. */}
+                <span
+                  aria-hidden="true"
+                  className="relative flex h-20 items-end justify-between border-b border-stone-200 p-3"
+                  style={{ backgroundColor: theme.colors.background }}
+                >
+                  <span
+                    className="font-serif text-3xl leading-none italic"
+                    style={{ color: theme.colors.script }}
+                  >
+                    Aa
+                  </span>
+                  <span className="flex gap-1">
+                    {[theme.colors.accent, theme.colors.script, theme.colors.ink].map((color) => (
+                      <span
+                        key={color}
+                        className="size-3.5 rounded-full ring-1 ring-black/10"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </span>
+                  <IconCircleCheckFilled
+                    size={22}
+                    className="absolute top-2 right-2 hidden text-stone-900 group-has-checked:block"
+                  />
+                </span>
+                <span className="px-3 py-2.5 text-sm font-medium text-stone-900">{theme.name}</span>
+              </label>
+            ))}
+          </div>
+          {errors.themeId?.message ? (
+            <p className="font-sans text-sm text-red-700">{errors.themeId.message}</p>
+          ) : null}
+        </fieldset>
+
+        <Field
+          id="novo-evento-limite"
+          label={t.guestLimit}
+          hint={t.guestLimitHint}
+          error={errors.guestLimit?.message}
+          className="sm:max-w-xs"
+        >
+          {(props) => (
+            <input
+              {...props}
+              {...register('guestLimit')}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={ADMIN_LIMITS.guestLimit}
+              className={inputClasses}
+            />
+          )}
+        </Field>
+      </Step>
+
+      <div
+        className={cn(
+          cardClasses,
+          'flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between',
+        )}
+      >
+        <p className="text-sm text-stone-600">{editor.general.phase.SAVE_THE_DATEHint}</p>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className={buttonClasses('primary', 'md', 'shrink-0')}
+        >
           {isSubmitting ? t.submitting : t.submit}
         </button>
-        <Notice notice={notice} />
-        <p className="text-xs text-stone-600">{editor.general.phase.SAVE_THE_DATEHint}</p>
       </div>
+      <Notice notice={notice} />
     </form>
   );
 }

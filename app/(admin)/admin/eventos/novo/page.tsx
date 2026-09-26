@@ -1,8 +1,6 @@
-import { IconArrowLeft } from '@tabler/icons-react';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 
-import { buttonClasses } from '@/components/dashboard/styles';
+import { PageHeader, PageMain } from '@/components/dashboard/page-parts';
 import { getServerEnv } from '@/env';
 import { NewEventForm } from '@/features/admin/new-event-form';
 import { admin } from '@/i18n/pt-AO';
@@ -21,21 +19,18 @@ export default async function NewEventPage({ searchParams }: PageProps<'/admin/e
   const appUrl = getServerEnv().APP_URL;
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8">
-      <div className="flex flex-col gap-2">
-        <Link href="/admin" className={buttonClasses('ghost', 'sm', '-ml-3 self-start')}>
-          <IconArrowLeft size={18} stroke={1.75} aria-hidden="true" />
-          {admin.event.back}
-        </Link>
-        <h1 className="text-2xl font-semibold">{t.title}</h1>
-        <p className="text-sm text-stone-600">{t.intro}</p>
-      </div>
+    <PageMain width="form">
+      <PageHeader
+        parents={[{ href: '/admin', label: admin.event.back }]}
+        title={t.title}
+        description={t.intro}
+      />
       <NewEventForm
         owners={owners}
         preselectedOwnerId={typeof conta === 'string' ? conta : null}
         appUrl={appUrl}
         loginUrl={new URL('/entrar', appUrl).toString()}
       />
-    </main>
+    </PageMain>
   );
 }

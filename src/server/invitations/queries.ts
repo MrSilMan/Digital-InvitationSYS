@@ -115,3 +115,10 @@ export async function invalidateInvitationEvent(slug: string): Promise<void> {
 export async function invalidateInvitationGuest(token: string): Promise<void> {
   await cacheDelete([guestKey(token)]);
 }
+
+/** After a whole event is deleted: every guest's cached copy, a few hundred keys at a time. */
+export async function invalidateInvitationGuests(tokens: readonly string[]): Promise<void> {
+  for (let start = 0; start < tokens.length; start += 500) {
+    await cacheDelete(tokens.slice(start, start + 500).map(guestKey));
+  }
+}

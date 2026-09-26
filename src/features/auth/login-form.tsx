@@ -6,8 +6,10 @@ import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { Field } from '@/components/dashboard/field';
-import { buttonClasses, inputClasses } from '@/components/dashboard/styles';
+import { inputClasses } from '@/components/dashboard/styles';
+import { ctaClasses } from '@/features/landing/cta-links';
 import { auth } from '@/i18n/pt-AO';
+import { cn } from '@/lib/cn';
 import { type LoginInput, loginSchema } from '@/lib/validation/auth';
 
 import { signIn, type SignInErrorCode } from './actions';
@@ -22,7 +24,10 @@ const ERROR_MESSAGES: Record<SignInErrorCode, string> = {
   unavailable: t.errors.unavailable,
 };
 
-/** E-mail + password; on success the Server Action redirects (to `returnTo` when given). */
+/**
+ * E-mail + password; on success the Server Action redirects (to `returnTo` when given). Dashboard
+ * fields, and the landing page's button (the login page is a LandingRoot).
+ */
 export function LoginForm({ returnTo }: { returnTo: string | null }) {
   const [pending, startTransition] = useTransition();
   const [formError, setFormError] = useState<string | null>(null);
@@ -89,7 +94,11 @@ export function LoginForm({ returnTo }: { returnTo: string | null }) {
           {formError}
         </p>
       ) : null}
-      <button type="submit" disabled={pending} className={buttonClasses('primary', 'md', 'w-full')}>
+      <button
+        type="submit"
+        disabled={pending}
+        className={cn(ctaClasses('gold'), 'mt-1 w-full disabled:cursor-wait disabled:opacity-75')}
+      >
         {pending ? t.submitting : t.submit}
       </button>
     </form>

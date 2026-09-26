@@ -9,9 +9,11 @@ import { Features } from '@/features/landing/features';
 import { GuestJourney } from '@/features/landing/guest-journey';
 import { Hero, Ribbon } from '@/features/landing/hero';
 import { LandingRoot } from '@/features/landing/landing-root';
+import styles from '@/features/landing/landing.module.css';
 import { MAIN_ID, SiteFooter, SiteHeader } from '@/features/landing/site-chrome';
 import { ThemeShowcase } from '@/features/landing/theme-showcase';
 import { app, landing } from '@/i18n/pt-AO';
+import { cn } from '@/lib/cn';
 import { serverNow } from '@/lib/clock';
 
 const { title, description } = landing.metadata;
@@ -43,7 +45,7 @@ export default function HomePage() {
     <LandingRoot>
       <CouplePreviewProvider sample={landing.sampleCouple}>
         <SiteHeader contactHref={contactHref} />
-        <main id={MAIN_ID} tabIndex={-1} className="outline-none">
+        <main id={MAIN_ID} tabIndex={-1} className={cn(styles.smoothScroll, 'outline-none')}>
           <Hero contactHref={contactHref} date={date} />
           <Ribbon />
           <ThemeShowcase contactPhone={phone} date={date} />

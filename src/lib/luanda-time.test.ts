@@ -5,6 +5,7 @@ import {
   isDateInput,
   isTimeInput,
   luandaDateTime,
+  luandaDaysBetween,
   onWeddingDay,
   toLuandaDateInput,
   toLuandaTimeInput,
@@ -33,6 +34,14 @@ describe('Luanda date and time inputs', () => {
   it('adds days across months and years', () => {
     expect(addDays('2027-01-31', 1)).toBe('2027-02-01');
     expect(addDays('2027-12-31', 1)).toBe('2028-01-01');
+  });
+
+  it('counts calendar days in Luanda, not 24-hour spans', () => {
+    const lateEvening = new Date('2027-01-15T22:30:00Z'); // 23:30 on the 15th in Luanda
+    expect(luandaDaysBetween(lateEvening, new Date('2027-01-15T23:30:00Z'))).toBe(1); // 00:30
+    expect(luandaDaysBetween(lateEvening, new Date('2027-01-15T08:00:00Z'))).toBe(0);
+    expect(luandaDaysBetween(lateEvening, new Date('2027-03-01T12:00:00Z'))).toBe(45);
+    expect(luandaDaysBetween(lateEvening, new Date('2026-12-31T12:00:00Z'))).toBe(-15);
   });
 
   it('accepts only real dates and 24-hour times', () => {

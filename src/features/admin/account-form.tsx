@@ -24,6 +24,8 @@ interface AccountFormProps {
   initialValues: AccountFormValues;
   submitLabel: string;
   submittingLabel: string;
+  /** Under the name's label; a couple's example by default, null for none. */
+  nameHint?: string | null;
   emailHint?: string;
   /** Saves on the server; problems come back onto the fields or as the notice. */
   onSubmit: (values: AccountFormValues) => Promise<AdminActionResult>;
@@ -37,6 +39,7 @@ export function AccountForm({
   initialValues,
   submitLabel,
   submittingLabel,
+  nameHint = t.nameHint,
   emailHint,
   onSubmit,
   onSaved,
@@ -75,7 +78,12 @@ export function AccountForm({
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
-      <Field id={`${id}-name`} label={t.name} hint={t.nameHint} error={errors.name?.message}>
+      <Field
+        id={`${id}-name`}
+        label={t.name}
+        hint={nameHint ?? undefined}
+        error={errors.name?.message}
+      >
         {(props) => (
           <input
             {...props}

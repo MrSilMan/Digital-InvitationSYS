@@ -1,9 +1,16 @@
 'use client';
 
+import {
+  IconCalendarHeart,
+  IconHistory,
+  IconLayoutDashboard,
+  IconUserCircle,
+  IconUsers,
+} from '@tabler/icons-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { admin } from '@/i18n/pt-AO';
+import { admin, dashboard } from '@/i18n/pt-AO';
 import { cn } from '@/lib/cn';
 
 const t = admin.nav;
@@ -12,41 +19,95 @@ const LINKS = [
   {
     href: '/admin',
     label: t.events,
+    Icon: IconCalendarHeart,
     match: (path: string) => path === '/admin' || path.startsWith('/admin/eventos'),
   },
   {
     href: '/admin/contas',
     label: t.accounts,
+    Icon: IconUsers,
     match: (path: string) => path.startsWith('/admin/contas'),
   },
   {
     href: '/admin/registo',
     label: t.audit,
+    Icon: IconHistory,
     match: (path: string) => path.startsWith('/admin/registo'),
   },
 ];
 
-/** The admin area's sections (the current one marked). */
+const FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold';
+
+/**
+ * The admin area's sections (the current one marked): a row under the top bar on phones, a
+ * column in the sidebar from `lg`.
+ */
 export function AdminNav() {
   const pathname = usePathname();
   return (
-    <nav aria-label={t.label} className="-mx-4 overflow-x-auto px-4">
-      <ul className="flex gap-1">
-        {LINKS.map((link) => {
-          const active = link.match(pathname);
+    <nav aria-label={t.label} className="overflow-x-auto px-2 pb-2 lg:overflow-visible lg:px-3">
+      <ul className="flex gap-1 lg:flex-col">
+        {LINKS.map(({ href, label, Icon, match }) => {
+          const active = match(pathname);
           return (
-            <li key={link.href} className="shrink-0">
+            <li key={href} className="shrink-0">
               <Link
-                href={link.href}
+                href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'block border-b-2 px-3 py-2.5 font-sans text-sm font-medium whitespace-nowrap focus-visible:outline-2 focus-visible:outline-stone-900',
+                  'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors lg:py-2.5',
+                  FOCUS,
                   active
-                    ? 'border-stone-900 text-stone-900'
-                    : 'border-transparent text-stone-600 hover:border-stone-300 hover:text-stone-900',
+                    ? 'bg-white/10 text-ivory lg:before:absolute lg:before:inset-y-2 lg:before:-left-3 lg:before:w-1 lg:before:rounded-r-full lg:before:bg-gold'
+                    : 'text-mist hover:bg-white/5 hover:text-ivory',
                 )}
               >
-                {link.label}
+                <Icon
+                  size={20}
+                  stroke={1.75}
+                  aria-hidden="true"
+                  className={active ? 'text-gold' : undefined}
+                />
+                {label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
+/** The admin's own links at the foot of the sidebar: the couples' dashboard and their account. */
+export function AdminAccountNav() {
+  const pathname = usePathname();
+  const links = [
+    { href: '/painel', label: t.dashboard, Icon: IconLayoutDashboard },
+    { href: '/admin/conta', label: dashboard.links.account, Icon: IconUserCircle },
+  ];
+  return (
+    <nav aria-label={dashboard.links.label}>
+      <ul className="flex flex-col gap-0.5">
+        {links.map(({ href, label, Icon }) => {
+          const active = pathname === href;
+          return (
+            <li key={href}>
+              <Link
+                href={href}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                  FOCUS,
+                  active ? 'bg-white/10 text-ivory' : 'text-mist hover:bg-white/5 hover:text-ivory',
+                )}
+              >
+                <Icon
+                  size={20}
+                  stroke={1.75}
+                  aria-hidden="true"
+                  className={active ? 'text-gold' : undefined}
+                />
+                {label}
               </Link>
             </li>
           );

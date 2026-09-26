@@ -1,5 +1,6 @@
 'use client';
 
+import { IconCalendarPlus, IconCircleCheck, IconUser } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useState } from 'react';
 
@@ -27,8 +28,11 @@ export function NewAccount({ loginUrl }: { loginUrl: string }) {
     return (
       <section
         aria-labelledby="conta-criada"
-        className={cn(cardClasses, 'flex flex-col items-start gap-4 p-6')}
+        className={cn(cardClasses, 'flex flex-col items-start gap-5 p-6 sm:p-8')}
       >
+        <span className="flex size-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
+          <IconCircleCheck size={26} stroke={1.75} aria-hidden="true" />
+        </span>
         <h2 id="conta-criada" role="status" className="text-xl font-semibold">
           {t.created.title}
         </h2>
@@ -38,9 +42,11 @@ export function NewAccount({ loginUrl }: { loginUrl: string }) {
             href={`/admin/eventos/novo?conta=${encodeURIComponent(created.userId)}`}
             className={buttonClasses('primary')}
           >
+            <IconCalendarPlus size={18} stroke={1.75} aria-hidden="true" />
             {t.created.createEvent}
           </Link>
           <Link href={`/admin/contas/${created.userId}`} className={buttonClasses('secondary')}>
+            <IconUser size={18} stroke={1.75} aria-hidden="true" />
             {t.created.manage}
           </Link>
         </div>
@@ -49,7 +55,7 @@ export function NewAccount({ loginUrl }: { loginUrl: string }) {
   }
 
   return (
-    <div className={cn(cardClasses, 'flex flex-col gap-4 p-5')}>
+    <div className={cn(cardClasses, 'flex flex-col gap-4 p-5 sm:p-6')}>
       <AccountForm
         initialValues={{ name: '', email: '' }}
         submitLabel={t.submit}

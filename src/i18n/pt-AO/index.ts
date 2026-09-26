@@ -15,7 +15,7 @@ export { errors, validation };
 
 export const app = {
   name: 'Convites Digitais',
-  description: 'Casamentos digitais, interativos e personalizados para cada convidado.',
+  description: 'Convites digitais, interativos e personalizados para cada convidado.',
 } as const;
 
 /**
@@ -24,11 +24,10 @@ export const app = {
  */
 export const landing = {
   metadata: {
-    title: 'Convites Digitais — casamentos digitais',
+    title: 'Convites Digitais',
     description:
       'Convites de casamento elegantes e interativos, com o nome de cada convidado, enviados pelo WhatsApp: envelope com música, contagem regressiva, galeria de fotos e confirmação de presença.',
-    imageAlt: 'Convites Digitais: casamentos digitais',
-    imageTagline: 'Casamentos digitais',
+    imageAlt: 'Convites Digitais',
   },
   skipToContent: 'Saltar para o conteúdo',
   nav: {
@@ -55,7 +54,7 @@ export const landing = {
       'Olá! Gostaríamos de criar o nosso convite de casamento digital com o tema {theme}.',
   },
   hero: {
-    eyebrow: 'Casamentos digitais',
+    eyebrow: 'Convites digitais',
     titleScript: 'O vosso sim',
     titleCaps: 'merece um convite à altura',
     lead: 'Um convite elegante e interativo, com o nome de cada convidado, enviado pelo WhatsApp. Envelope com música, contagem regressiva, fotos, o programa do dia e a confirmação de presença: tudo num só link.',
@@ -281,7 +280,7 @@ export const landing = {
   },
   footer: {
     navLabel: 'Ligações do rodapé',
-    tagline: 'Casamentos digitais, elegantes e pessoais.',
+    tagline: 'Convites digitais, elegantes e pessoais.',
     /** {year} */
     rights: '© {year} Crossera LDA',
     contact: 'Falar connosco pelo WhatsApp',
@@ -308,7 +307,9 @@ export const auth = {
     hidePassword: 'Esconder a palavra-passe',
     submit: 'Entrar',
     submitting: 'A entrar…',
-    noAccount: 'Os convites são criados pela nossa equipa. Ainda não tem conta? Contacte-nos.',
+    noAccount: 'Os convites são criados pela nossa equipa. Ainda não tem conta?',
+    contact: 'Falar connosco',
+    backHome: 'Voltar à página inicial',
     errors: {
       emailInvalid: 'Introduza um e-mail válido.',
       passwordRequired: 'Introduza a palavra-passe.',
@@ -321,12 +322,31 @@ export const auth = {
   logout: 'Sair',
 } as const;
 
+/** How far a date is from today (dashboard and admin lists and headers). */
+export const relativeDay = {
+  today: 'hoje',
+  tomorrow: 'amanhã',
+  yesterday: 'ontem',
+  days: { one: 'dia', other: 'dias' },
+  months: { one: 'mês', other: 'meses' },
+  years: { one: 'ano', other: 'anos' },
+  /** {span}: "12 dias" */
+  future: 'daqui a {span}',
+  /** {span} */
+  past: 'há {span}',
+} as const;
+
 /** The couple's dashboard: shell and event list. */
 export const dashboard = {
   title: 'Painel',
+  /** Under the wordmark in the header. */
+  tagline: 'Painel dos noivos',
   events: {
     title: 'Os meus convites',
     titleAdmin: 'Todos os convites',
+    intro: 'Abra um convite para o editar, gerir os convidados e acompanhar as respostas.',
+    introAdmin:
+      'Os convites de todos os noivos, como eles os veem. Para ativar, desativar ou eliminar um evento, use a administração.',
     open: 'Abrir',
     empty: 'Ainda não tem convites. A nossa equipa cria o seu convite: contacte-nos.',
     phase: { SAVE_THE_DATE: 'Save the Date', INVITATION: 'Convite' },
@@ -336,6 +356,7 @@ export const dashboard = {
     guestCount: { one: 'convidado', other: 'convidados' },
   },
   skipToContent: 'Saltar para o conteúdo',
+  breadcrumbs: 'Caminho',
   /** Header links. */
   links: {
     label: 'Menu da conta',
@@ -352,8 +373,6 @@ export const account = {
     name: 'Nome',
     email: 'E-mail',
     hint: 'Para alterar o nome ou o e-mail, contacte-nos.',
-    adminHint: 'Altere o nome ou o e-mail na administração:',
-    adminLink: 'a sua conta',
   },
   password: {
     legend: 'Alterar a palavra-passe',
@@ -394,13 +413,13 @@ export const admin = {
     label: 'Secções da administração',
     events: 'Eventos',
     accounts: 'Contas',
-    audit: 'Registo de atividade',
-    dashboard: 'Painel',
+    audit: 'Atividade',
+    dashboard: 'Painel dos noivos',
   },
   common: {
     search: 'Procurar',
     status: 'Estado',
-    all: 'Todos',
+    statusFilter: 'Filtrar por estado',
     filter: 'Filtrar',
     clear: 'Limpar filtros',
     pagination: 'Páginas',
@@ -408,8 +427,6 @@ export const admin = {
     next: 'Seguinte',
     /** {page}, {pages} */
     page: 'Página {page} de {pages}',
-    /** {count} */
-    results: '{count} resultado(s)',
     noResults: 'Nenhum resultado para estes filtros.',
     save: 'Guardar',
     saving: 'A guardar…',
@@ -417,29 +434,57 @@ export const admin = {
     cancel: 'Cancelar',
     close: 'Fechar',
     you: 'Você',
+    /** The confirming button of a deletion dialog. */
+    deleteForGood: 'Eliminar para sempre',
+    deleting: 'A eliminar…',
+  },
+  /** The numbers above the event list. */
+  overview: {
+    label: 'Visão geral',
+    active: 'Eventos ativos',
+    /** {count} */
+    activeOf: 'de {count} no total',
+    upcoming: 'Próximos casamentos',
+    upcomingHint: 'nos próximos 30 dias',
+    guests: 'Convidados',
+    guestsHint: 'em todos os eventos',
+    couples: 'Contas de noivos',
+    suspended: { one: 'suspensa', other: 'suspensas' },
+    noneSuspended: 'nenhuma suspensa',
   },
   events: {
     title: 'Eventos',
+    intro: 'Todos os eventos da plataforma, do mais recente ao mais antigo.',
     new: 'Novo evento',
     searchPlaceholder: 'Noivos, endereço ou e-mail da conta',
-    statuses: { active: 'Ativos', inactive: 'Desativados' },
+    statuses: { all: 'Todos', active: 'Ativos', inactive: 'Desativados' },
+    count: { one: 'evento', other: 'eventos' },
+    columns: {
+      couple: 'Noivos',
+      date: 'Casamento',
+      account: 'Conta',
+      guests: 'Convidados',
+      status: 'Estado',
+    },
     empty: 'Ainda não há eventos. Crie o primeiro.',
+    /** After a deletion (the list's notice). */
+    deleted: 'Evento eliminado.',
     active: 'Ativo',
     inactive: 'Desativado',
     /** {count}, {limit} */
     guests: '{count} de {limit} convidados',
-    manage: 'Gerir',
+    /** {count}, {limit} */
+    guestsShort: '{count} de {limit}',
     /** {couple} */
     manageLabel: 'Gerir o evento de {couple}',
   },
   event: {
     back: 'Eventos',
+    details: 'Detalhes',
     account: 'Conta dos noivos',
     suspendedAccount: 'Conta suspensa',
     address: 'Endereço dos convites',
-    date: 'Data',
     theme: 'Tema',
-    phase: 'Fase',
     /** {date} */
     created: 'Criado a {date}',
     guests: 'Convidados',
@@ -448,24 +493,38 @@ export const admin = {
     edit: 'Editar convite',
     status: {
       legend: 'Estado',
-      activeHint: 'Ativo: os convidados abrem o convite.',
+      activeHint: 'Os convidados abrem o convite.',
       inactiveHint:
-        'Desativado: os convidados veem «Convite não encontrado». Os noivos continuam a ver e a editar o evento no painel.',
+        'Os convidados veem «Convite não encontrado». Os noivos continuam a ver e a editar o evento no painel.',
       activate: 'Ativar evento',
       deactivate: 'Desativar evento',
-      /** {couple} */
-      deactivateConfirm:
-        'Desativar o evento de {couple}? Os convidados deixam de conseguir abrir o convite.',
+      confirm: {
+        /** {couple} */
+        title: 'Desativar o evento de {couple}?',
+        text: 'Os convidados deixam de conseguir abrir o convite. Pode voltar a ativá-lo quando quiser.',
+        button: 'Sim, desativar',
+      },
       activated: 'Evento ativado: os convidados já abrem o convite.',
       deactivated: 'Evento desativado.',
     },
     limit: {
       legend: 'Limite de convidados',
-      /** {count} */
-      hint: 'O plano dos noivos: quantos convidados podem adicionar. O evento tem agora {count}.',
+      hint: 'O plano dos noivos: quantos convidados podem adicionar.',
       label: 'Limite',
       save: 'Guardar limite',
       saved: 'Limite guardado.',
+    },
+    delete: {
+      legend: 'Eliminar evento',
+      hint: 'Elimina o evento e tudo o que tem: os convidados e as respostas, as fotos e a música. Os links já enviados deixam de funcionar. Não pode ser desfeito.',
+      button: 'Eliminar evento',
+      confirm: {
+        /** {couple} */
+        title: 'Eliminar o evento de {couple}?',
+        /** {guests}: "12 convidados" */
+        text: 'São eliminados para sempre: o evento, {guests} com as respostas, as fotos e a música. Os links já enviados passam a dizer «Convite não encontrado».',
+        label: 'Para confirmar, escreva o endereço do evento:',
+      },
     },
   },
   newEvent: {
@@ -474,6 +533,7 @@ export const admin = {
       'Crie o evento e, se for preciso, a conta dos noivos. O evento começa em Save the Date; os noivos completam o resto no painel.',
     owner: {
       legend: 'Conta dos noivos',
+      intro: 'A conta com que os noivos editam o convite e gerem os convidados.',
       existing: 'Conta existente',
       new: 'Nova conta',
       choose: 'Conta',
@@ -481,11 +541,14 @@ export const admin = {
       none: 'Ainda não há contas de noivos ativas: crie uma nova.',
       newHint: 'A palavra-passe temporária aparece depois de criar o evento.',
     },
-    couple: 'Noivos',
+    couple: 'Noivos e data',
+    coupleIntro: 'Os nomes aparecem no convite. A data e a hora são de Luanda.',
     groomName: 'Nome do noivo',
     brideName: 'Nome da noiva',
     date: 'Data do casamento',
     time: 'Hora da cerimónia',
+    invitation: 'Convite',
+    invitationIntro: 'O endereço dos links, o tema e o plano.',
     slug: 'Endereço dos convites',
     /** {example} */
     slugHint:
@@ -506,16 +569,20 @@ export const admin = {
   },
   accounts: {
     title: 'Contas',
+    intro: 'Os noivos e os administradores que entram na plataforma.',
     new: 'Nova conta',
     searchPlaceholder: 'Nome ou e-mail',
-    statuses: { active: 'Ativas', suspended: 'Suspensas' },
+    statuses: { all: 'Todas', active: 'Ativas', suspended: 'Suspensas' },
+    count: { one: 'conta', other: 'contas' },
+    columns: { account: 'Conta', role: 'Função', events: 'Eventos', created: 'Criada' },
     roles: { couple: 'Noivos', admin: 'Administrador' },
     suspended: 'Suspensa',
     events: { one: 'evento', other: 'eventos' },
     /** {date} */
     created: 'Criada a {date}',
     empty: 'Ainda não há contas.',
-    manage: 'Gerir',
+    /** After a deletion (the list's notice). */
+    deleted: 'Conta eliminada.',
     /** {name} */
     manageLabel: 'Gerir a conta de {name}',
   },
@@ -536,7 +603,8 @@ export const admin = {
   },
   accountDetail: {
     back: 'Contas',
-    ownAccount: 'É a sua conta. A palavra-passe altera-se em «A minha conta».',
+    ownAccount: 'É a sua conta. A palavra-passe altera-se em',
+    ownAccountLink: 'A minha conta',
     details: {
       legend: 'Dados da conta',
       name: 'Nome',
@@ -552,20 +620,42 @@ export const admin = {
       legend: 'Palavra-passe',
       hint: 'Gera uma nova palavra-passe temporária. A atual deixa de funcionar e as sessões abertas terminam.',
       reset: 'Gerar nova palavra-passe',
-      /** {name} */
-      confirm: 'Gerar uma nova palavra-passe para {name}? A atual deixa de funcionar.',
+      confirm: {
+        /** {name} */
+        title: 'Gerar uma nova palavra-passe para {name}?',
+        text: 'A palavra-passe atual deixa de funcionar e as sessões abertas terminam. A nova aparece a seguir, uma só vez.',
+        button: 'Sim, gerar',
+      },
     },
     access: {
       legend: 'Acesso',
+      active: 'Ativa',
       activeHint: 'A conta pode entrar no painel.',
       suspendedHint:
-        'Suspensa: não consegue entrar no painel. Os eventos continuam como estão (desative-os na página de cada evento).',
+        'Não consegue entrar no painel. Os eventos continuam como estão (desative-os na página de cada evento).',
       suspend: 'Suspender conta',
       unsuspend: 'Reativar conta',
-      /** {name} */
-      suspendConfirm: 'Suspender a conta de {name}? As sessões abertas terminam de imediato.',
+      confirm: {
+        /** {name} */
+        title: 'Suspender a conta de {name}?',
+        text: 'As sessões abertas terminam de imediato e a conta deixa de conseguir entrar no painel. Os eventos continuam como estão.',
+        button: 'Sim, suspender',
+      },
       suspended: 'Conta suspensa.',
       unsuspended: 'Conta reativada.',
+    },
+    delete: {
+      legend: 'Eliminar conta',
+      hint: 'Elimina a conta e os eventos que tem, com os convidados, as respostas e os ficheiros. As sessões abertas terminam. Não pode ser desfeito.',
+      button: 'Eliminar conta',
+      confirm: {
+        /** {name} */
+        title: 'Eliminar a conta de {name}?',
+        text: 'A conta deixa de conseguir entrar e é eliminada para sempre.',
+        events:
+          'Também são eliminados para sempre estes eventos, com os convidados, as respostas e os ficheiros:',
+        label: 'Para confirmar, escreva o e-mail da conta:',
+      },
     },
   },
   temporaryPassword: {
@@ -586,6 +676,8 @@ export const admin = {
     recent: 'Atividade recente',
     all: 'Ver todo o registo',
     empty: 'Sem atividade registada.',
+    count: { one: 'entrada', other: 'entradas' },
+    days: { today: 'Hoje', yesterday: 'Ontem' },
     action: 'Ação',
     allActions: 'Todas as ações',
     groups: { adminArea: 'Administração', dashboard: 'No painel dos noivos' },
@@ -600,12 +692,14 @@ export const admin = {
       'event.activate': 'Ativou o evento',
       'event.deactivate': 'Desativou o evento',
       'event.guest-limit': 'Alterou o limite de convidados',
+      'event.delete': 'Eliminou o evento',
       'user.create': 'Criou a conta',
       'user.update': 'Alterou os dados da conta',
       'user.password-reset': 'Gerou uma nova palavra-passe',
       'user.suspend': 'Suspendeu a conta',
       'user.unsuspend': 'Reativou a conta',
       'user.promote': 'Tornou a conta administradora',
+      'user.delete': 'Eliminou a conta',
       'event.edit': 'Editou o convite',
       'event.invite-message': 'Alterou a mensagem de envio',
       'media.upload': 'Carregou um ficheiro',
@@ -642,6 +736,9 @@ export const admin = {
       sent: 'Enviado',
       suspended: 'Suspensa',
       sessionsEnded: 'Sessões terminadas',
+      guests: 'Convidados',
+      media: 'Ficheiros',
+      events: 'Eventos',
     },
     values: { yes: 'sim', no: 'não', empty: '—' },
     /** Stored detail values shown in words. Unknown values are shown as they are. */
@@ -671,6 +768,7 @@ export const admin = {
     'own-account': 'Não pode fazer isto à sua própria conta.',
     'last-admin': 'Tem de ficar pelo menos um administrador ativo.',
     'owner-invalid': 'Escolha uma conta de noivos ativa.',
+    confirmation: 'O texto escrito não corresponde. Escreva-o exatamente como indicado.',
   },
   validation: {
     slug: 'Use letras minúsculas sem acentos, números e hífenes (ex.: ana-e-joao).',
@@ -1495,6 +1593,7 @@ export const ptAO = {
   errors,
   validation,
   auth,
+  relativeDay,
   dashboard,
   account,
   admin,
