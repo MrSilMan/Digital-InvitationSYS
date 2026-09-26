@@ -15,7 +15,7 @@ export { errors, validation };
 
 export const app = {
   name: 'Convites Digitais',
-  description: 'Convites de casamento digitais, interativos e personalizados para cada convidado.',
+  description: 'Casamentos digitais, interativos e personalizados para cada convidado.',
 } as const;
 
 /**
@@ -24,11 +24,11 @@ export const app = {
  */
 export const landing = {
   metadata: {
-    title: 'Convites Digitais — convites de casamento digitais',
+    title: 'Convites Digitais — casamentos digitais',
     description:
       'Convites de casamento elegantes e interativos, com o nome de cada convidado, enviados pelo WhatsApp: envelope com música, contagem regressiva, galeria de fotos e confirmação de presença.',
-    imageAlt: 'Convites Digitais: convites de casamento digitais',
-    imageTagline: 'Convites de casamento digitais',
+    imageAlt: 'Convites Digitais: casamentos digitais',
+    imageTagline: 'Casamentos digitais',
   },
   skipToContent: 'Saltar para o conteúdo',
   nav: {
@@ -55,7 +55,7 @@ export const landing = {
       'Olá! Gostaríamos de criar o nosso convite de casamento digital com o tema {theme}.',
   },
   hero: {
-    eyebrow: 'Convites de casamento digitais',
+    eyebrow: 'Casamentos digitais',
     titleScript: 'O vosso sim',
     titleCaps: 'merece um convite à altura',
     lead: 'Um convite elegante e interativo, com o nome de cada convidado, enviado pelo WhatsApp. Envelope com música, contagem regressiva, fotos, o programa do dia e a confirmação de presença: tudo num só link.',
@@ -271,9 +271,9 @@ export const landing = {
   },
   footer: {
     navLabel: 'Ligações do rodapé',
-    tagline: 'Convites de casamento digitais, elegantes e pessoais.',
+    tagline: 'Casamentos digitais, elegantes e pessoais.',
     /** {year} */
-    rights: '© {year} Convites Digitais',
+    rights: '© {year} Crossera LDA',
     contact: 'Falar connosco pelo WhatsApp',
   },
   demo: {
